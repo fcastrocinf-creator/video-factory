@@ -19,6 +19,11 @@
   "packageManager": "pnpm@9.15.0",
   "dependencies": {
     "@libsql/client": "^0.14.0",
+    "@video-factory/block-compositor-remotion": "workspace:*",
+    "@video-factory/block-script-processor": "workspace:*",
+    "@video-factory/block-subtitles-google": "workspace:*",
+    "@video-factory/contracts": "workspace:*",
+    "@video-factory/core": "workspace:*",
     "drizzle-orm": "^0.36.4"
   },
   "devDependencies": {

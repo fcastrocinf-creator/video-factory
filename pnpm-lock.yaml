@@ -11,6 +11,21 @@ importers:
       '@libsql/client':
         specifier: ^0.14.0
         version: 0.14.0
+      '@video-factory/block-compositor-remotion':
+        specifier: workspace:*
+        version: link:packages/blocks/compositor-remotion
+      '@video-factory/block-script-processor':
+        specifier: workspace:*
+        version: link:packages/blocks/script-processor
+      '@video-factory/block-subtitles-google':
+        specifier: workspace:*
+        version: link:packages/blocks/subtitles-google
+      '@video-factory/contracts':
+        specifier: workspace:*
+        version: link:packages/contracts
+      '@video-factory/core':
+        specifier: workspace:*
+        version: link:packages/core
       drizzle-orm:
         specifier: ^0.36.4
         version: 0.36.4(@libsql/client@0.14.0)(@types/react@18.3.28)(react@18.3.1)
