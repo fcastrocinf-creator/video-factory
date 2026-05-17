@@ -48,9 +48,9 @@ importers:
       '@video-factory/block-script-processor':
         specifier: workspace:*
         version: link:../../packages/blocks/script-processor
-      '@video-factory/block-subtitles-whisper':
+      '@video-factory/block-subtitles-google':
         specifier: workspace:*
-        version: link:../../packages/blocks/subtitles-whisper
+        version: link:../../packages/blocks/subtitles-google
       '@video-factory/block-tts-elevenlabs':
         specifier: workspace:*
         version: link:../../packages/blocks/tts-elevenlabs
@@ -179,6 +179,25 @@ importers:
         version: 2.1.9(@types/node@22.19.19)(terser@5.47.1)
 
   packages/blocks/script-processor:
+    dependencies:
+      '@video-factory/contracts':
+        specifier: workspace:*
+        version: link:../../contracts
+      '@video-factory/core':
+        specifier: workspace:*
+        version: link:../../core
+      neverthrow:
+        specifier: ^8.1.1
+        version: 8.2.0
+    devDependencies:
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.19.19)(terser@5.47.1)
+
+  packages/blocks/subtitles-google:
     dependencies:
       '@video-factory/contracts':
         specifier: workspace:*

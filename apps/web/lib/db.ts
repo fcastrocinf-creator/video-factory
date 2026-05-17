@@ -9,10 +9,19 @@ let _db: LibSQLDatabase | null = null;
 
 function buildDbUrl(): string {
   const fromEnv = process.env['DATABASE_URL'];
-  if (fromEnv) return fromEnv;
-  // Default: SQLite local en <repoRoot>/db/local.db. Path absoluto para que funcione
-  // independiente del cwd (build, dev, scripts, etc.).
-  return `file:${resolve(REPO_ROOT, 'db', 'local.db')}`;
+  const raw = fromEnv ?? `file:${resolve(REPO_ROOT, 'db', 'local.db')}`;
+
+  // Si la URL es `file:` con path relativo, lo resolvemos contra REPO_ROOT.
+  // Necesario porque libsql resuelve el path contra el cwd (apps/web en dev),
+  // pero la DB vive en <repoRoot>/db/local.db.
+  if (raw.startsWith('file:')) {
+    const path = raw.slice('file:'.length);
+    const isAbsolute = /^[a-zA-Z]:[\\/]/.test(path) || path.startsWith('/');
+    if (!isAbsolute) {
+      return `file:${resolve(REPO_ROOT, path)}`;
+    }
+  }
+  return raw;
 }
 
 function init(): LibSQLDatabase {

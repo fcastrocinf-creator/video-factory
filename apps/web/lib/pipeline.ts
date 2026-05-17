@@ -4,7 +4,7 @@ import { createLogger, type BlockContext } from '@video-factory/core';
 import type { RenderJob } from '@video-factory/contracts';
 import { scriptProcessor } from '@video-factory/block-script-processor';
 import { ttsElevenLabs } from '@video-factory/block-tts-elevenlabs';
-import { subtitlesWhisper } from '@video-factory/block-subtitles-whisper';
+import { subtitlesGoogle } from '@video-factory/block-subtitles-google';
 import { imageGenImagen } from '@video-factory/block-image-gen-imagen';
 import { compositorRemotion } from '@video-factory/block-compositor-remotion';
 import { db, runs } from './db';
@@ -70,8 +70,8 @@ export async function runPipeline(
     const audioTrack = audioResult.value;
 
     // B.3
-    await updateRun(runId, { currentStep: 'subtitles-whisper', progress: 45 });
-    const subsResult = await subtitlesWhisper.run(audioTrack, ctx);
+    await updateRun(runId, { currentStep: 'subtitles-google', progress: 45 });
+    const subsResult = await subtitlesGoogle.run(audioTrack, ctx);
     if (subsResult.isErr()) throw subsResult.error;
     const subtitleTrack = subsResult.value;
 
