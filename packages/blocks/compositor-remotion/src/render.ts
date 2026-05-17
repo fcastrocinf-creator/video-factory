@@ -31,7 +31,17 @@ export async function renderPlanoFijo(options: RenderPlanoFijoOptions): Promise<
   const bundleLocation = await bundle({
     entryPoint,
     publicDir: options.workDir,
-    webpackOverride: (config) => config,
+    webpackOverride: (config) => {
+      // Permitir que webpack resuelva imports `./foo.js` → `./foo.tsx`.
+      // Necesario porque nuestros packages usan extensión .js explícita en imports
+      // (Node ESM convention) pero los archivos físicos son .tsx/.ts.
+      config.resolve = config.resolve ?? {};
+      config.resolve.extensionAlias = {
+        ...(config.resolve.extensionAlias ?? {}),
+        '.js': ['.js', '.tsx', '.ts'],
+      };
+      return config;
+    },
   });
 
   const composition = await selectComposition({
