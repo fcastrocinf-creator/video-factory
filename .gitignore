@@ -1,0 +1,47 @@
+# Dependencias
+node_modules/
+.pnpm-store/
+
+# Build outputs
+.next/
+dist/
+build/
+*.tsbuildinfo
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Storage (archivos generados por la app)
+storage/
+!storage/.gitkeep
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Database
+*.db
+*.db-journal
+
+# Cache
+.turbo/
+.cache/
+
+# Sources pesadas (videos y .docx originales del chat) — referencia local, no versionar
+docs/sources/videos_referencia/*.mp4
+docs/sources/investigacion/*.docx
+docs/sources/briefs/*.docx
+!docs/sources/**/README.md
