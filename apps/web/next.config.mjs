@@ -54,6 +54,7 @@ const nextConfig = {
     '@video-factory/block-tts-elevenlabs',
     '@video-factory/block-subtitles-google',
     '@video-factory/block-image-gen-imagen',
+    '@video-factory/block-video-gen-veo',
     '@video-factory/block-compositor-remotion',
   ],
   webpack: (config, { isServer }) => {

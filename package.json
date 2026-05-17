@@ -22,6 +22,7 @@
     "@video-factory/block-compositor-remotion": "workspace:*",
     "@video-factory/block-script-processor": "workspace:*",
     "@video-factory/block-subtitles-google": "workspace:*",
+    "@video-factory/block-video-gen-veo": "workspace:*",
     "@video-factory/contracts": "workspace:*",
     "@video-factory/core": "workspace:*",
     "drizzle-orm": "^0.36.4"

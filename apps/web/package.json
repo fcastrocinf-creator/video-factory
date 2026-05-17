@@ -16,6 +16,7 @@
     "@video-factory/block-script-processor": "workspace:*",
     "@video-factory/block-subtitles-google": "workspace:*",
     "@video-factory/block-tts-elevenlabs": "workspace:*",
+    "@video-factory/block-video-gen-veo": "workspace:*",
     "@video-factory/contracts": "workspace:*",
     "@video-factory/core": "workspace:*",
     "class-variance-authority": "^0.7.1",

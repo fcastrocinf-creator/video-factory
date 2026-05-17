@@ -20,6 +20,9 @@ importers:
       '@video-factory/block-subtitles-google':
         specifier: workspace:*
         version: link:packages/blocks/subtitles-google
+      '@video-factory/block-video-gen-veo':
+        specifier: workspace:*
+        version: link:packages/blocks/video-gen-veo
       '@video-factory/contracts':
         specifier: workspace:*
         version: link:packages/contracts
@@ -69,6 +72,9 @@ importers:
       '@video-factory/block-tts-elevenlabs':
         specifier: workspace:*
         version: link:../../packages/blocks/tts-elevenlabs
+      '@video-factory/block-video-gen-veo':
+        specifier: workspace:*
+        version: link:../../packages/blocks/video-gen-veo
       '@video-factory/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
@@ -251,6 +257,25 @@ importers:
         version: 2.1.9(@types/node@22.19.19)(terser@5.47.1)
 
   packages/blocks/tts-elevenlabs:
+    dependencies:
+      '@video-factory/contracts':
+        specifier: workspace:*
+        version: link:../../contracts
+      '@video-factory/core':
+        specifier: workspace:*
+        version: link:../../core
+      neverthrow:
+        specifier: ^8.1.1
+        version: 8.2.0
+    devDependencies:
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.19.19)(terser@5.47.1)
+
+  packages/blocks/video-gen-veo:
     dependencies:
       '@video-factory/contracts':
         specifier: workspace:*

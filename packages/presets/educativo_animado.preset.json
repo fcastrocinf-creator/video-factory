@@ -1,0 +1,47 @@
+{
+  "id": "educativo_animado",
+  "displayName": "Educativo · Doctor Animado (Veo)",
+  "description": "Video animado con doctor 3D Pixar (~60-90 s) generado por Veo 3 Lite usando imagen de Imagen como referencia. Clips de 8 s concatenados con consistencia de personaje. Voz Vitaly + subtítulos word-level. Costo ~$0.40/video. Ideal para TOFU/MOFU.",
+  "classification": {
+    "formato": "educativo",
+    "hookAngulo": "autoridad",
+    "funnelStage": "tofu",
+    "awareness": "problem_aware"
+  },
+  "estrategia": "multi_escena",
+  "visualEngine": "veo-lite",
+  "visualStyle": {
+    "promptTemplate": "3D Pixar style asian male doctor character in white lab coat with stethoscope, friendly professional expression, traditional Japanese clinic interior with shelves and decorative plants, soft natural lighting from window, cinematic depth of field, warm color grading, photorealistic CGI animation similar to Pixar movies, vertical 9:16 composition with character centered upper body visible",
+    "negativePrompt": "anime style, 2D illustration, low quality, blurry, text overlay, watermark, multiple characters",
+    "aspectRatio": "9:16",
+    "referenceImages": []
+  },
+  "subtitles": {
+    "style": "word_level_kinetic",
+    "font": "Inter",
+    "fontSize": 64,
+    "color": "#FFFFFF",
+    "strokeColor": "#000000",
+    "strokeWidth": 4,
+    "highlightColor": "#FFE600",
+    "position": "bottom",
+    "allCaps": false
+  },
+  "defaultDurationSeconds": 72,
+  "scenesPerMinute": 7.5,
+  "composition": {
+    "kenBurns": {
+      "enabled": false,
+      "zoomStart": 1.0,
+      "zoomEnd": 1.0,
+      "panX": 0,
+      "panY": 0
+    },
+    "backgroundMusic": {
+      "enabled": false,
+      "volumeDb": -20
+    }
+  },
+  "createdAt": "2026-05-17T00:00:00Z",
+  "updatedAt": "2026-05-17T00:00:00Z"
+}

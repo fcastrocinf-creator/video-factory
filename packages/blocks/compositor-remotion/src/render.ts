@@ -3,19 +3,31 @@ import { fileURLToPath } from 'node:url';
 import { bundle } from '@remotion/bundler';
 import { renderMedia, selectComposition } from '@remotion/renderer';
 import type { PlanoFijoProps } from './compositions/PlanoFijo.js';
+import type { PlanoAnimadoProps } from './compositions/PlanoAnimado.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-export interface RenderPlanoFijoOptions {
+export interface RenderOptionsBase {
   outputPath: string;
   workDir: string;
   durationInFrames: number;
   fps: number;
   width: number;
   height: number;
-  inputProps: PlanoFijoProps;
   onProgress?: (progress: number) => void;
 }
+
+export interface RenderPlanoFijoOptions extends RenderOptionsBase {
+  composition: 'PlanoFijo';
+  inputProps: PlanoFijoProps;
+}
+
+export interface RenderPlanoAnimadoOptions extends RenderOptionsBase {
+  composition: 'PlanoAnimado';
+  inputProps: PlanoAnimadoProps;
+}
+
+export type RenderOptions = RenderPlanoFijoOptions | RenderPlanoAnimadoOptions;
 
 export interface RenderResult {
   outputPath: string;
@@ -23,18 +35,15 @@ export interface RenderResult {
   durationSeconds: number;
 }
 
-// Bundle del proyecto Remotion + render del composition "PlanoFijo".
+// Bundle del proyecto Remotion + render del composition elegido (PlanoFijo o PlanoAnimado).
 // publicDir = workDir → staticFile('audio.mp3') sirve desde el workDir del run.
-export async function renderPlanoFijo(options: RenderPlanoFijoOptions): Promise<RenderResult> {
+export async function renderComposition(options: RenderOptions): Promise<RenderResult> {
   const entryPoint = resolve(__dirname, 'compositions/Root.tsx');
 
   const bundleLocation = await bundle({
     entryPoint,
     publicDir: options.workDir,
     webpackOverride: (config) => {
-      // Permitir que webpack resuelva imports `./foo.js` → `./foo.tsx`.
-      // Necesario porque nuestros packages usan extensión .js explícita en imports
-      // (Node ESM convention) pero los archivos físicos son .tsx/.ts.
       config.resolve = config.resolve ?? {};
       config.resolve.extensionAlias = {
         ...(config.resolve.extensionAlias ?? {}),
@@ -46,7 +55,7 @@ export async function renderPlanoFijo(options: RenderPlanoFijoOptions): Promise<
 
   const composition = await selectComposition({
     serveUrl: bundleLocation,
-    id: 'PlanoFijo',
+    id: options.composition,
     inputProps: options.inputProps as unknown as Record<string, unknown>,
   });
 
@@ -75,4 +84,11 @@ export async function renderPlanoFijo(options: RenderPlanoFijoOptions): Promise<
     sizeBytes: stat.size,
     durationSeconds: options.durationInFrames / options.fps,
   };
+}
+
+// Backward-compat: la API anterior renderPlanoFijo sigue existiendo y delega al renderComposition.
+export async function renderPlanoFijo(
+  options: Omit<RenderPlanoFijoOptions, 'composition'>,
+): Promise<RenderResult> {
+  return renderComposition({ ...options, composition: 'PlanoFijo' });
 }
