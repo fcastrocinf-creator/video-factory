@@ -1,0 +1,6 @@
+packages:
+  - "apps/*"
+  - "packages/core"
+  - "packages/contracts"
+  - "packages/ui"
+  - "packages/blocks/*"
