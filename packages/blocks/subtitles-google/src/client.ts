@@ -45,6 +45,7 @@ export interface TranscribeOptions {
   languageCode: string;
   model?: string;
   sampleRateHertz?: number;
+  audioChannelCount?: number;
   onProgress?: (percent: number) => void;
 }
 
@@ -90,10 +91,13 @@ export class GoogleSpeechClient {
       encoding: opts.encoding,
       languageCode: opts.languageCode,
       enableWordTimeOffsets: true,
-      model: opts.model ?? 'latest_long',
+      model: opts.model ?? 'default',
     };
     if (opts.sampleRateHertz) {
       config['sampleRateHertz'] = opts.sampleRateHertz;
+    }
+    if (opts.audioChannelCount) {
+      config['audioChannelCount'] = opts.audioChannelCount;
     }
 
     const startResp = await this.fetchImpl(
@@ -108,7 +112,7 @@ export class GoogleSpeechClient {
     if (!startResp.ok) {
       const body = await startResp.text();
       throw new GoogleSpeechApiError(
-        `Google Speech longrunningrecognize ${startResp.status} ${startResp.statusText}`,
+        `Google Speech longrunningrecognize ${startResp.status} ${startResp.statusText}: ${body.slice(0, 600)}`,
         startResp.status,
         body,
         startResp.status === 429 || startResp.status >= 500,

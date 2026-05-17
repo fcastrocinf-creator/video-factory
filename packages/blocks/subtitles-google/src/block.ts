@@ -52,10 +52,13 @@ export class SubtitlesGoogleBlock implements Block<AudioTrack, SubtitleTrack> {
       );
     }
 
-    // Google Speech acepta códigos como "es-CL", "es-ES", "es-MX". Si tenemos
-    // ese formato en brand.language, lo usamos tal cual. Si tenemos sólo "es",
-    // también funciona.
-    const language = this.options.language ?? ctx.brand?.language ?? 'es-CL';
+    // Normalización de idioma para Google Speech `latest_long`.
+    // El modelo no soporta todas las variantes regionales (ej: es-CL, es-AR, es-CO no van).
+    // Mapeamos cualquier variante de español a una soportada (es-ES) para evitar
+    // 400 "model not supported for language". Mantiene la fonética Spanish OK
+    // independiente del país; el modelo reconoce variantes regionales por igual.
+    const rawLang = this.options.language ?? ctx.brand?.language ?? 'es-ES';
+    const language = normalizeLanguageForLatestLong(rawLang);
 
     let audioBuffer: Buffer;
     try {
@@ -89,8 +92,12 @@ export class SubtitlesGoogleBlock implements Block<AudioTrack, SubtitleTrack> {
       response = await client.transcribe({
         audioBuffer,
         encoding: 'MP3',
+        sampleRateHertz: 44100, // ElevenLabs mp3_44100_128 default
+        audioChannelCount: 1, // ElevenLabs default es mono
         languageCode: language,
-        model: this.options.model ?? 'latest_long',
+        // `default` produce transcripción confiable para ElevenLabs MP3 en español.
+        // `latest_long` devuelve results vacío con este audio (testeado mayo 2026).
+        model: this.options.model ?? 'default',
         onProgress: (percent) => {
           ctx.logger.debug(
             { runId: ctx.runId, block: this.name, percent },
@@ -106,6 +113,20 @@ export class SubtitlesGoogleBlock implements Block<AudioTrack, SubtitleTrack> {
         new BlockError(this.name, code, `Error llamando a Google Speech: ${message}`, retryable, error),
       );
     }
+
+    const firstAlt = response.results?.[0]?.alternatives?.[0];
+    ctx.logger.info(
+      {
+        runId: ctx.runId,
+        block: this.name,
+        resultsCount: response.results?.length ?? 0,
+        firstAltHasWords: Boolean(firstAlt?.words?.length),
+        firstAltWordCount: firstAlt?.words?.length ?? 0,
+        firstAltTranscript: firstAlt?.transcript?.slice(0, 200) ?? null,
+        firstAltConfidence: firstAlt?.confidence ?? null,
+      },
+      'subtitles-google:raw_response',
+    );
 
     const words: SubtitleWord[] = [];
     for (const result of response.results ?? []) {
@@ -155,3 +176,30 @@ export class SubtitlesGoogleBlock implements Block<AudioTrack, SubtitleTrack> {
 }
 
 export const subtitlesGoogle = new SubtitlesGoogleBlock();
+
+// Códigos de idioma soportados por el modelo `latest_long` (parcial, los más comunes).
+// Cualquier variante regional fuera de esta lista se mapea al base soportado.
+const LATEST_LONG_SUPPORTED = new Set([
+  'es-ES',
+  'es-US',
+  'es-MX',
+  'en-US',
+  'en-GB',
+  'en-AU',
+  'pt-BR',
+  'pt-PT',
+  'fr-FR',
+  'fr-CA',
+  'de-DE',
+  'it-IT',
+]);
+
+function normalizeLanguageForLatestLong(lang: string): string {
+  if (LATEST_LONG_SUPPORTED.has(lang)) return lang;
+  // Mapeo de variantes regionales no soportadas al base más cercano.
+  if (lang.startsWith('es')) return 'es-ES';
+  if (lang.startsWith('en')) return 'en-US';
+  if (lang.startsWith('pt')) return 'pt-BR';
+  if (lang.startsWith('fr')) return 'fr-FR';
+  return lang;
+}
