@@ -19,6 +19,9 @@ export const runs = sqliteTable('runs', {
   durationSeconds: real('duration_seconds'),
   errorMessage: text('error_message'),
 
+  currentStep: text('current_step'),
+  progress: integer('progress').notNull().default(0),
+
   startedAt: integer('started_at', { mode: 'timestamp' }),
   completedAt: integer('completed_at', { mode: 'timestamp' }),
   createdAt: integer('created_at', { mode: 'timestamp' })

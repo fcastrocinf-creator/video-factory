@@ -8,6 +8,13 @@
       "when": 1778997068570,
       "tag": "0000_normal_peter_quill",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1779000631374,
+      "tag": "0001_magenta_scarlet_spider",
+      "breakpoints": true
     }
   ]
 }
