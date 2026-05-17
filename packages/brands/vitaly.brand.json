@@ -1,0 +1,44 @@
+{
+  "id": "vitaly",
+  "displayName": "Vitaly",
+  "products": [
+    {
+      "id": "vitaly_gotas",
+      "name": "Vitaly Gotas Drenaje Linfático",
+      "description": "Suplemento líquido para drenaje linfático, presentación en frasco gotero ámbar."
+    },
+    {
+      "id": "sumi_eso_riper",
+      "name": "Sumi Eso Riper",
+      "description": "Suplemento sublingual de 5-carnosina para reflujo gástrico."
+    }
+  ],
+  "defaultVoice": {
+    "voiceId": "EXAVITQu4vr4xnSDxMaL",
+    "modelId": "eleven_multilingual_v2",
+    "stability": 0.4,
+    "similarity": 0.85,
+    "style": 0.7,
+    "speakerBoost": true,
+    "speedMultiplier": 1.12
+  },
+  "language": "es-CL",
+  "brandColors": ["#FFE600", "#F5F2ED"],
+  "toneRules": {
+    "avoid": [
+      "voseo argentino",
+      "modismos no chilenos",
+      "claims médicos absolutos",
+      "tono de locutora",
+      "tono docente"
+    ],
+    "prefer": [
+      "tono amiga chismosa por WhatsApp",
+      "up-talk en preguntas",
+      "bajada brusca en reveals",
+      "acento chileno suave"
+    ]
+  },
+  "createdAt": "2026-05-16T00:00:00Z",
+  "updatedAt": "2026-05-16T00:00:00Z"
+}
