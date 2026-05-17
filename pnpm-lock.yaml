@@ -36,6 +36,24 @@ importers:
 
   apps/web:
     dependencies:
+      '@libsql/client':
+        specifier: ^0.14.0
+        version: 0.14.0
+      '@video-factory/block-compositor-remotion':
+        specifier: workspace:*
+        version: link:../../packages/blocks/compositor-remotion
+      '@video-factory/block-image-gen-imagen':
+        specifier: workspace:*
+        version: link:../../packages/blocks/image-gen-imagen
+      '@video-factory/block-script-processor':
+        specifier: workspace:*
+        version: link:../../packages/blocks/script-processor
+      '@video-factory/block-subtitles-whisper':
+        specifier: workspace:*
+        version: link:../../packages/blocks/subtitles-whisper
+      '@video-factory/block-tts-elevenlabs':
+        specifier: workspace:*
+        version: link:../../packages/blocks/tts-elevenlabs
       '@video-factory/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
@@ -48,9 +66,15 @@ importers:
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
+      drizzle-orm:
+        specifier: ^0.36.4
+        version: 0.36.4(@libsql/client@0.14.0)(@types/react@18.3.28)(react@18.3.1)
       lucide-react:
         specifier: ^0.468.0
         version: 0.468.0(react@18.3.1)
+      neverthrow:
+        specifier: ^8.1.1
+        version: 8.2.0
       next:
         specifier: ^14.2.18
         version: 14.2.35(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -63,6 +87,9 @@ importers:
       tailwind-merge:
         specifier: ^2.5.5
         version: 2.6.1
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
     devDependencies:
       '@types/node':
         specifier: ^22.10.0
