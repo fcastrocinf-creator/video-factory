@@ -1,0 +1,47 @@
+{
+  "id": "educativo_pixar",
+  "displayName": "Educativo · Doctor Pixar",
+  "description": "Video largo (2-5 min) con personaje doctor 3D estilo Pixar en plano fijo, narrador autoritario, subtítulos hook banner + captions inferiores. Ideal TOFU/Problem Aware.",
+  "classification": {
+    "formato": "educativo",
+    "hookAngulo": "autoridad",
+    "funnelStage": "tofu",
+    "awareness": "problem_aware"
+  },
+  "estrategia": "plano_fijo",
+  "visualEngine": "imagen4",
+  "visualStyle": {
+    "promptTemplate": "3D Pixar style asian male doctor character, white lab coat with stethoscope, friendly expression, traditional Japanese clinic interior background with shelves and decorative plants, soft natural lighting from window, cinematic depth of field, warm color grading, photorealistic CGI animation style similar to Pixar movies, no text, vertical 9:16 composition with character centered upper body visible",
+    "negativePrompt": "anime style, 2D illustration, photograph, realistic photography, harsh lighting, low quality, blurry, text overlay, watermark, multiple characters",
+    "aspectRatio": "9:16",
+    "referenceImages": []
+  },
+  "subtitles": {
+    "style": "word_level_kinetic",
+    "font": "Inter",
+    "fontSize": 64,
+    "color": "#FFFFFF",
+    "strokeColor": "#000000",
+    "strokeWidth": 4,
+    "highlightColor": "#FFE600",
+    "position": "bottom",
+    "allCaps": false
+  },
+  "defaultDurationSeconds": 120,
+  "scenesPerMinute": 0.5,
+  "composition": {
+    "kenBurns": {
+      "enabled": true,
+      "zoomStart": 1.0,
+      "zoomEnd": 1.15,
+      "panX": 0,
+      "panY": -20
+    },
+    "backgroundMusic": {
+      "enabled": false,
+      "volumeDb": -20
+    }
+  },
+  "createdAt": "2026-05-16T00:00:00Z",
+  "updatedAt": "2026-05-16T00:00:00Z"
+}
