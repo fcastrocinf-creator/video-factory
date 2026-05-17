@@ -63,9 +63,10 @@ export class ImagenClient {
       safetyFilterLevel: opts.safetyFilterLevel ?? 'block_some',
       personGeneration: opts.personGeneration ?? 'allow_adult',
     };
-    if (opts.negativePrompt) {
-      parameters['negativePrompt'] = opts.negativePrompt;
-    }
+    // Imagen 4.0 dejó de soportar `negativePrompt` (la API responde 400
+    // "Setting negativePrompt is no longer supported"). El preset puede declararlo
+    // pero acá lo descartamos. Si en el futuro otro engine (Veo, Higgsfield) lo
+    // soporta, su client respectivo lo enviaría.
 
     const response = await this.fetchImpl(url, {
       method: 'POST',
@@ -83,7 +84,7 @@ export class ImagenClient {
       const bodyText = await response.text();
       const retryable = response.status === 429 || response.status >= 500;
       throw new ImagenApiError(
-        `Imagen API ${response.status} ${response.statusText}`,
+        `Imagen API ${response.status} ${response.statusText}: ${bodyText.slice(0, 400)}`,
         response.status,
         bodyText,
         retryable,
