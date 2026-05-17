@@ -77,7 +77,15 @@ export class OpenAiWhisperClient {
     const mimeType = opts.audioMimeType ?? 'audio/mpeg';
 
     const formData = new FormData();
-    formData.append('file', new Blob([opts.audioBuffer], { type: mimeType }), filename);
+    // Convertimos Buffer→Uint8Array<ArrayBuffer> (copia) para satisfacer el tipo BlobPart
+    // cuando este módulo se consume desde un tsconfig con lib DOM (apps/web). TS 5.7
+    // distingue Buffer<ArrayBufferLike> de Uint8Array<ArrayBuffer> aunque en runtime
+    // sean intercambiables.
+    formData.append(
+      'file',
+      new Blob([new Uint8Array(opts.audioBuffer)], { type: mimeType }),
+      filename,
+    );
     formData.append('model', opts.model ?? 'whisper-1');
     formData.append('response_format', 'verbose_json');
     formData.append('timestamp_granularities[]', 'word');
