@@ -20,8 +20,49 @@
     "similarity": 0.85,
     "style": 0.7,
     "speakerBoost": true,
-    "speedMultiplier": 1.12
+    "speedMultiplier": 1.12,
+    "gender": "female",
+    "ageRange": "30-45",
+    "label": "Vitaly · Amiga chismosa (femenino, 30-45)"
   },
+  "voiceLibrary": [
+    {
+      "voiceId": "JBFqnCBsd6RMkjVDRZzb",
+      "modelId": "eleven_multilingual_v2",
+      "stability": 0.5,
+      "similarity": 0.8,
+      "style": 0.4,
+      "speakerBoost": true,
+      "speedMultiplier": 1.05,
+      "gender": "male",
+      "ageRange": "45-60",
+      "label": "George · Voz masculina madura autoritativa (45-60)"
+    },
+    {
+      "voiceId": "onwK4e9ZLuTAKqWW03F9",
+      "modelId": "eleven_multilingual_v2",
+      "stability": 0.45,
+      "similarity": 0.85,
+      "style": 0.5,
+      "speakerBoost": true,
+      "speedMultiplier": 1.05,
+      "gender": "male",
+      "ageRange": "30-45",
+      "label": "Daniel · Voz masculina cálida adulta (30-45)"
+    },
+    {
+      "voiceId": "qRUgOhnxGASxirG4fKjv",
+      "modelId": "eleven_multilingual_v2",
+      "stability": 0.5,
+      "similarity": 0.75,
+      "style": 0.3,
+      "speakerBoost": true,
+      "speedMultiplier": 1.0,
+      "gender": "male",
+      "ageRange": "30-45",
+      "label": "David · Energético, profundo (masculino, 30-45)"
+    }
+  ],
   "language": "es-CL",
   "brandColors": ["#FFE600", "#F5F2ED"],
   "toneRules": {

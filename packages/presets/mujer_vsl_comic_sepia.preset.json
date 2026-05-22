@@ -1,0 +1,61 @@
+{
+  "id": "mujer_vsl_comic_sepia",
+  "displayName": "Mujer protagonista · VSL Largo · Comic Sepia",
+  "description": "VSL en primera persona de 3-5 min: mujer protagonista cuenta su historia completa (antes → quiebre → solución → transformación) con escenas ilustradas en sepia. Ideal para storytelling profundo con emoción.",
+  "category": {
+    "id": "mujer_protagonista",
+    "displayName": "Mujer protagonista (Storytelling)",
+    "description": "La narradora es una mujer que cuenta su propia historia en primera persona."
+  },
+  "format": {
+    "id": "vsl",
+    "displayName": "VSL (Video Sales Letter)",
+    "description": "Formato largo persuasivo: arco completo de historia personal."
+  },
+  "style": {
+    "id": "comic_sepia",
+    "displayName": "Comic / Acuarela Sepia"
+  },
+  "classification": {
+    "formato": "storytelling",
+    "hookAngulo": "testimonio",
+    "funnelStage": "mofu",
+    "awareness": "problem_aware"
+  },
+  "estrategia": "multi_escena",
+  "visualEngine": "imagen4",
+  "visualStyle": {
+    "promptTemplate": "Hand-illustrated digital painting in warm sepia-watercolor style, like a premium animated personal-storytelling comic, soft warm color palette of amber/ochre/cream/burgundy, painterly brush strokes, slight grain texture, vertical 9:16 composition, no photo-realism — single coherent illustrated scene focusing on emotional moments of a woman's journey",
+    "negativePrompt": "photograph, photo-realistic, harsh lighting, low quality, blurry, text overlay, watermark, masculine character (when narration is feminine)",
+    "aspectRatio": "9:16",
+    "referenceImages": []
+  },
+  "subtitles": {
+    "style": "word_level_kinetic",
+    "font": "Inter",
+    "fontSize": 60,
+    "color": "#FFFFFF",
+    "strokeColor": "#000000",
+    "strokeWidth": 4,
+    "highlightColor": "#FFE600",
+    "position": "bottom",
+    "allCaps": false
+  },
+  "defaultDurationSeconds": 180,
+  "scenesPerMinute": 18,
+  "composition": {
+    "kenBurns": {
+      "enabled": true,
+      "zoomStart": 1.0,
+      "zoomEnd": 1.12,
+      "panX": 0,
+      "panY": 0
+    },
+    "backgroundMusic": {
+      "enabled": true,
+      "volumeDb": -22
+    }
+  },
+  "createdAt": "2026-05-18T00:00:00Z",
+  "updatedAt": "2026-05-18T00:00:00Z"
+}

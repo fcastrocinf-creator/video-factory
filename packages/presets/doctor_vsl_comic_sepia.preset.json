@@ -1,0 +1,61 @@
+{
+  "id": "doctor_vsl_comic_sepia",
+  "displayName": "Doctor · VSL Largo · Comic Sepia",
+  "description": "Video Sales Letter de 3-5 min con estructura persuasiva (hook → problema → mecanismo → producto → testimonios → CTA). Doctor japonés narra con autoridad, escenas ilustradas en sepia/acuarela. Imagen 4 + multi-escena densa. Costo ~$5-8/video por su duración.",
+  "category": {
+    "id": "doctor_autoridad",
+    "displayName": "Doctor / Experto (Autoridad)",
+    "description": "Un especialista habla con autoridad sobre el problema y la solución."
+  },
+  "format": {
+    "id": "vsl",
+    "displayName": "VSL (Video Sales Letter)",
+    "description": "Formato largo persuasivo: hook → problema → mecanismo → producto → testimonios → CTA."
+  },
+  "style": {
+    "id": "comic_sepia",
+    "displayName": "Comic / Acuarela Sepia"
+  },
+  "classification": {
+    "formato": "storytelling",
+    "hookAngulo": "autoridad",
+    "funnelStage": "mofu",
+    "awareness": "problem_aware"
+  },
+  "estrategia": "multi_escena",
+  "visualEngine": "imagen4",
+  "visualStyle": {
+    "promptTemplate": "Hand-illustrated digital painting in warm sepia-watercolor style, like a premium animated educational comic, soft warm color palette of amber/ochre/cream/burgundy, painterly brush strokes, slight grain texture, vertical 9:16 composition, no photo-realism — single coherent illustrated scene with cinematic framing for long-form VSL narrative",
+    "negativePrompt": "photograph, photo-realistic, harsh lighting, low quality, blurry, text overlay, watermark",
+    "aspectRatio": "9:16",
+    "referenceImages": []
+  },
+  "subtitles": {
+    "style": "word_level_kinetic",
+    "font": "Inter",
+    "fontSize": 60,
+    "color": "#FFFFFF",
+    "strokeColor": "#000000",
+    "strokeWidth": 4,
+    "highlightColor": "#FFE600",
+    "position": "bottom",
+    "allCaps": false
+  },
+  "defaultDurationSeconds": 180,
+  "scenesPerMinute": 18,
+  "composition": {
+    "kenBurns": {
+      "enabled": true,
+      "zoomStart": 1.0,
+      "zoomEnd": 1.12,
+      "panX": 0,
+      "panY": 0
+    },
+    "backgroundMusic": {
+      "enabled": true,
+      "volumeDb": -22
+    }
+  },
+  "createdAt": "2026-05-18T00:00:00Z",
+  "updatedAt": "2026-05-18T00:00:00Z"
+}

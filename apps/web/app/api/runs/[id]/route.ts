@@ -26,5 +26,12 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
     durationSeconds: run.durationSeconds,
     startedAt: run.startedAt,
     completedAt: run.completedAt,
+    brandId: run.brandId,
+    productId: run.productId,
+    presetId: run.presetId,
+    estimatedCostUsd: run.estimatedCostUsd,
+    imageCount: run.imageCount,
+    ttsCharsBilled: run.ttsCharsBilled,
+    originalRunId: run.originalRunId,
   });
 }

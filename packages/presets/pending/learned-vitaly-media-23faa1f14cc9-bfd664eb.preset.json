@@ -1,0 +1,61 @@
+{
+  "id": "learned-vitaly-media-23faa1f14cc9-bfd664eb",
+  "displayName": "🧠 Aprendido · media-23faa1f14cc9",
+  "description": "Estilo aprendido del anuncio \"media-23faa1f14cc9\". Hook: pain-agitation. Línea editorial: El anuncio utiliza una estrategia de 'dolor-agitación-solución'. Comienza reformulando el envejecimiento como 'líquido a...",
+  "category": {
+    "id": "mujer_protagonista",
+    "displayName": "Mujer Protagonista (Pain-Agitation)",
+    "description": "Narradora describe el dolor y agita antes de la solución."
+  },
+  "format": {
+    "id": "b-roll-static",
+    "displayName": "B-ROLL Fotorealista",
+    "description": "B-roll fotorealista mezclando shots reales — estilo derivado del original."
+  },
+  "style": {
+    "id": "derived",
+    "displayName": "Derivado del original"
+  },
+  "classification": {
+    "formato": "educativo",
+    "hookAngulo": "objeciones",
+    "funnelStage": "tofu",
+    "awareness": "problem_aware"
+  },
+  "estrategia": "multi_escena",
+  "visualEngine": "imagen4",
+  "visualStyle": {
+    "promptTemplate": "A hyper-realistic photographic frame in selfie-style or UGC testimonial format. The look transitions from clinical and scientific (red/flesh tones) to natural and hopeful (warm indoor lighting, sunny outdoor shots). Dominant palette: #D4A79A, #C73D3A, #F5E9E2, #5C3D2E, #A9A9A9. Characters: Caucasian women, ages 35 to 65. They appear in selfie-style videos, in casual settings like bathrooms, cars, and living rooms. They transition from looking tired, puffy, or concerned to looking happy, confident, and refreshed. Clothing is casual (t-shirts, robes, sweaters). Aesthetic: medical illustration when appropriate, UGC testimonials, problem-solution, natural remedy, timeline transformation. Vertical 9:16 composition. CRITICAL CONSTRAINTS: (1) ONE single coherent shot — NOT a grid, NOT a split-screen, NOT a collage, NOT a before-after layout, NOT multiple panels, NOT picture-in-picture. (2) ABSOLUTELY NO text, captions, labels, watermarks, signs, or written words anywhere in the image. The photograph must be 100% CLEAN of typography — all text overlays are added in post-production as vector graphics.",
+    "negativePrompt": "low quality, blurry, watermark, extra fingers, malformed limbs, deformed hands, distorted face anatomy, illustration, drawing, painting, watercolor, comic, cartoon, 3d render, sepia tone, text, caption, label, sign, written words, typography, lettering, subtitle, banner, overlay text, green text, TikTok overlay, split-screen, grid layout, collage, multiple panels, before-after layout, picture-in-picture",
+    "aspectRatio": "9:16",
+    "referenceImages": []
+  },
+  "subtitles": {
+    "style": "word_level_kinetic",
+    "font": "Inter",
+    "fontSize": 64,
+    "color": "#FFFFFF",
+    "strokeColor": "#000000",
+    "strokeWidth": 4,
+    "highlightColor": "#FFE600",
+    "position": "bottom",
+    "allCaps": false
+  },
+  "defaultDurationSeconds": 77,
+  "scenesPerMinute": 17,
+  "composition": {
+    "kenBurns": {
+      "enabled": false,
+      "zoomStart": 1,
+      "zoomEnd": 1,
+      "panX": 0,
+      "panY": 0
+    },
+    "backgroundMusic": {
+      "enabled": false,
+      "volumeDb": -20
+    }
+  },
+  "createdAt": "2026-05-19T22:19:53.578Z",
+  "updatedAt": "2026-05-19T22:19:53.578Z"
+}

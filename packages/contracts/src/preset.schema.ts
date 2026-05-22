@@ -64,10 +64,115 @@ export const PresetCompositionSchema = z.object({
 
 export type PresetComposition = z.infer<typeof PresetCompositionSchema>;
 
+// CATEGORÍA narrativa = "qué quiero contar / desde qué ángulo".
+// Es la primera decisión del usuario. Independiente del estilo visual.
+// Ejemplos:
+//   - "doctor_autoridad": un experto/médico habla con autoridad
+//   - "mujer_empoderada": narradora protagonista que vivió el problema
+//   - "voiceover_impersonal": narración sin personaje identificable
+//   - "testimonio_real": persona real contando su experiencia
+export const PresetCategorySchema = z.object({
+  id: z.string(), // ej: "doctor_autoridad"
+  displayName: z.string(), // ej: "Doctor (Autoridad)"
+  description: z.string().default(''),
+});
+
+export type PresetCategory = z.infer<typeof PresetCategorySchema>;
+
+// FORMATO = "cómo se entrega visualmente". Capa intermedia entre categoría
+// (qué se cuenta) y estilo (cómo se ve). El catálogo es EXTENSIBLE — agregar
+// un nuevo formato es solo añadir un valor al enum + entrada en CANONICAL_FORMATS.
+//
+// Canónicos actuales:
+//   B-ROLL                  - imágenes/clips ilustrativos sin testimoniante hablando
+//     · b-roll-static       (sin animación)
+//     · b-roll-animated     (con movimiento)
+//   UGC                     - estética amateur móvil
+//     · ugc-broll           (handheld sin talking-head)
+//     · ugc-testimony       (persona hablando a cámara amateur)
+//   LARGO / EXPLAINER       - formatos narrativos específicos
+//     · vsl                 (Video Sales Letter — formato persuasivo largo, 3-10 min)
+//     · voiceover-animated  (motion graphics / explainer animado, no fotorrealista)
+//
+// Para agregar (ej. demo-tutorial, reaction, stop-motion): añadir id al enum,
+// entry a CANONICAL_FORMATS y crear presets que lo usen.
+export const PresetFormatKindSchema = z.enum([
+  'b-roll-static',
+  'b-roll-animated',
+  'ugc-broll',
+  'ugc-testimony',
+  'vsl',
+  'voiceover-animated',
+]);
+export type PresetFormatKind = z.infer<typeof PresetFormatKindSchema>;
+
+export const PresetFormatSchema = z.object({
+  id: PresetFormatKindSchema,
+  displayName: z.string(),
+  description: z.string().default(''),
+});
+export type PresetFormat = z.infer<typeof PresetFormatSchema>;
+
+// Helper: el catálogo canónico de formatos. Se usa para que la UI siempre
+// muestre todos los formatos como opciones disponibles (filtrando por los que
+// efectivamente tienen un preset asociado).
+export const CANONICAL_FORMATS: PresetFormat[] = [
+  {
+    id: 'b-roll-static',
+    displayName: 'B-ROLL Estático',
+    description: 'Gráficas sin animación: imágenes estáticas tipo carrusel ilustrado.',
+  },
+  {
+    id: 'b-roll-animated',
+    displayName: 'B-ROLL Animado',
+    description:
+      'Gráficas con movimiento: micro-videos con cámara/objetos en movimiento (Veo/Higgsfield).',
+  },
+  {
+    id: 'ugc-broll',
+    displayName: 'UGC B-ROLL',
+    description:
+      'Cámara amateur sin testimoniante: handheld, lifestyle, primeros planos cotidianos.',
+  },
+  {
+    id: 'ugc-testimony',
+    displayName: 'UGC Testimonio',
+    description:
+      'Persona hablando a cámara (selfie/talking-head amateur). Idealmente con Veo Talking Head.',
+  },
+  {
+    id: 'vsl',
+    displayName: 'VSL (Video Sales Letter)',
+    description:
+      'Formato largo persuasivo (3-10 min): hook → problema → mecanismo → producto → testimonios → CTA. Mix de B-roll + lifestyle.',
+  },
+  {
+    id: 'voiceover-animated',
+    displayName: 'Voice Over Animado',
+    description:
+      'Motion graphics / explainer animado (no fotorrealista): kinetic typography, ilustración animada, diagramas dinámicos.',
+  },
+];
+
+// ESTILO VISUAL = "cómo se ve". Sub-decisión dentro de cada (categoría, formato).
+// Ejemplos: pixar_3d | comic_sepia | fotorealista | ugc_real | watercolor
+export const PresetStyleSchema = z.object({
+  id: z.string(),
+  displayName: z.string(),
+});
+
+export type PresetStyle = z.infer<typeof PresetStyleSchema>;
+
 export const PresetConfigSchema = z.object({
   id: z.string(),
   displayName: z.string(),
   description: z.string(),
+
+  // Taxonomía en cascada Marca → Categoría → Formato → Estilo.
+  // Si alguno falta, el preset queda parcialmente "huérfano" y solo se accede por id.
+  category: PresetCategorySchema.optional(),
+  format: PresetFormatSchema.optional(),
+  style: PresetStyleSchema.optional(),
 
   classification: PresetClassificationSchema,
 

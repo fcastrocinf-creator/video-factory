@@ -1,7 +1,21 @@
 {
   "id": "educativo_animado",
-  "displayName": "Educativo · Doctor Animado (Veo)",
-  "description": "Video animado con doctor 3D Pixar (~60-90 s) generado por Veo 3 Lite usando imagen de Imagen como referencia. Clips de 8 s concatenados con consistencia de personaje. Voz Vitaly + subtítulos word-level. Costo ~$0.40/video. Ideal para TOFU/MOFU.",
+  "displayName": "Doctor · Talking Head Realista (Veo)",
+  "description": "Video animado fotorealista (~60-90 s) generado por Veo 3 Lite usando imagen de Imagen 4 (foto-realista, no Pixar) como referencia. Clips de 8 s concatenados con consistencia de personaje. Voz Vitaly + subtítulos word-level. Costo ~$0.40/video. Ideal para TOFU/MOFU.",
+  "category": {
+    "id": "doctor_autoridad",
+    "displayName": "Doctor / Experto (Autoridad)",
+    "description": "Un especialista habla con autoridad sobre el problema y la solución."
+  },
+  "format": {
+    "id": "b-roll-animated",
+    "displayName": "B-ROLL Animado",
+    "description": "Gráficas con movimiento: clips Veo concatenados con consistencia de personaje."
+  },
+  "style": {
+    "id": "veo_talking_head",
+    "displayName": "Talking Head Fotorealista (Veo)"
+  },
   "classification": {
     "formato": "educativo",
     "hookAngulo": "autoridad",
@@ -11,8 +25,8 @@
   "estrategia": "multi_escena",
   "visualEngine": "veo-lite",
   "visualStyle": {
-    "promptTemplate": "3D Pixar style asian male doctor character in white lab coat with stethoscope, friendly professional expression, traditional Japanese clinic interior with shelves and decorative plants, soft natural lighting from window, cinematic depth of field, warm color grading, photorealistic CGI animation similar to Pixar movies, vertical 9:16 composition with character centered upper body visible",
-    "negativePrompt": "anime style, 2D illustration, low quality, blurry, text overlay, watermark, multiple characters",
+    "promptTemplate": "Cinematic photograph of a confident asian adult man around 55 years old, distinguished gray hair at temples, mature professional appearance, white shirt with subtle texture, warm reassuring expression, traditional Japanese clinic interior softly blurred in background with shelves and decorative plants, soft natural lighting from window with cinematic depth of field, warm color grading, professional editorial portrait photography style, vertical 9:16 composition, upper body framing centered, photorealistic, high detail",
+    "negativePrompt": "cartoon, anime, 3D render, Pixar style, illustration, animation, low quality, blurry, text overlay, watermark, multiple characters, child, young",
     "aspectRatio": "9:16",
     "referenceImages": []
   },

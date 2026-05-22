@@ -17,6 +17,7 @@
   "dependencies": {
     "@video-factory/contracts": "workspace:*",
     "@video-factory/core": "workspace:*",
+    "google-auth-library": "^10.6.2",
     "neverthrow": "^8.1.1"
   },
   "devDependencies": {

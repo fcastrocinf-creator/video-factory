@@ -1,0 +1,61 @@
+{
+  "id": "educativo_escenas",
+  "displayName": "Doctor · Multi-escena Fotorrealista",
+  "description": "Video de ~60-90s donde cada momento del guión tiene su propio visual generado por Imagen 4. Gemini lee el guión y propone 6 escenas. Cada escena se renderiza con Ken Burns suave. Voz Vitaly + subtítulos word-level. Costo ~$0.30/video. Ideal para storytelling con visuales que ilustran lo que se narra.",
+  "category": {
+    "id": "doctor_autoridad",
+    "displayName": "Doctor / Experto (Autoridad)",
+    "description": "Un especialista habla con autoridad sobre el problema y la solución."
+  },
+  "format": {
+    "id": "b-roll-static",
+    "displayName": "B-ROLL Estático",
+    "description": "Gráficas sin animación: imágenes estáticas tipo carrusel fotorrealista."
+  },
+  "style": {
+    "id": "fotorealista",
+    "displayName": "Fotorrealista (Imagen 4)"
+  },
+  "classification": {
+    "formato": "educativo",
+    "hookAngulo": "autoridad",
+    "funnelStage": "tofu",
+    "awareness": "problem_aware"
+  },
+  "estrategia": "multi_escena",
+  "visualEngine": "imagen4",
+  "visualStyle": {
+    "promptTemplate": "Cinematic photograph, vertical 9:16 composition, warm natural lighting, shallow depth of field, soft pastel color grading, professional editorial style, high detail, photorealistic",
+    "negativePrompt": "cartoon, anime, 3D render, illustration, low quality, blurry, text overlay, watermark, child, young person",
+    "aspectRatio": "9:16",
+    "referenceImages": []
+  },
+  "subtitles": {
+    "style": "word_level_kinetic",
+    "font": "Inter",
+    "fontSize": 64,
+    "color": "#FFFFFF",
+    "strokeColor": "#000000",
+    "strokeWidth": 4,
+    "highlightColor": "#FFE600",
+    "position": "bottom",
+    "allCaps": false
+  },
+  "defaultDurationSeconds": 72,
+  "scenesPerMinute": 5,
+  "composition": {
+    "kenBurns": {
+      "enabled": true,
+      "zoomStart": 1.0,
+      "zoomEnd": 1.12,
+      "panX": 0,
+      "panY": 0
+    },
+    "backgroundMusic": {
+      "enabled": false,
+      "volumeDb": -20
+    }
+  },
+  "createdAt": "2026-05-17T00:00:00Z",
+  "updatedAt": "2026-05-17T00:00:00Z"
+}

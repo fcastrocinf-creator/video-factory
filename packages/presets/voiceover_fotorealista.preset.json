@@ -1,0 +1,61 @@
+{
+  "id": "voiceover_fotorealista",
+  "displayName": "Voiceover · Fotorrealista (sin personaje)",
+  "description": "Voz en off impersonal (sin personaje identificable) sobre escenas fotorrealistas generadas por Imagen 4. Sin doctor ni narrador en pantalla — solo imágenes que ilustran lo narrado. Ideal para ads tipo 'descubrí este truco' o anuncios neutros.",
+  "category": {
+    "id": "voiceover_impersonal",
+    "displayName": "Voiceover impersonal (sin personaje)",
+    "description": "Narración sin personaje en pantalla. Foco en producto + situación, no en quien habla."
+  },
+  "format": {
+    "id": "b-roll-static",
+    "displayName": "B-ROLL Estático",
+    "description": "Gráficas sin animación: imágenes fotorrealistas que ilustran la voz en off."
+  },
+  "style": {
+    "id": "fotorealista",
+    "displayName": "Fotorrealista (Imagen 4)"
+  },
+  "classification": {
+    "formato": "educativo",
+    "hookAngulo": "curiosidad",
+    "funnelStage": "tofu",
+    "awareness": "problem_aware"
+  },
+  "estrategia": "multi_escena",
+  "visualEngine": "imagen4",
+  "visualStyle": {
+    "promptTemplate": "Cinematic photograph, vertical 9:16, soft natural light (golden hour or window-side morning light), shallow depth of field with creamy bokeh, warm muted color grading, high editorial detail, photorealistic, professional commercial photography, NO people if not strictly needed for the narration",
+    "negativePrompt": "cartoon, anime, 3D render, illustration, low quality, blurry, text overlay, watermark, child, young person, ugly, distorted",
+    "aspectRatio": "9:16",
+    "referenceImages": []
+  },
+  "subtitles": {
+    "style": "word_level_kinetic",
+    "font": "Inter",
+    "fontSize": 64,
+    "color": "#FFFFFF",
+    "strokeColor": "#000000",
+    "strokeWidth": 4,
+    "highlightColor": "#FFE600",
+    "position": "bottom",
+    "allCaps": false
+  },
+  "defaultDurationSeconds": 60,
+  "scenesPerMinute": 25,
+  "composition": {
+    "kenBurns": {
+      "enabled": false,
+      "zoomStart": 1.0,
+      "zoomEnd": 1.0,
+      "panX": 0,
+      "panY": 0
+    },
+    "backgroundMusic": {
+      "enabled": false,
+      "volumeDb": -20
+    }
+  },
+  "createdAt": "2026-05-18T00:00:00Z",
+  "updatedAt": "2026-05-18T00:00:00Z"
+}

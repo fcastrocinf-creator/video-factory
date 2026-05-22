@@ -9,6 +9,7 @@ import {
 } from '@video-factory/contracts';
 import { ElevenLabsApiError, ElevenLabsClient } from './client.js';
 import { buildPrompt, computeSegmentTimings } from './timing.js';
+import { selectVoiceForNarrator } from './voice-selector.js';
 
 export interface TtsElevenLabsBlockOptions {
   client?: ElevenLabsClient;
@@ -55,7 +56,16 @@ export class TtsElevenLabsBlock implements Block<ParsedScript, AudioTrack> {
       );
     }
 
-    const voice = ctx.brand.defaultVoice;
+    // Voice selector: si el guion tiene un narratorProfile inferido y el gender no
+    // matchea con defaultVoice, buscamos en voiceLibrary una voz que matchee. Esto
+    // arregla casos como "guion con doctor masculino" + "defaultVoice femenina".
+    const voice = selectVoiceForNarrator({
+      defaultVoice: ctx.brand.defaultVoice,
+      voiceLibrary: ctx.brand.voiceLibrary ?? [],
+      narratorProfile: input.narratorProfile,
+      logger: ctx.logger,
+      runId: ctx.runId,
+    });
     const prompt = buildPrompt(input.segments);
 
     ctx.logger.info(

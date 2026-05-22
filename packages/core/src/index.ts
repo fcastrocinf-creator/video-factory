@@ -1,5 +1,7 @@
 export * from './block.js';
 export * from './context.js';
+export * from './error-memory.js';
+export * from './composition-memory.js';
 export * from './errors.js';
 export * from './logger.js';
 export * from './pipeline.js';

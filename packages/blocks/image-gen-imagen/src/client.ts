@@ -94,11 +94,15 @@ export class ImagenClient {
     const data = (await response.json()) as ImagenResponse;
     const prediction = data.predictions?.[0];
     if (!prediction?.bytesBase64Encoded) {
+      // HTTP 200 sin bytes = RAI safety filter bloqueó silenciosamente.
+      // Marcamos retryable=true para que el chain skipée al siguiente provider
+      // (la conversión en fromImagenError detecta este caso y setea
+      // isContentRejection=true).
       throw new ImagenApiError(
-        'Imagen no devolvió ningún prediction.bytesBase64Encoded en la respuesta.',
+        'Imagen API safety filter: prediction sin bytesBase64Encoded (probable RAI block).',
         200,
         JSON.stringify(data),
-        false,
+        true,
       );
     }
 

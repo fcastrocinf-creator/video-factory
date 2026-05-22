@@ -11,7 +11,15 @@ export function middleware(req: NextRequest) {
   return NextResponse.next();
 }
 
-// Protegemos /create/** y /runs/**. El index (/) es público (login).
+// Protegemos /create/**, /runs/**, /rip/**, /admin/** y /aprendizaje/**.
+// El index (/) es público (login).
+// NOTA: /brands también debería protegerse (bug pre-existente fuera del scope).
 export const config = {
-  matcher: ['/create/:path*', '/runs/:path*'],
+  matcher: [
+    '/create/:path*',
+    '/runs/:path*',
+    '/rip/:path*',
+    '/admin/:path*',
+    '/aprendizaje/:path*',
+  ],
 };

@@ -4,6 +4,7 @@ import { bundle } from '@remotion/bundler';
 import { renderMedia, selectComposition } from '@remotion/renderer';
 import type { PlanoFijoProps } from './compositions/PlanoFijo.js';
 import type { PlanoAnimadoProps } from './compositions/PlanoAnimado.js';
+import type { PlanoEscenasProps } from './compositions/PlanoEscenas.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -27,7 +28,15 @@ export interface RenderPlanoAnimadoOptions extends RenderOptionsBase {
   inputProps: PlanoAnimadoProps;
 }
 
-export type RenderOptions = RenderPlanoFijoOptions | RenderPlanoAnimadoOptions;
+export interface RenderPlanoEscenasOptions extends RenderOptionsBase {
+  composition: 'PlanoEscenas';
+  inputProps: PlanoEscenasProps;
+}
+
+export type RenderOptions =
+  | RenderPlanoFijoOptions
+  | RenderPlanoAnimadoOptions
+  | RenderPlanoEscenasOptions;
 
 export interface RenderResult {
   outputPath: string;

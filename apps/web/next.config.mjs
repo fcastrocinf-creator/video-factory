@@ -54,6 +54,8 @@ const nextConfig = {
     '@video-factory/block-tts-elevenlabs',
     '@video-factory/block-subtitles-google',
     '@video-factory/block-image-gen-imagen',
+    '@video-factory/block-image-gen-multi',
+    '@video-factory/block-scene-planner',
     '@video-factory/block-video-gen-veo',
     '@video-factory/block-compositor-remotion',
   ],

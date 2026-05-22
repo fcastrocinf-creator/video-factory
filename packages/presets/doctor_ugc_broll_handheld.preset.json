@@ -1,0 +1,61 @@
+{
+  "id": "doctor_ugc_broll_handheld",
+  "displayName": "Doctor · UGC B-ROLL Handheld (consulta real)",
+  "description": "B-ROLL UGC del doctor en su consulta: tomas amateur estilo cámara de teléfono en mano (handheld) — manos del doctor escribiendo notas, frasco del producto sobre escritorio, vista de la sala, ángulos descuidados pero auténticos. NO talking-head; son escenas de ambiente / objetos / detalles. Voz en off por encima.",
+  "category": {
+    "id": "doctor_autoridad",
+    "displayName": "Doctor / Experto (Autoridad)",
+    "description": "Un especialista habla con autoridad sobre el problema y la solución."
+  },
+  "format": {
+    "id": "ugc-broll",
+    "displayName": "UGC B-ROLL",
+    "description": "Cámara amateur (handheld/phone) sin testimoniante hablando."
+  },
+  "style": {
+    "id": "ugc_handheld_clinical",
+    "displayName": "UGC Handheld Clínico"
+  },
+  "classification": {
+    "formato": "ugc",
+    "hookAngulo": "autoridad",
+    "funnelStage": "mofu",
+    "awareness": "problem_aware"
+  },
+  "estrategia": "multi_escena",
+  "visualEngine": "imagen4",
+  "visualStyle": {
+    "promptTemplate": "Amateur handheld phone-camera footage style, vertical 9:16, natural unfiltered lighting, slight motion blur, casual real-life clinical setting (Japanese doctor's office), close-up shots of hands writing notes / product bottle on wooden desk / shelf with traditional medicine books / patient charts / ambient room details — NO talking-head, NO posed character. Composition feels candid, like a colleague's phone B-roll. Natural color, subtle film grain, authentic depth-of-field. No advertising polish.",
+    "negativePrompt": "studio lighting, glossy commercial style, perfectly composed framing, professional video gear look, animated, cartoon, 3D render, Pixar, ads polish",
+    "aspectRatio": "9:16",
+    "referenceImages": []
+  },
+  "subtitles": {
+    "style": "minimal_elegant",
+    "font": "Inter",
+    "fontSize": 56,
+    "color": "#FFFFFF",
+    "strokeColor": "#000000",
+    "strokeWidth": 3,
+    "highlightColor": "#FFE600",
+    "position": "bottom",
+    "allCaps": false
+  },
+  "defaultDurationSeconds": 60,
+  "scenesPerMinute": 25,
+  "composition": {
+    "kenBurns": {
+      "enabled": true,
+      "zoomStart": 1.0,
+      "zoomEnd": 1.08,
+      "panX": 0,
+      "panY": 0
+    },
+    "backgroundMusic": {
+      "enabled": false,
+      "volumeDb": -20
+    }
+  },
+  "createdAt": "2026-05-18T00:00:00Z",
+  "updatedAt": "2026-05-18T00:00:00Z"
+}

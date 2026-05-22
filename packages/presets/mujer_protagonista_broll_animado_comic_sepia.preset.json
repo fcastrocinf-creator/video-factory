@@ -1,0 +1,61 @@
+{
+  "id": "mujer_protagonista_broll_animado_comic_sepia",
+  "displayName": "Mujer Protagonista · B-ROLL Animado · Acuarela Sepia",
+  "description": "Storytelling en primera persona desde la perspectiva de una mujer protagonista (paseadora, amiga, cliente real), con escenas ILUSTRADAS estilo acuarela/sepia y ANIMADAS con Kling image-to-video (personaje respira, cámara empuja, micro-motion). Sin contexto médico. Ideal para anuncios de lifestyle, consejos, testimonios personales.",
+  "category": {
+    "id": "mujer_protagonista",
+    "displayName": "Mujer protagonista (Storytelling)",
+    "description": "La narradora es una mujer que cuenta su propia historia en primera persona."
+  },
+  "format": {
+    "id": "b-roll-animated",
+    "displayName": "B-ROLL Animado",
+    "description": "Gráficas con movimiento: clips Kling image-to-video desde keyframes acuarela."
+  },
+  "style": {
+    "id": "comic_sepia",
+    "displayName": "Comic / Acuarela Sepia"
+  },
+  "classification": {
+    "formato": "storytelling",
+    "hookAngulo": "testimonio",
+    "funnelStage": "tofu",
+    "awareness": "problem_aware"
+  },
+  "estrategia": "multi_escena",
+  "visualEngine": "veo-lite",
+  "visualStyle": {
+    "promptTemplate": "Hand-illustrated digital painting in warm sepia-watercolor style, like a premium animated lifestyle comic, soft warm color palette of amber/ochre/cream/burgundy, painterly brush strokes, slight grain texture, vertical 9:16 composition, no photo-realism — a single coherent illustrated scene designed as the FIRST FRAME of a subtle animation (camera gentle push-in, character or subject breathes/moves naturally)",
+    "negativePrompt": "photograph, photo-realistic, harsh lighting, low quality, blurry, text overlay, watermark, medical doctor, clinic, hospital, scrubs",
+    "aspectRatio": "9:16",
+    "referenceImages": []
+  },
+  "subtitles": {
+    "style": "word_level_kinetic",
+    "font": "Inter",
+    "fontSize": 64,
+    "color": "#FFFFFF",
+    "strokeColor": "#000000",
+    "strokeWidth": 4,
+    "highlightColor": "#FFE600",
+    "position": "bottom",
+    "allCaps": false
+  },
+  "defaultDurationSeconds": 60,
+  "scenesPerMinute": 18,
+  "composition": {
+    "kenBurns": {
+      "enabled": false,
+      "zoomStart": 1.0,
+      "zoomEnd": 1.0,
+      "panX": 0,
+      "panY": 0
+    },
+    "backgroundMusic": {
+      "enabled": false,
+      "volumeDb": -20
+    }
+  },
+  "createdAt": "2026-05-18T00:00:00Z",
+  "updatedAt": "2026-05-18T00:00:00Z"
+}

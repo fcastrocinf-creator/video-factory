@@ -1,0 +1,61 @@
+{
+  "id": "doctor_voiceover_animated_explainer",
+  "displayName": "Doctor · Voz en off + Explainer Animado",
+  "description": "Doctor narra en voz en off (no aparece en pantalla) sobre motion graphics / explainer animado. Para enseñar el mecanismo de un problema/solución de manera didáctica. Estilo Kurzgesagt para salud. Bola en estómago, diagramas de digestión, calendario animado.",
+  "category": {
+    "id": "doctor_autoridad",
+    "displayName": "Doctor / Experto (Autoridad)",
+    "description": "Un especialista habla con autoridad sobre el problema y la solución."
+  },
+  "format": {
+    "id": "voiceover-animated",
+    "displayName": "Voice Over Animado",
+    "description": "Motion graphics / explainer animado, doctor solo en voz."
+  },
+  "style": {
+    "id": "motion_graphics_explainer",
+    "displayName": "Motion Graphics Explainer"
+  },
+  "classification": {
+    "formato": "educativo",
+    "hookAngulo": "autoridad",
+    "funnelStage": "tofu",
+    "awareness": "problem_aware"
+  },
+  "estrategia": "multi_escena",
+  "visualEngine": "imagen4",
+  "visualStyle": {
+    "promptTemplate": "Bold flat-design 2D motion graphics illustration in explainer-video style, vertical 9:16, medical-educational tone, cream/ivory background with single accent color per scene (cobalt blue for science / coral red for problem / mint green for solution), thick clean outline strokes, geometric anatomical schematics, NO photo-realism, NO faces, NO actors — focus on labeled anatomy diagrams (stomach, esophagus, lymphatic vessels, joints), morphing before/after icons, clean numbers and arrows. Style references: Kurzgesagt, animated medical infographics, In a Nutshell.",
+    "negativePrompt": "photograph, photo-realistic, 3D render, Pixar, watercolor, oil painting, complex shading, busy detail, actors, faces, talking head, character portraits",
+    "aspectRatio": "9:16",
+    "referenceImages": []
+  },
+  "subtitles": {
+    "style": "word_level_kinetic",
+    "font": "Inter",
+    "fontSize": 68,
+    "color": "#FFFFFF",
+    "strokeColor": "#000000",
+    "strokeWidth": 4,
+    "highlightColor": "#FFE600",
+    "position": "bottom",
+    "allCaps": true
+  },
+  "defaultDurationSeconds": 72,
+  "scenesPerMinute": 20,
+  "composition": {
+    "kenBurns": {
+      "enabled": true,
+      "zoomStart": 1.0,
+      "zoomEnd": 1.1,
+      "panX": 0,
+      "panY": 0
+    },
+    "backgroundMusic": {
+      "enabled": false,
+      "volumeDb": -20
+    }
+  },
+  "createdAt": "2026-05-18T00:00:00Z",
+  "updatedAt": "2026-05-18T00:00:00Z"
+}

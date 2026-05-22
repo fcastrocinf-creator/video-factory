@@ -3,6 +3,7 @@ import { ParsedScriptSchema } from './script.schema.js';
 import { AudioTrackSchema } from './audio.schema.js';
 import { SubtitleTrackSchema } from './subtitle.schema.js';
 import { VideoTrackSchema } from './video.schema.js';
+import { SceneTrackSchema } from './scene.schema.js';
 
 export const RenderJobSchema = z.object({
   runId: z.string().uuid(),
@@ -18,6 +19,15 @@ export const RenderJobSchema = z.object({
   // Track de video animado (clips de Veo). Si está, el compositor usa PlanoAnimado;
   // si está vacío/undefined, usa PlanoFijo con la imagen estática + Ken Burns.
   videoTrack: VideoTrackSchema.optional(),
+  // Track de escenas (multi-escena con imágenes diferentes). Si está, el compositor
+  // usa PlanoEscenas. Prioridad sobre videoTrack (si ambos presentes, gana escenas).
+  sceneTrack: SceneTrackSchema.optional(),
+
+  // Hint para el compositor: cuando true, cada escena se renderiza con motion
+  // FUERTE (Ken Burns agresivo + zoom dinámico) para dar sensación animada sin
+  // necesitar Veo por escena. Se setea cuando el preset.format es b-roll-animated
+  // o voiceover-animated.
+  animatedScenes: z.boolean().default(false),
 
   outputPath: z.string(),
   resolution: z.tuple([z.literal(1080), z.literal(1920)]),

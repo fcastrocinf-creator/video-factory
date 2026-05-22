@@ -1,0 +1,61 @@
+{
+  "id": "testimonio_ugc_real",
+  "displayName": "Testimonio · UGC Real (selfie amateur)",
+  "description": "Estética UGC auténtica: como si fuera grabado en selfie por una persona real en su baño/cocina/dormitorio. Iluminación natural amateur, sin look publicitario. Imagen 4 con prompt 'iPhone selfie style'. Ideal para anuncios que necesitan VEROSIMILITUD máxima (no se vean como ad).",
+  "category": {
+    "id": "testimonio_real",
+    "displayName": "Testimonio Real (UGC)",
+    "description": "Estética de persona real grabándose con su teléfono. Verosimilitud sobre producción."
+  },
+  "format": {
+    "id": "ugc-testimony",
+    "displayName": "UGC Testimonio",
+    "description": "Persona hablando a cámara (selfie amateur, talking-head casero)."
+  },
+  "style": {
+    "id": "ugc_real",
+    "displayName": "UGC Selfie Real (amateur)"
+  },
+  "classification": {
+    "formato": "ugc",
+    "hookAngulo": "testimonio",
+    "funnelStage": "mofu",
+    "awareness": "problem_aware"
+  },
+  "estrategia": "multi_escena",
+  "visualEngine": "imagen4",
+  "visualStyle": {
+    "promptTemplate": "iPhone selfie photograph, amateur authentic UGC style, natural messy lighting from window or overhead bulb, slight motion blur, realistic skin texture and pores visible, candid expression, NO professional makeup or styling, casual home environment (bathroom mirror, kitchen counter, bedroom), vertical 9:16, looks like a real Instagram story",
+    "negativePrompt": "professional photography, studio lighting, editorial, retouched, cinematic, polished, cartoon, anime, 3D render, illustration",
+    "aspectRatio": "9:16",
+    "referenceImages": []
+  },
+  "subtitles": {
+    "style": "word_level_kinetic",
+    "font": "Inter",
+    "fontSize": 64,
+    "color": "#FFFFFF",
+    "strokeColor": "#000000",
+    "strokeWidth": 4,
+    "highlightColor": "#FFE600",
+    "position": "bottom",
+    "allCaps": false
+  },
+  "defaultDurationSeconds": 45,
+  "scenesPerMinute": 30,
+  "composition": {
+    "kenBurns": {
+      "enabled": false,
+      "zoomStart": 1.0,
+      "zoomEnd": 1.0,
+      "panX": 0,
+      "panY": 0
+    },
+    "backgroundMusic": {
+      "enabled": false,
+      "volumeDb": -20
+    }
+  },
+  "createdAt": "2026-05-18T00:00:00Z",
+  "updatedAt": "2026-05-18T00:00:00Z"
+}

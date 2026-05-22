@@ -16,6 +16,7 @@ build/
 # Storage (archivos generados por la app)
 storage/*
 !storage/.gitkeep
+apps/web/storage/
 
 # Logs
 logs/

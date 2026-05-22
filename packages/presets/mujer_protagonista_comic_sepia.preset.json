@@ -1,0 +1,61 @@
+{
+  "id": "mujer_protagonista_comic_sepia",
+  "displayName": "Mujer protagonista · Comic Sepia / Acuarela",
+  "description": "Storytelling en primera persona desde la perspectiva de una mujer que vivió el problema. Estilo ilustrado sepia/acuarela como un cómic premium. Narrador femenino (Vitaly default). Ideal para historias cercanas de testimonio.",
+  "category": {
+    "id": "mujer_protagonista",
+    "displayName": "Mujer protagonista (Storytelling)",
+    "description": "La narradora es una mujer que cuenta su propia historia en primera persona."
+  },
+  "format": {
+    "id": "b-roll-static",
+    "displayName": "B-ROLL Estático",
+    "description": "Gráficas sin animación: viñetas ilustradas tipo cómic premium."
+  },
+  "style": {
+    "id": "comic_sepia",
+    "displayName": "Comic / Acuarela Sepia"
+  },
+  "classification": {
+    "formato": "storytelling",
+    "hookAngulo": "testimonio",
+    "funnelStage": "tofu",
+    "awareness": "problem_aware"
+  },
+  "estrategia": "multi_escena",
+  "visualEngine": "imagen4",
+  "visualStyle": {
+    "promptTemplate": "Hand-illustrated digital painting in warm sepia-watercolor style, like a premium animated personal-story comic, soft warm color palette of amber/ochre/cream/rose, painterly brush strokes, slight grain texture, vertical 9:16 composition, no photo-realism, intimate emotional framing, Studio Ghibli meets personal memoir illustration",
+    "negativePrompt": "photograph, photorealistic, 3D render, low quality, blurry, text overlay, watermark, ugly, distorted",
+    "aspectRatio": "9:16",
+    "referenceImages": []
+  },
+  "subtitles": {
+    "style": "word_level_kinetic",
+    "font": "Inter",
+    "fontSize": 64,
+    "color": "#FFFFFF",
+    "strokeColor": "#000000",
+    "strokeWidth": 4,
+    "highlightColor": "#FFE600",
+    "position": "bottom",
+    "allCaps": false
+  },
+  "defaultDurationSeconds": 72,
+  "scenesPerMinute": 25,
+  "composition": {
+    "kenBurns": {
+      "enabled": false,
+      "zoomStart": 1.0,
+      "zoomEnd": 1.0,
+      "panX": 0,
+      "panY": 0
+    },
+    "backgroundMusic": {
+      "enabled": false,
+      "volumeDb": -20
+    }
+  },
+  "createdAt": "2026-05-18T00:00:00Z",
+  "updatedAt": "2026-05-18T00:00:00Z"
+}

@@ -39,19 +39,22 @@ export class CompositorRemotionBlock implements Block<RenderJob, RenderJob> {
     await mkdir(dirname(input.outputPath), { recursive: true });
 
     const audioSrc = basename(input.audioTrack.filePath);
+    const hasSceneTrack = input.sceneTrack && input.sceneTrack.scenes.length > 0;
     const hasVideoTrack = input.videoTrack && input.videoTrack.clips.length > 0;
 
+    const compositionId = hasSceneTrack ? 'PlanoEscenas' : hasVideoTrack ? 'PlanoAnimado' : 'PlanoFijo';
     ctx.logger.info(
       {
         runId: ctx.runId,
         block: this.name,
-        composition: hasVideoTrack ? 'PlanoAnimado' : 'PlanoFijo',
+        composition: compositionId,
         outputPath: input.outputPath,
         durationInFrames,
         fps,
         width,
         height,
         audioSrc,
+        sceneCount: input.sceneTrack?.scenes.length ?? 0,
         videoClipCount: input.videoTrack?.clips.length ?? 0,
       },
       'compositor-remotion:render_start',
@@ -72,7 +75,93 @@ export class CompositorRemotionBlock implements Block<RenderJob, RenderJob> {
     };
 
     try {
-      if (hasVideoTrack && input.videoTrack) {
+      if (hasSceneTrack && input.sceneTrack) {
+        const scenes = input.sceneTrack.scenes
+          // Una escena entra al render si tiene imagePath O una composición libre
+          // poblada (las escenas freeform pueden no tener imagePath a nivel escena
+          // porque sus imágenes viven en los CompositeElement).
+          .filter((s) => s.imagePath || (s.composition && s.composition.length > 0))
+          .map((s) => {
+            // Si la escena es compuesta (split-screen / grid), proyectamos sus
+            // sub-paneles a SubScenePanel para que PlanoEscenas los renderee en
+            // grid pixel-perfect. Filtramos paneles sin imagePath (no se logró
+            // generar el panel — Remotion usará imageSrc como fallback global).
+            const subScenes =
+              s.compositeLayout && s.compositeLayout !== 'single' && s.subScenes
+                ? s.subScenes
+                    .filter((sub) => sub.imagePath)
+                    .map((sub) => ({
+                      panel: sub.panel,
+                      imageSrc: basename(sub.imagePath!),
+                      textOverlay: sub.textOverlay,
+                    }))
+                : undefined;
+            // Si la escena declaró composite pero NO logramos generar ningún
+            // panel, degradamos a 'single' (fallback a imageSrc principal).
+            const effectiveLayout =
+              subScenes && subScenes.length > 0 ? s.compositeLayout : undefined;
+            // COMPOSICIÓN LIBRE: proyectamos cada CompositeElement a su versión
+            // visual (paths → basenames). Tiene prioridad sobre compositeLayout.
+            const composition =
+              s.composition && s.composition.length > 0
+                ? s.composition.map((el) => ({
+                    id: el.id,
+                    kind: el.kind,
+                    imageSrc: el.imagePath ? basename(el.imagePath) : undefined,
+                    videoSrc: el.videoPath ? basename(el.videoPath) : undefined,
+                    text: el.text,
+                    rect: el.rect,
+                    rotationDeg: el.rotationDeg,
+                    opacity: el.opacity,
+                    zIndex: el.zIndex,
+                    fit: el.fit,
+                    cornerRadiusPct: el.cornerRadiusPct,
+                    startSeconds: el.startSeconds,
+                    endSeconds: el.endSeconds,
+                    textOverlay: el.textOverlay,
+                  }))
+                : undefined;
+            // imageSrc principal: si la escena no tiene imagePath (freeform pura),
+            // usamos el primer elemento-imagen del composition como fallback.
+            const imageSrc = s.imagePath
+              ? basename(s.imagePath)
+              : composition?.find((e) => e.imageSrc)?.imageSrc ?? '';
+            return {
+              imageSrc,
+              // Si la escena fue animada con Veo, videoSrc apunta al MP4 dentro
+              // del workDir. PlanoEscenas usa OffthreadVideo en lugar de Img.
+              videoSrc: s.videoPath ? basename(s.videoPath) : undefined,
+              durationSeconds: s.endTimeSeconds - s.startTimeSeconds,
+              // Pasamos las textOverlays para que Remotion las renderice como capas
+              // vectoriales sobre la imagen base (resuelve labels gibberish y
+              // calendarios rotos que Imagen 4 no puede generar bien).
+              textOverlays: s.textOverlays,
+              // Composite scene: cada sub-panel se renderiza en su posición del grid.
+              compositeLayout: effectiveLayout,
+              subScenes,
+              // Composición libre: el motor FreeformComposite la renderiza con
+              // prioridad sobre compositeLayout/subScenes.
+              composition,
+            };
+          });
+        await renderComposition({
+          composition: 'PlanoEscenas',
+          outputPath: input.outputPath,
+          workDir: ctx.workDir,
+          durationInFrames,
+          fps,
+          width,
+          height,
+          inputProps: {
+            audioSrc,
+            scenes,
+            subtitleTrack: input.subtitleTrack,
+            subtitlesConfig: ctx.preset.subtitles,
+            animatedScenes: input.animatedScenes ?? false,
+          },
+          onProgress,
+        });
+      } else if (hasVideoTrack && input.videoTrack) {
         const videoClipSrcs = input.videoTrack.clips.map((c) => basename(c.filePath));
         const videoClipDurations = input.videoTrack.clips.map((c) => c.durationSeconds);
 

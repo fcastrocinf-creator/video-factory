@@ -1,0 +1,61 @@
+{
+  "id": "doctor_pixar_animado",
+  "displayName": "Doctor · Pixar 3D Animado (Veo)",
+  "description": "Doctor 3D estilo Pixar animado con micro-movimientos (Veo Lite genera 8s clips concatenados desde keyframes Pixar). Mismo estilo Pixar que el plano fijo pero con cámara/personaje en movimiento natural. Ideal para hooks dinámicos.",
+  "category": {
+    "id": "doctor_autoridad",
+    "displayName": "Doctor / Experto (Autoridad)",
+    "description": "Un especialista habla con autoridad sobre el problema y la solución."
+  },
+  "format": {
+    "id": "b-roll-animated",
+    "displayName": "B-ROLL Animado",
+    "description": "Gráficas con movimiento: clips Veo animados desde keyframes."
+  },
+  "style": {
+    "id": "pixar_3d",
+    "displayName": "Pixar 3D"
+  },
+  "classification": {
+    "formato": "educativo",
+    "hookAngulo": "autoridad",
+    "funnelStage": "tofu",
+    "awareness": "problem_aware"
+  },
+  "estrategia": "multi_escena",
+  "visualEngine": "veo-lite",
+  "visualStyle": {
+    "promptTemplate": "3D Pixar style asian male doctor character, white lab coat with stethoscope, friendly expression, traditional Japanese clinic interior background with shelves and decorative plants, soft natural lighting from window, cinematic depth of field, warm color grading, photorealistic CGI animation style similar to Pixar movies, no text, vertical 9:16 composition with character centered upper body visible, gentle camera movement, subtle character motion suitable for video animation",
+    "negativePrompt": "anime style, 2D illustration, photograph, realistic photography, harsh lighting, low quality, blurry, text overlay, watermark, multiple characters, static still image",
+    "aspectRatio": "9:16",
+    "referenceImages": []
+  },
+  "subtitles": {
+    "style": "word_level_kinetic",
+    "font": "Inter",
+    "fontSize": 64,
+    "color": "#FFFFFF",
+    "strokeColor": "#000000",
+    "strokeWidth": 4,
+    "highlightColor": "#FFE600",
+    "position": "bottom",
+    "allCaps": false
+  },
+  "defaultDurationSeconds": 72,
+  "scenesPerMinute": 7.5,
+  "composition": {
+    "kenBurns": {
+      "enabled": false,
+      "zoomStart": 1.0,
+      "zoomEnd": 1.0,
+      "panX": 0,
+      "panY": 0
+    },
+    "backgroundMusic": {
+      "enabled": false,
+      "volumeDb": -20
+    }
+  },
+  "createdAt": "2026-05-18T00:00:00Z",
+  "updatedAt": "2026-05-18T00:00:00Z"
+}

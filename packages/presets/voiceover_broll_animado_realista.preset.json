@@ -1,0 +1,61 @@
+{
+  "id": "voiceover_broll_animado_realista",
+  "displayName": "Voiceover · B-ROLL Animado Realista (Veo)",
+  "description": "Voz en off impersonal sobre clips Veo animados de escenas fotorrealistas (productos, anatomía, situaciones cotidianas). Sin personaje narrador en pantalla — solo B-roll en movimiento que ilustra lo narrado. Ideal para hooks dinámicos sin testimonio.",
+  "category": {
+    "id": "voiceover_impersonal",
+    "displayName": "Voiceover impersonal (sin personaje)",
+    "description": "Narración sin personaje en pantalla. Foco en producto + situación, no en quien habla."
+  },
+  "format": {
+    "id": "b-roll-animated",
+    "displayName": "B-ROLL Animado",
+    "description": "Gráficas con movimiento: clips Veo animados desde keyframes fotorrealistas."
+  },
+  "style": {
+    "id": "fotorealista_animado",
+    "displayName": "Fotorrealista Animado"
+  },
+  "classification": {
+    "formato": "educativo",
+    "hookAngulo": "curiosidad",
+    "funnelStage": "tofu",
+    "awareness": "problem_aware"
+  },
+  "estrategia": "multi_escena",
+  "visualEngine": "veo-lite",
+  "visualStyle": {
+    "promptTemplate": "Cinematic photorealistic B-roll style for short-form vertical ad, 9:16, soft natural lighting, shallow depth of field, gentle camera movement (slow push-in / slight pan), realistic colors, no on-screen person speaking — focus on objects/anatomy/situations that illustrate the narration: product close-ups, swollen feet, water-glass, calendar pages, hands applying drops, ambient interior shots. Editorial photography aesthetic with subtle motion.",
+    "negativePrompt": "talking head, person looking at camera, cartoon, anime, Pixar style, 3D render, illustration, animation style, low quality, blurry, watermark, advertising banner",
+    "aspectRatio": "9:16",
+    "referenceImages": []
+  },
+  "subtitles": {
+    "style": "word_level_kinetic",
+    "font": "Inter",
+    "fontSize": 64,
+    "color": "#FFFFFF",
+    "strokeColor": "#000000",
+    "strokeWidth": 4,
+    "highlightColor": "#FFE600",
+    "position": "bottom",
+    "allCaps": false
+  },
+  "defaultDurationSeconds": 72,
+  "scenesPerMinute": 8,
+  "composition": {
+    "kenBurns": {
+      "enabled": false,
+      "zoomStart": 1.0,
+      "zoomEnd": 1.0,
+      "panX": 0,
+      "panY": 0
+    },
+    "backgroundMusic": {
+      "enabled": false,
+      "volumeDb": -20
+    }
+  },
+  "createdAt": "2026-05-18T00:00:00Z",
+  "updatedAt": "2026-05-18T00:00:00Z"
+}

@@ -1,7 +1,7 @@
 import { resolve } from 'node:path';
 import { createClient, type Client } from '@libsql/client';
 import { drizzle, type LibSQLDatabase } from 'drizzle-orm/libsql';
-import { runs } from '@db/schema';
+import { rips, runs, trainingVideos } from '@db/schema';
 import { REPO_ROOT } from './paths';
 
 let _client: Client | null = null;
@@ -40,4 +40,4 @@ export const db = new Proxy({} as LibSQLDatabase, {
   },
 });
 
-export { runs };
+export { rips, runs, trainingVideos };

@@ -1,0 +1,61 @@
+{
+  "id": "educativo_premium",
+  "displayName": "Doctor · Comic Sepia / Acuarela",
+  "description": "Video con escenas ILUSTRADAS estilo comic premium / acuarela / pintura digital (NO foto realista). Imitando las referencias de marca: paleta cálida sepia-ámbar, pinceladas pictóricas, anatomía dibujada estilo libro de medicina, retratos de personaje con continuidad visual, viñetas de cómic. Gemini 2.5 Pro planifica las escenas con mapeo LITERAL narración→imagen + character cards. Imagen 4 genera cada una. Hard cuts con micro motion + fade-in. Costo ~$2/video.",
+  "category": {
+    "id": "doctor_autoridad",
+    "displayName": "Doctor / Experto (Autoridad)",
+    "description": "Un especialista habla con autoridad sobre el problema y la solución."
+  },
+  "format": {
+    "id": "b-roll-static",
+    "displayName": "B-ROLL Estático",
+    "description": "Gráficas sin animación: imágenes estáticas tipo carrusel ilustrado."
+  },
+  "style": {
+    "id": "comic_sepia",
+    "displayName": "Comic / Acuarela Sepia"
+  },
+  "classification": {
+    "formato": "educativo",
+    "hookAngulo": "autoridad",
+    "funnelStage": "tofu",
+    "awareness": "problem_aware"
+  },
+  "estrategia": "multi_escena",
+  "visualEngine": "imagen4",
+  "visualStyle": {
+    "promptTemplate": "Hand-illustrated digital painting in warm sepia-watercolor style, like a premium animated educational comic, soft warm color palette of amber/ochre/cream/burgundy, painterly brush strokes, slight grain texture, vertical 9:16 composition, no photo-realism, single coherent illustrated scene, Studio Ghibli meets vintage medical illustration",
+    "negativePrompt": "photograph, photorealistic, 3D render, low quality, blurry, text overlay, watermark, ugly, distorted",
+    "aspectRatio": "9:16",
+    "referenceImages": []
+  },
+  "subtitles": {
+    "style": "word_level_kinetic",
+    "font": "Inter",
+    "fontSize": 64,
+    "color": "#FFFFFF",
+    "strokeColor": "#000000",
+    "strokeWidth": 4,
+    "highlightColor": "#FFE600",
+    "position": "bottom",
+    "allCaps": false
+  },
+  "defaultDurationSeconds": 72,
+  "scenesPerMinute": 25,
+  "composition": {
+    "kenBurns": {
+      "enabled": false,
+      "zoomStart": 1.0,
+      "zoomEnd": 1.0,
+      "panX": 0,
+      "panY": 0
+    },
+    "backgroundMusic": {
+      "enabled": false,
+      "volumeDb": -20
+    }
+  },
+  "createdAt": "2026-05-17T00:00:00Z",
+  "updatedAt": "2026-05-17T00:00:00Z"
+}

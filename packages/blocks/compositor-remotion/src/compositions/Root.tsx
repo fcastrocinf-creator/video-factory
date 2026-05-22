@@ -3,6 +3,7 @@ import { Composition, registerRoot } from 'remotion';
 import type { SubtitleTrack } from '@video-factory/contracts';
 import { PlanoFijo, type PlanoFijoProps } from './PlanoFijo.js';
 import { PlanoAnimado, type PlanoAnimadoProps } from './PlanoAnimado.js';
+import { PlanoEscenas, type PlanoEscenasProps } from './PlanoEscenas.js';
 
 const DEFAULT_SUBTITLE_TRACK: SubtitleTrack = {
   language: 'es',
@@ -41,9 +42,17 @@ const DEFAULT_PLANO_ANIMADO_PROPS: PlanoAnimadoProps = {
   subtitlesConfig: DEFAULT_SUBTITLES_CONFIG,
 };
 
+const DEFAULT_PLANO_ESCENAS_PROPS: PlanoEscenasProps = {
+  audioSrc: 'audio.mp3',
+  scenes: [{ imageSrc: 'scene_00.png', durationSeconds: 10 }],
+  subtitleTrack: DEFAULT_SUBTITLE_TRACK,
+  subtitlesConfig: DEFAULT_SUBTITLES_CONFIG,
+};
+
 // Cast: ver comentario en versiones anteriores. <Composition> exige ComponentType<Record<string, unknown>>.
 const PlanoFijoLoose = PlanoFijo as unknown as React.ComponentType<Record<string, unknown>>;
 const PlanoAnimadoLoose = PlanoAnimado as unknown as React.ComponentType<Record<string, unknown>>;
+const PlanoEscenasLoose = PlanoEscenas as unknown as React.ComponentType<Record<string, unknown>>;
 
 export const RemotionRoot: React.FC = () => {
   return (
@@ -65,6 +74,15 @@ export const RemotionRoot: React.FC = () => {
         width={1080}
         height={1920}
         defaultProps={DEFAULT_PLANO_ANIMADO_PROPS as unknown as Record<string, unknown>}
+      />
+      <Composition
+        id="PlanoEscenas"
+        component={PlanoEscenasLoose}
+        durationInFrames={300}
+        fps={30}
+        width={1080}
+        height={1920}
+        defaultProps={DEFAULT_PLANO_ESCENAS_PROPS as unknown as Record<string, unknown>}
       />
     </>
   );

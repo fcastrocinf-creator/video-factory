@@ -12,6 +12,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <Link href="/create" className="text-muted-foreground hover:text-foreground">
               Crear
             </Link>
+            <Link href="/rip" className="text-muted-foreground hover:text-foreground">
+              Ripear
+            </Link>
+            <Link href="/aprendizaje" className="text-muted-foreground hover:text-foreground">
+              Aprendizaje
+            </Link>
+            <Link href="/runs" className="text-muted-foreground hover:text-foreground">
+              Videos
+            </Link>
+            <Link href="/brands" className="text-muted-foreground hover:text-foreground">
+              Marcas
+            </Link>
+            <Link href="/admin" className="text-muted-foreground hover:text-foreground">
+              Admin
+            </Link>
           </nav>
         </div>
       </header>

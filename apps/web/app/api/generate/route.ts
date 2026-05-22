@@ -11,7 +11,11 @@ export const runtime = 'nodejs';
 const GenerateRequestSchema = z.object({
   brandId: z.string().min(1),
   presetId: z.string().min(1),
+  productId: z.string().nullable().optional(),
   script: z.string().min(10),
+  // Overrides opcionales desde la UI. Si vienen null o undefined, se infieren del guion.
+  voiceOverride: z.string().nullable().optional(),
+  narratorGenderOverride: z.enum(['male', 'female', 'neutral']).nullable().optional(),
 });
 
 export async function POST(req: Request) {
@@ -31,7 +35,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: parsed.error.message }, { status: 400 });
   }
 
-  const { brandId, presetId, script } = parsed.data;
+  const { brandId, presetId, productId, script, voiceOverride, narratorGenderOverride } =
+    parsed.data;
   const runId = randomUUID();
   const workDir = workDirFor(runId);
 
@@ -39,15 +44,17 @@ export async function POST(req: Request) {
     id: runId,
     brandId,
     presetId,
+    productId: productId ?? null,
     scriptRaw: script,
     status: 'pending',
     workDir,
     progress: 0,
   });
 
-  // Fire-and-forget. El proceso Node mantiene la promesa viva hasta que termine.
-  // Para producción habría que usar BullMQ u otra cola, pero el MVP corre local-only.
-  void runPipeline(runId, brandId, presetId, script).catch((err) => {
+  void runPipeline(runId, brandId, presetId, script, {
+    voiceOverride: voiceOverride ?? null,
+    narratorGenderOverride: narratorGenderOverride ?? null,
+  }).catch((err) => {
     // eslint-disable-next-line no-console
     console.error('[pipeline] uncaught error for run', runId, err);
   });

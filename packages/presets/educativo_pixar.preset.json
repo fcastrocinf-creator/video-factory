@@ -1,7 +1,21 @@
 {
   "id": "educativo_pixar",
-  "displayName": "Educativo · Doctor Pixar",
+  "displayName": "Doctor · Estilo Pixar 3D",
   "description": "Video largo (2-5 min) con personaje doctor 3D estilo Pixar en plano fijo, narrador autoritario, subtítulos hook banner + captions inferiores. Ideal TOFU/Problem Aware.",
+  "category": {
+    "id": "doctor_autoridad",
+    "displayName": "Doctor / Experto (Autoridad)",
+    "description": "Un especialista habla con autoridad sobre el problema y la solución."
+  },
+  "format": {
+    "id": "b-roll-static",
+    "displayName": "B-ROLL Estático",
+    "description": "Gráficas sin animación: imágenes estáticas tipo carrusel ilustrado."
+  },
+  "style": {
+    "id": "pixar_3d",
+    "displayName": "Pixar 3D"
+  },
   "classification": {
     "formato": "educativo",
     "hookAngulo": "autoridad",

@@ -1,0 +1,61 @@
+{
+  "id": "voiceover_animated_explainer",
+  "displayName": "Voiceover · Explainer Animado (motion graphics)",
+  "description": "Voz en off impersonal sobre motion graphics / kinetic typography / ilustración animada estilo explainer (whiteboard, character-anim 2D). NO fotorrealismo, NO actores. Estilo educativo dinámico con diagramas, flechas, numbers, before/after morphing.",
+  "category": {
+    "id": "voiceover_impersonal",
+    "displayName": "Voiceover impersonal (sin personaje)",
+    "description": "Narración sin personaje en pantalla. Foco en gráficos + concepto."
+  },
+  "format": {
+    "id": "voiceover-animated",
+    "displayName": "Voice Over Animado",
+    "description": "Motion graphics / explainer animado, no fotorrealista."
+  },
+  "style": {
+    "id": "motion_graphics_explainer",
+    "displayName": "Motion Graphics Explainer"
+  },
+  "classification": {
+    "formato": "educativo",
+    "hookAngulo": "curiosidad",
+    "funnelStage": "tofu",
+    "awareness": "unaware"
+  },
+  "estrategia": "multi_escena",
+  "visualEngine": "imagen4",
+  "visualStyle": {
+    "promptTemplate": "Bold flat-design 2D motion graphics illustration in explainer-video style, vertical 9:16, vibrant minimal color palette (cream background with single accent color per scene — coral / teal / mustard), thick outline strokes, clean geometric shapes, kinetic-typography-ready composition with central focal element and ample negative space for text overlays, no photo-realism, no actors, no characters with faces — focus on diagrams, vessels, anatomical schematics, numbers, arrows, before/after morphing icons. Style references: Kurzgesagt explainer videos, In a Nutshell, animated medical infographics.",
+    "negativePrompt": "photograph, photo-realistic, 3D render, Pixar, watercolor, oil painting, complex shading, busy detail, actors, faces, talking head",
+    "aspectRatio": "9:16",
+    "referenceImages": []
+  },
+  "subtitles": {
+    "style": "word_level_kinetic",
+    "font": "Inter",
+    "fontSize": 68,
+    "color": "#FFFFFF",
+    "strokeColor": "#000000",
+    "strokeWidth": 4,
+    "highlightColor": "#FFE600",
+    "position": "bottom",
+    "allCaps": true
+  },
+  "defaultDurationSeconds": 60,
+  "scenesPerMinute": 20,
+  "composition": {
+    "kenBurns": {
+      "enabled": true,
+      "zoomStart": 1.0,
+      "zoomEnd": 1.1,
+      "panX": 0,
+      "panY": 0
+    },
+    "backgroundMusic": {
+      "enabled": false,
+      "volumeDb": -20
+    }
+  },
+  "createdAt": "2026-05-18T00:00:00Z",
+  "updatedAt": "2026-05-18T00:00:00Z"
+}
