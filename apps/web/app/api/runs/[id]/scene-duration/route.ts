@@ -75,7 +75,12 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       );
     }
     scene.manualDurationSeconds = body.durationSeconds;
-    await writeFile(planPath, JSON.stringify(plan, null, 2), 'utf-8');
+    // v3.3 fix: escritura atómica (tmp + rename) para no corromper scene-plan.json
+    // si choca con otra escritura concurrente del pipeline.
+    const tmpPath = planPath + '.tmp';
+    await writeFile(tmpPath, JSON.stringify(plan, null, 2), 'utf-8');
+    const { rename } = await import('node:fs/promises');
+    await rename(tmpPath, planPath);
     return NextResponse.json({
       ok: true,
       sceneIndex: body.sceneIndex,

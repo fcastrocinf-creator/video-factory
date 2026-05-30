@@ -10,7 +10,7 @@
 // ║    2. Si mode != 'collaborative' → return inmediato                      ║
 // ║    3. Si sí → setea awaitingApproval=true, pausedAtSceneIndex=N en DB   ║
 // ║    4. Loop de polling cada 5s leyendo el campo awaitingApproval         ║
-// ║    5. Cuando owner clickea botón en UI → POST /api/runs/[id]/resume     ║
+// ║    5. Cuando owner clickea botón en UI → POST /api/runs/[id]/intervene  ║
 // ║       setea awaitingApproval=false + persiste action en interventions   ║
 // ║    6. El loop detecta y retorna                                          ║
 // ║    7. scene-animator/pipeline interpreta la action (approve/regen/skip)  ║
