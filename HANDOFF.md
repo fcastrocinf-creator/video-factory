@@ -6,6 +6,73 @@
 
 ---
 
+## 0.AAAA. AUDITORÍA PREVENTIVA + 31 FIXES (29-may-2026, sesión tarde/noche)
+
+> Tras generar el primer video completo end-to-end con el co-pilot, un proceso
+> automático (el Editor IA post-render) **regeneró una escena que el owner ya había
+> aprobado**. Eso disparó una **auditoría preventiva multi-agente** (66 agentes,
+> verificación adversarial) que confirmó que NO era un caso aislado: **50 bugs reales**
+> (1 crítico, 17 altos, 21 medios, 11 bajos), 9 falsos positivos descartados.
+
+### Estado git de esta sesión
+- **Rama `audit-fixes`** (8 commits de fixes). `main` quedó como **checkpoint** del
+  estado funcional previo, tag **`checkpoint-pre-audit-fixes`**.
+- **Rollback total:** `git checkout main` (o `git reset --hard checkpoint-pre-audit-fixes`).
+- **Para adoptar los fixes:** revisar la rama y `git checkout main && git merge audit-fixes`.
+- **Typecheck del monorepo entero: VERDE** tras los 31 fixes (`pnpm -r typecheck`).
+- Antes de la auditoría se hizo el primer commit real desde 21-may (158 archivos;
+  toda la capa validator-chat + colaborativo quedó versionada).
+
+### Los 8 lotes aplicados (31 de 50 bugs cerrados)
+1. **Consent (crítico):** el Editor IA y el loop holístico ya **no regeneran escenas
+   pre-aprobadas del fork**; se resuelve por `scene.index` (no por posición). [cierra el
+   incidente + #1,#3,#8,#13,#16,#17,#34,#36,#37]
+2. **Status/UI + data-loss:** RunViewer muestra el video en `completed-with-warnings`
+   (no "Pendiente"); "Reintentar" ya **no hace `rm -rf` de escenas aprobadas** (redirige
+   a Forkear); el zombie-detector **no mata runs colaborativos pausados**. [#2,#12,#18,#19]
+3. **Índice-vs-posición** en `image-gen-multi` (juez + sequence-validator). [#14,#30]
+4. **Atomicidad + chat:** `markInterventionProcessed` usa **rename atómico** (no corrompe
+   `interventions.jsonl`); el chat externo persiste el turno del owner **tras** la
+   respuesta (no deja turnos huérfanos) y descarta `assistant` inicial. [#11,#21,#24,#33,#46]
+5. **Visibilidad + consent + schema:** fallos del holistic/animator/editor-loop ahora
+   marcan `completed-with-warnings` (no éxito silencioso); el **timeout ya no auto-acepta**
+   una escena sin OK del owner (corta con mensaje → fork); schema del holistic robusto
+   (trunca, no rompe). [#15,#20,#28,#29,#35]
+6. **Cascada + intervene:** un **403 de Vertex** (billing/permiso) salta al próximo
+   provider; `/intervene` rechaza runs terminados/auto (no más pendientes fantasma). [#22,#45]
+7. **Consistencia:** al regenerar imagen sin re-animar se **limpia `videoPath`** → el
+   compositor usa la imagen nueva, no el clip viejo (fix antes inefectivo). [#9,#10]
+8. **Atomicidad/docs:** `scene-duration` escribe atómico; doc del `/resume` inexistente
+   corregido a `/intervene`. [#39,#44]
+
+### Backlog restante (~18 — bajo/medio valor, NO bloquean)
+Quedaron sin tocar a propósito (riesgo/valor): se documentan para hacer por tandas.
+- **Cost-tracking inexacto** (#5,#6,#7,#42,#43) — es un **estimador interno**; el número
+  mostrado subcuenta los clips de video. Refactor mayor, no rompe nada funcional.
+- **Mitigados ya por otros fixes:** #31 (el judge re-muestrea scene 0, pero el guard del
+  Lote 1 impide que eso regenere lo aprobado) · #46 (cerrado por el rename atómico).
+- **Menores/cosméticos:** #26 (status no refleja holistic `needs-major-rework`), #32
+  (coerción de category neutraliza un guard de criticals), #38 (dedup del editor), #47
+  (palette al holistic), #48 (fork eager usa comments cross-run), #49 (fork TOCTOU),
+  #50 (logs por posición), #23 (cap de propagación silencioso), #41 (dead-wiring
+  `skipMissingImages`), #40 (comentario `/resume` en `pipeline.ts:97`).
+- **Detalle completo de los 50:** el resultado de la auditoría está en
+  `C:\Users\cmktc\AppData\Local\Temp\claude\...\tasks\wpg4gy0q0.output` (efímero; si se
+  quiere permanente, regenerar la auditoría o copiarlo a `investigacion/`).
+
+### Pendiente de producto (feature, no bug)
+- **Escena de CTA editable y flexible:** el owner pidió que el CTA sea una **escena de
+  primera clase** al final del script, editable como cualquier otra (visual + copy), y
+  **flexible** en contenido: solo llamada a la acción / mostrar producto / oferta /
+  urgencia / etc. Hoy el CTA es un `narrativeBeat: 'cta'` (la última escena), editable
+  en visual pero **no en copy**, y sin afordancia explícita. Implementar como feature.
+
+### Regla reforzada
+- **NUNCA un proceso automático debe regenerar/sobrescribir una escena que el owner
+  aprobó** (o pre-aprobó vía fork) sin su consentimiento. Es la invariante #1 del sistema.
+
+---
+
 ## 0.AAA. ÚLTIMA SESIÓN (29-may-2026) — VALIDATOR CHAT IA conversacional + modo "Hacer video en conjunto"
 
 > Esta sesión fue larga (21→29 may). Construyó la prioridad #1 del owner: una **IA tipo
