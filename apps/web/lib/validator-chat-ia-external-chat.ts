@@ -377,16 +377,12 @@ export async function processExternalChat(
     };
   }
 
-  // 1. Persistir turno del owner
+  // 1. Leer historial. v3.3 fix: NO persistimos el turno del owner todavía — si la
+  // llamada a la API falla, quedaría un turno 'owner' huérfano que rompe la
+  // alternancia user/assistant en la siguiente llamada (mismo class de bug que
+  // tumbó sesiones). Se persiste recién tras una respuesta exitosa (paso 5b).
   const priorTurns = await readExternalChatTurns(opts.runId);
   const ownerTurnNum = priorTurns.length + 1;
-  await appendExternalChatTurn({
-    runId: opts.runId,
-    turnNumber: ownerTurnNum,
-    timestampIso: new Date().toISOString(),
-    role: 'owner',
-    message: opts.ownerMessage,
-  });
 
   // 2. Construir conversación multi-turn (últimos N turnos para no inflar tokens)
   const recentTurns = priorTurns.slice(-MAX_HISTORY_MESSAGES);
@@ -397,6 +393,11 @@ export async function processExternalChat(
     } else {
       conversationMessages.push({ role: 'assistant', content: t.message });
     }
+  }
+  // v3.3 fix: la API exige que el PRIMER mensaje sea 'user'. El slice del historial
+  // puede arrancar con un 'assistant' → descartamos los assistant iniciales.
+  while (conversationMessages.length > 0 && conversationMessages[0]?.role === 'assistant') {
+    conversationMessages.shift();
   }
 
   // 3. Mensaje del owner CURRENT con contexto completo del run
@@ -467,6 +468,16 @@ export async function processExternalChat(
     };
   }
   const chatResponse = parseResult.data;
+
+  // 5b. v3.3 fix: ahora SÍ persistimos el turno del owner (la llamada tuvo éxito),
+  // así nunca queda un turno huérfano que rompa la alternancia user/assistant.
+  await appendExternalChatTurn({
+    runId: opts.runId,
+    turnNumber: ownerTurnNum,
+    timestampIso: new Date().toISOString(),
+    role: 'owner',
+    message: opts.ownerMessage,
+  });
 
   // 5. Procesar acciones (persistir overrides)
   for (const action of chatResponse.actions) {

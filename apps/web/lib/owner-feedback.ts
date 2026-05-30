@@ -258,24 +258,19 @@ export async function markInterventionProcessed(
     const updated = all.map((i) =>
       i.id === interventionId ? { ...i, processed: true, processedAtIso: new Date().toISOString() } : i,
     );
-    // Atomic write via temp + rename
+    // v3.3 fix: escritura atómica REAL via temp + rename. fs.rename sobreescribe
+    // atómicamente un destino existente en Windows (MoveFileEx) y en POSIX. Antes
+    // el writeFile directo sobre el target NO era atómico: un crash a mitad
+    // truncaba/corrompía interventions.jsonl. El rename atómico también elimina la
+    // ventana de "lectura a medio escribir" (no hace falta lock en los lectores).
     const tempPath = path + '.tmp';
     await writeFile(
       tempPath,
       updated.map((i) => JSON.stringify(i)).join('\n') + '\n',
       'utf-8',
     );
-    // En Windows, rename sobre un existente puede fallar. Usamos writeFile sobre el target.
-    await writeFile(
-      path,
-      updated.map((i) => JSON.stringify(i)).join('\n') + '\n',
-      'utf-8',
-    );
-    try {
-      await import('node:fs/promises').then((m) => m.unlink(tempPath));
-    } catch {
-      /* tempPath puede no existir */
-    }
+    const { rename } = await import('node:fs/promises');
+    await rename(tempPath, path);
   });
 }
 
