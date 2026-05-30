@@ -989,7 +989,13 @@ export async function animateScenes(opts: AnimateScenesOptions): Promise<SceneTr
           } else if (approval.action === 'timeout') {
             opts.logger?.warn(
               { sceneIndex: animated.index, entity: 'COLLABORATIVE MODE' },
-              'scene-animator:collaborative_timeout_accepting_as_is',
+              'scene-animator:collaborative_timeout',
+            );
+            // v3.3 fix-consent: en timeout NO aceptamos una escena que el owner nunca
+            // aprobó (eso violaba el consentimiento). Cortamos el run con un mensaje
+            // claro; el owner retoma con "Forkear" desde la última escena aprobada.
+            throw new Error(
+              `Timeout esperando tu aprobación en la escena ${animated.index}. El run se detuvo para no entregar una escena sin tu visto bueno — usa "Forkear" desde la última escena aprobada para continuar cuando quieras.`,
             );
           }
 

@@ -91,8 +91,17 @@ const HolisticIssueSchema = z.object({
         | 'other';
     }),
   affectedSceneIndices: z.array(z.number().int().nonnegative()),
-  description: z.string().min(1).max(1000),
-  fix: z.string().min(1).max(500).nullish().transform((v) => v ?? undefined),
+  // v3.3 fix: tolerantes — truncan en vez de romper el safeParse y perder el veredicto.
+  description: z
+    .unknown()
+    .transform((v): string =>
+      typeof v === 'string' && v.trim() ? v.trim().slice(0, 1000) : 'Sin descripción específica.',
+    ),
+  fix: z
+    .unknown()
+    .transform((v): string | undefined =>
+      typeof v === 'string' && v.trim() ? v.trim().slice(0, 500) : undefined,
+    ),
 });
 export type HolisticIssue = z.infer<typeof HolisticIssueSchema>;
 
@@ -117,11 +126,18 @@ export const HolisticVerdictSchema = z.object({
   scoreNarrativeFlow: scoreField,
   scoreHookStrength: scoreField,
   scoreCtaStrength: scoreField,
-  issues: z.array(HolisticIssueSchema),
-  /** Lista de índices de escenas que recomendás regenerar (por orden de prioridad). */
-  recommendedRegenerateIndices: z.array(z.number().int().nonnegative()),
+  issues: z.array(HolisticIssueSchema).nullish().transform((v) => v ?? []),
+  /** Lista de índices de escenas que se recomienda regenerar (por prioridad). */
+  recommendedRegenerateIndices: z
+    .array(z.number().int().nonnegative())
+    .nullish()
+    .transform((v) => v ?? []),
   /** Texto libre con recomendaciones cualitativas adicionales. */
-  rationale: z.string().min(10).max(2000),
+  rationale: z
+    .unknown()
+    .transform((v): string =>
+      typeof v === 'string' && v.trim() ? v.trim().slice(0, 2000) : 'Sin rationale provisto.',
+    ),
 });
 export type HolisticVerdict = z.infer<typeof HolisticVerdictSchema>;
 

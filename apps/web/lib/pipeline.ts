@@ -1387,6 +1387,11 @@ export async function runPipeline(
                     { runId, err: holistic.error?.message },
                     'pipeline:validator_chat_ia_holistic_failed',
                   );
+                  // v3.3 fix: el fallo del holistic NO debe quedar invisible — el owner
+                  // debe saber que la revisión global del video no corrió.
+                  if (!editorAdvisoryMessage) {
+                    editorAdvisoryMessage = `La revisión holística (video completo) no se pudo completar: ${holistic.error?.message ?? 'error desconocido'}. El video se entrega, pero sin ese chequeo final.`;
+                  }
                 }
               } catch (e) {
                 logger.warn(
@@ -1406,6 +1411,11 @@ export async function runPipeline(
               'pipeline:scene_animator_failed_falling_back_to_css',
             );
             // sceneTrackWithImages sigue con solo imagePath, Remotion usará Img+CSS
+            // v3.3 fix: que el owner sepa que la animación falló (el video sale con
+            // imágenes estáticas en vez de clips animados).
+            if (!editorAdvisoryMessage) {
+              editorAdvisoryMessage = `La animación de escenas falló (${(e as Error).message.slice(0, 150)}). El video se entrega con imágenes estáticas + Ken Burns en vez de clips animados.`;
+            }
           }
         } else {
           logger.warn(
@@ -1758,6 +1768,11 @@ export async function runPipeline(
               { runId, err: loopResult.error },
               'pipeline:editor_loop_error',
             );
+            // v3.3 fix: el fallo del editor loop NO debe quedar invisible.
+            if (!editorAdvisoryMessage) {
+              editorAdvisoryMessage =
+                'El Editor IA no pudo completar su revisión post-render. El video se entrega tal cual, sin ese chequeo final.';
+            }
           }
         } else {
           logger.warn({ runId }, 'pipeline:initial_report_null');
