@@ -27,7 +27,7 @@ function toSrtTime(sec: number): string {
   return `${pad(h)}:${pad(m)}:${pad(secs)},${pad(ms, 3)}`;
 }
 
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, { params }: { params: { id: string } }) {
   if (!isAuthenticated()) {
     return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
   }
@@ -53,17 +53,31 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
     }>;
   };
 
-  const scenes = [...(plan.scenes ?? [])].sort((a, b) => a.index - b.index);
-  const cues: string[] = [];
-  let n = 0;
-  for (const s of scenes) {
-    const text = (s.text ?? '').trim();
-    if (!text || s.startTimeSeconds == null || s.endTimeSeconds == null) continue;
-    // El end nunca debe ser <= start (algún editor rechaza cues de duración 0).
-    const end = s.endTimeSeconds > s.startTimeSeconds ? s.endTimeSeconds : s.startTimeSeconds + 0.5;
-    n++;
-    cues.push(`${n}\n${toSrtTime(s.startTimeSeconds)} --> ${toSrtTime(end)}\n${text}\n`);
+  const lines = [...(plan.scenes ?? [])]
+    .sort((a, b) => a.index - b.index)
+    .filter((s) => (s.text ?? '').trim() && s.startTimeSeconds != null && s.endTimeSeconds != null)
+    .map((s) => {
+      const start = s.startTimeSeconds as number;
+      const rawEnd = s.endTimeSeconds as number;
+      return {
+        index: s.index,
+        startTimeSeconds: start,
+        // El end nunca debe ser <= start (algún editor rechaza cues de duración 0).
+        endTimeSeconds: rawEnd > start ? rawEnd : start + 0.5,
+        text: (s.text ?? '').trim(),
+      };
+    });
+
+  // Modo JSON: el editor de la UI pide las líneas para mostrarlas y editarlas.
+  if (new URL(req.url).searchParams.get('json') === '1') {
+    return NextResponse.json({ lines });
   }
+
+  const cues = lines.map(
+    (l, i) =>
+      `${i + 1}\n${toSrtTime(l.startTimeSeconds)} --> ${toSrtTime(l.endTimeSeconds)}\n${l.text}\n`,
+  );
+  const n = cues.length;
 
   if (n === 0) {
     return NextResponse.json(
