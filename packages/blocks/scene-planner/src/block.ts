@@ -271,19 +271,28 @@ EJEMPLOS DE ERRORES REALES QUE DEBÉS EVITAR:
 ✅ BIEN: Imagen completamente limpia, texto agregado después por el renderer
 
 REGLA OBLIGATORIA — REPETIR EN CADA ESCENA:
-Al final de CADA imagePrompt, incluí LITERALMENTE esta frase completa (copia-pega, no parafrasees):
+Al final de CADA imagePrompt, incluí LITERALMENTE esta frase (copia-pega, no parafrasees).
+⚠️ OJO: es CORTA A PROPÓSITO. Repetir "text / NO text / NO captions / NO Spanish text"
+muchas veces es CONTRAPRODUCENTE: PRIMA al generador a DIBUJAR texto (paradoja de la
+negación en image-gen). Una sola mención concisa funciona mucho mejor que diez:
 
-"CLEAN background, NO text overlay, NO captions, NO burned-in text, NO English captions, NO Spanish text, NO numbers, NO labels, NO writing of any kind on the image — absolutely zero text rendering, all text is added in post-production with perfect typography."
+"Clean artwork with no lettering or captions baked into the image — any wording is added later in post-production."
 
 Si la escena requiere mostrar un producto, botón, cartel o métrica: describe el OBJETO visual sin texto (ej: "clean white button shape" en vez de "button with text"), y usá textOverlays para el contenido textual.
 
-CASOS donde DEBÉS usar textOverlays:
+CASOS donde DEBÉS usar textOverlays (el ÚNICO texto permitido en pantalla):
 1. Producto por nombre → kind:"product-label", text:"<NOMBRE>"
-2. Cuenta de días ("en 10 días") → kind:"day-counter", text:"DÍA 10"
-3. Métricas/porcentajes → kind:"metric-callout"
-4. Carteles, banners → kind:"subtitle-banner"
+2. Nombre de un villano/personaje como etiqueta → kind:"product-label", text:"<NOMBRE>" (ej. el villano "CORTISOL"). Solo si el villano DEBE llevar nombre.
+3. Cuenta de días ("en 10 días") → kind:"day-counter", text:"DÍA 10"
+4. Métricas/porcentajes → kind:"metric-callout"
+5. Carteles, banners → kind:"subtitle-banner"
 
-Cuando uses textOverlays, el imagePrompt DEBE incluir: "clean background with NO text, no labels, no writing, no numbers — text will be added in post-production".
+⛔ REGLA CRÍTICA: la NARRACIÓN (lo que dice la voz) NUNCA va como texto en la escena
+— ni quemada por el generador, ni como overlay. La narración va SOLO en la voz + los
+subtítulos finales. Jamás un caption suelto arriba tipo "AMIGA, TE PRESENTO". El texto
+EN la imagen existe SOLO para los casos 1-5 de arriba (nombre de producto/villano, etc.).
+
+Cuando uses textOverlays, el imagePrompt DEBE incluir (corto, sin repetir "text"): "clean artwork, no lettering baked in — wording is added in post-production".
 
 CRÍTICO — REGLA "speaking" (HABLA vs VOICE-OVER):
 Para CADA escena decidí si el personaje en pantalla DICE esa línea en primera
