@@ -647,7 +647,7 @@ export class ImageGenMultiBlock implements Block<SceneTrack, SceneTrack> {
               brandContext: this.options.brandContext,
               expectedStyle: this.options.styleBase,
               scenePosition: {
-                index,
+                index: scene.index, // v3.3 fix: scene.index real (no la posición del loop filtrado)
                 total: input.scenes.length,
                 // narrativeBeat + shotType vienen del scene-planner si los seteó
                 shotType: (scene as { shotType?: string }).shotType,
@@ -876,9 +876,13 @@ export class ImageGenMultiBlock implements Block<SceneTrack, SceneTrack> {
             const shouldFix = review.overallScore < minSequenceScore || review.scenesToRegenerate.length > 0;
             if (shouldFix) {
               for (const flag of review.scenesToRegenerate) {
-                const sceneToFix = scenes[flag.sceneIndex];
+                // v3.3 fix: resolver por scene.index real, no por posición del array
+                // (flag.sceneIndex es un scene.index; indexar por posición clobbea otra escena).
+                const sceneToFix = scenes.find((s) => s?.index === flag.sceneIndex);
                 if (!sceneToFix) continue;
-                const originalPrompt = input.scenes[flag.sceneIndex]?.imagePrompt ?? sceneToFix.imagePrompt;
+                const originalPrompt =
+                  input.scenes.find((s) => s.index === flag.sceneIndex)?.imagePrompt ??
+                  sceneToFix.imagePrompt;
                 const refinedPrompt =
                   `${originalPrompt}\n\nSEQUENCE-LEVEL CORRECTION (the scene didn't fit well with the rest of the video): ${flag.refinementHint}`;
                 try {
