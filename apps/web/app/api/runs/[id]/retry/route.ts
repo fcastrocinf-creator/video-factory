@@ -9,7 +9,7 @@
 //   - Provider 5xx temporal
 //   - Timeout de red
 
-import { rm, mkdir } from 'node:fs/promises';
+import { rm, mkdir, readdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { NextResponse } from 'next/server';
 import { eq } from 'drizzle-orm';
@@ -37,7 +37,20 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
 
   // Limpiamos workDir si existe (puede tener artefactos parciales del intento fallido)
   const workDir = row.workDir ?? workDirFor(row.id);
+  // v3.3 (fix-dataloss): si el run ya tiene escenas generadas/aprobadas, NO las
+  // destruimos con rm -rf. Reintentar desde cero borraría trabajo aprobado del
+  // owner — lo dirigimos al flujo de fork (que preserva las escenas).
   if (existsSync(workDir)) {
+    const hasScenes = (await readdir(workDir)).some((f) => /^scene_\d+\.png$/.test(f));
+    if (hasScenes) {
+      return NextResponse.json(
+        {
+          error:
+            'Este run ya tiene escenas generadas. Para no perderlas, usa "Forkear" y continúa desde la última escena buena, en vez de reintentar desde cero (que las borraría).',
+        },
+        { status: 409 },
+      );
+    }
     try {
       await rm(workDir, { recursive: true, force: true });
     } catch {

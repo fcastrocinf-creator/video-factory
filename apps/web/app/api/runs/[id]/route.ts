@@ -45,6 +45,9 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   let isZombie = false;
   if (
     run.status === 'running' &&
+    // v3.3 (fix): un run colaborativo PAUSADO esperando aprobación del owner NO es
+    // un zombie — está vivo, esperándote. No lo marcamos failed.
+    !(run as { awaitingApproval?: unknown }).awaitingApproval &&
     run.startedAt &&
     Date.now() - new Date(run.startedAt).getTime() > ZOMBIE_THRESHOLD_MS
   ) {
@@ -83,7 +86,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       `Run auto-marcado FAILED por inactividad (${ageMinutes} min sin completar). ` +
       `Probable causa: dev server caído o proceso terminado a mitad de pipeline. ` +
       `Las imágenes/animaciones generadas hasta el corte están preservadas en disco. ` +
-      `Usá "Reintentar render" para completar lo que falta.`;
+      `Usa "Forkear" para continuar desde la última escena buena sin perder lo generado.`;
     try {
       await db
         .update(runs)

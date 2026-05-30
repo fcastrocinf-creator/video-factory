@@ -11,7 +11,7 @@ import { ValidationLog } from './ValidationLog';
 
 interface RunStatus {
   id: string;
-  status: 'pending' | 'running' | 'completed' | 'failed';
+  status: 'pending' | 'running' | 'completed' | 'completed-with-warnings' | 'failed';
   currentStep: string | null;
   progress: number;
   outputPath: string | null;
@@ -92,7 +92,11 @@ export function RunViewer({ runId }: RunViewerProps) {
         if (stopped) return true;
         setRun(data);
         setError(''); // recuperación si hubo error transitorio
-        return data.status === 'completed' || data.status === 'failed';
+        return (
+          data.status === 'completed' ||
+          data.status === 'completed-with-warnings' ||
+          data.status === 'failed'
+        );
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Error de red';
         // No abandonamos el polling por errores transitorios; solo lo mostramos.
@@ -142,7 +146,7 @@ export function RunViewer({ runId }: RunViewerProps) {
     return <p className="text-sm text-muted-foreground">Cargando...</p>;
   }
 
-  if (run.status === 'completed') {
+  if (run.status === 'completed' || run.status === 'completed-with-warnings') {
     const costStr =
       run.estimatedCostUsd && run.estimatedCostUsd > 0
         ? ` · $${run.estimatedCostUsd.toFixed(2)} USD`
@@ -157,6 +161,11 @@ export function RunViewer({ runId }: RunViewerProps) {
           {costStr}
           {imgStr}
         </div>
+        {run.errorMessage ? (
+          <div className="rounded-md bg-amber-500/10 px-4 py-2 text-sm text-amber-700 dark:text-amber-400">
+            ⚠ Entregado con advertencias: {run.errorMessage}
+          </div>
+        ) : null}
         <Card>
           <CardContent className="flex justify-center pt-6">
             <video
