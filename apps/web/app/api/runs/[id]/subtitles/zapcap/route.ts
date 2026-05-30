@@ -73,20 +73,28 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   }
 }
 
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, { params }: { params: { id: string } }) {
   if (!isAuthenticated()) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
   const row = (await db.select().from(runs).where(eq(runs.id, params.id)).limit(1))[0];
   if (!row) return NextResponse.json({ error: 'Run no encontrado' }, { status: 404 });
+  const url = new URL(req.url);
   const p = resolve(runWorkDir(row, row.id), SUBTITLED);
-  if (!existsSync(p)) {
+  const exists = existsSync(p);
+  // ?check=1 -> solo informa si ya hay video subtitulado (para que la UI muestre el reproductor).
+  if (url.searchParams.get('check') === '1') {
+    return NextResponse.json({ exists });
+  }
+  if (!exists) {
     return NextResponse.json({ error: 'Aún no hay video con subtítulos' }, { status: 404 });
   }
   const buf = await readFile(p);
+  // inline por defecto (para reproducirlo embebido en <video>); attachment solo con ?download=1.
+  const download = url.searchParams.get('download') === '1';
   return new NextResponse(new Uint8Array(buf), {
     status: 200,
     headers: {
       'Content-Type': 'video/mp4',
-      'Content-Disposition': `attachment; filename="video-subtitulado-${row.id.slice(0, 8)}.mp4"`,
+      'Content-Disposition': `${download ? 'attachment' : 'inline'}; filename="video-subtitulado-${row.id.slice(0, 8)}.mp4"`,
     },
   });
 }

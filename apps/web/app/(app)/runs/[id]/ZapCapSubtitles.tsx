@@ -36,9 +36,16 @@ export function ZapCapSubtitles({ runId }: { runId: string }) {
   const [uppercase, setUppercase] = useState(true);
   const [zap, setZap] = useState<ZapState>('idle');
   const [zapMsg, setZapMsg] = useState('');
+  const [hasVideo, setHasVideo] = useState(false);
+  const [videoVersion, setVideoVersion] = useState(0);
 
   async function openEditor() {
     setShown(true);
+    // ¿ya hay un video subtitulado generado de antes? -> mostrar el reproductor.
+    void fetch(`/api/runs/${runId}/subtitles/zapcap?check=1`)
+      .then((r) => r.json())
+      .then((j: { exists?: boolean }) => setHasVideo(Boolean(j.exists)))
+      .catch(() => {});
     if (lines) return;
     try {
       const r = await fetch(`/api/runs/${runId}/subtitles?json=1`);
@@ -79,7 +86,9 @@ export function ZapCapSubtitles({ runId }: { runId: string }) {
       const j = (await r.json()) as { error?: string; message?: string };
       if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
       setZap('done');
-      setZapMsg(j.message || '¡Listo! Descarga tu video con subtítulos.');
+      setZapMsg(j.message || '¡Listo! Mira tu video con subtítulos abajo.');
+      setHasVideo(true);
+      setVideoVersion((v) => v + 1);
     } catch (e) {
       setZap('error');
       setZapMsg((e as Error).message);
@@ -166,15 +175,24 @@ export function ZapCapSubtitles({ runId }: { runId: string }) {
           >
             {zap === 'working' ? 'Generando…' : 'Generar video con subtítulos'}
           </button>
-          {zap === 'done' ? (
+          {hasVideo ? (
             <a
-              href={`/api/runs/${runId}/subtitles/zapcap`}
+              href={`/api/runs/${runId}/subtitles/zapcap?download=1`}
               className={cn(buttonVariants({ variant: 'outline' }))}
             >
               ⬇ Descargar video con subtítulos
             </a>
           ) : null}
         </div>
+        {hasVideo ? (
+          <video
+            key={videoVersion}
+            src={`/api/runs/${runId}/subtitles/zapcap?v=${videoVersion}`}
+            controls
+            playsInline
+            className="aspect-[9/16] max-h-[70vh] rounded-md bg-black"
+          />
+        ) : null}
         {zapMsg ? (
           <div className={cn('text-xs', zap === 'error' ? 'text-destructive' : 'text-muted-foreground')}>
             {zapMsg}
