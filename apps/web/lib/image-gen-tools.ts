@@ -359,27 +359,37 @@ export async function compareImagesWithVision(
   return CompareSchema.parse(JSON.parse(text));
 }
 
-// === Selector de fotograma limpio ======================================
+// === Selector de fotograma de REFERENCIA (representativo, NO el más simple) ===
+// Ruta de aprendizaje: la referencia debe capturar el estilo Y su densidad típica.
+// Un frame "limpio/minimalista" pierde la riqueza del estilo; elegimos el más
+// REPRESENTATIVO (rico, con la composición típica del ad), evitando solo los frames
+// que son puro mockup de redes / texto quemado, o atípicamente vacíos.
 
-const CLEAN_FRAME_SYSTEM = `You pick the BEST reference frame to learn an ad's VISUAL STYLE from. You receive several numbered frames from one video ad. Choose the frame that best shows the ad's native art style (the illustrated / 3D / photographic look of the main subject and scene) with the LEAST overlaid chrome: NO social-media mockup UI (Instagram/TikTok frames, like/comment/share buttons, profile headers), NO big burned-in caption/hook text, NO logos or watermarks.
+const REFERENCE_FRAME_SYSTEM = `You pick the BEST reference frame to learn and reproduce an ad's VISUAL STYLE from. You receive several numbered frames from one video ad. Choose the frame that is MOST REPRESENTATIVE of the ad's native art style AND its typical composition density — a rich, content-full scene that captures how the ad usually looks (its characters, environment, and amount of elements).
 
-Prefer a clean in-world scene over a "screenshot / mockup" frame. Return EXCLUSIVELY this JSON: {"bestIndex": <0-based integer>, "reason": "<max 12 words>"}`;
+RULES:
+- PREFER a frame that shows the subject(s) + environment in the ad's full visual richness. If the ad's scenes are busy/dense (multiple characters, detailed environments, effects), pick a BUSY/DENSE frame — do NOT pick an unusually empty or minimal frame.
+- AVOID frames that are mostly social-media mockup chrome (Instagram/TikTok UI, like/comment buttons, profile headers), or dominated by big burned-in caption text, or atypically sparse.
+- Goal: a frame a generator could use to reproduce THIS ad's look at FULL fidelity, including its density.
 
-const CleanFrameSchema = z.object({
+Return EXCLUSIVELY this JSON: {"bestIndex": <0-based integer>, "reason": "<max 14 words>"}`;
+
+const ReferenceFrameSchema = z.object({
   bestIndex: z.number().int().min(0),
   reason: z.string().optional(),
 });
 
 /**
- * De un set de keyframes, elige el más LIMPIO (sin overlay de texto/UI/mockup
- * de redes) para usarlo como referencia de estilo. Esto evita la causa #2 del
- * score injusto del aprendizaje: comparar/anclar contra un frame que tenía el
- * mockup de Instagram + texto "CORTISOL" quemado.
+ * De un set de keyframes, elige el más REPRESENTATIVO del estilo (rico, con la
+ * densidad típica del ad) para usarlo como referencia de generación. ANTES elegía
+ * el más "limpio/simple" — pero eso PIERDE la densidad (un estilo cargado se
+ * aprendía minimalista). Ahora favorece el frame que mejor captura el look completo,
+ * evitando solo los puramente mockup/texto o atípicamente vacíos.
  *
  * Usa Gemini Vision. Si no hay key, hay 0-1 frames, o algo falla, devuelve el
- * índice del medio (comportamiento previo) como fallback seguro.
+ * índice del medio (fallback seguro — suele ser una escena de contenido).
  */
-export async function pickCleanestFrameIndex(framePaths: string[]): Promise<number> {
+export async function pickReferenceFrameIndex(framePaths: string[]): Promise<number> {
   const midpoint = Math.floor(framePaths.length / 2);
   if (framePaths.length <= 1) return 0;
   const googleApiKey = process.env['GOOGLE_AI_API_KEY'];
@@ -391,14 +401,14 @@ export async function pickCleanestFrameIndex(framePaths: string[]): Promise<numb
       const b64 = (await readFile(framePaths[i]!)).toString('base64');
       parts.push({ inlineData: { mimeType: 'image/png', data: b64 } });
     }
-    parts.push({ text: 'Pick the cleanest frame (least text/UI/mockup overlay). Return the JSON.' });
+    parts.push({ text: 'Pick the most REPRESENTATIVE frame (richest, captures the style and its density; avoid pure text/UI/mockup frames and unusually empty ones). Return the JSON.' });
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${VISION_MODEL}:generateContent`;
     const resp = await fetch(url, {
       method: 'POST',
       headers: { 'x-goog-api-key': googleApiKey, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts }],
-        systemInstruction: { parts: [{ text: CLEAN_FRAME_SYSTEM }] },
+        systemInstruction: { parts: [{ text: REFERENCE_FRAME_SYSTEM }] },
         generationConfig: { responseMimeType: 'application/json', temperature: 0.1 },
       }),
     });
@@ -408,7 +418,7 @@ export async function pickCleanestFrameIndex(framePaths: string[]): Promise<numb
     };
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!text) return midpoint;
-    const parsed = CleanFrameSchema.parse(JSON.parse(text));
+    const parsed = ReferenceFrameSchema.parse(JSON.parse(text));
     return parsed.bestIndex >= 0 && parsed.bestIndex < framePaths.length
       ? parsed.bestIndex
       : midpoint;

@@ -11,13 +11,19 @@
 // El preset auto-aprendido queda en packages/presets/pending/learned-auto-{ts}.preset.json
 // y se puede aprobar luego desde /admin (o promoverlo a active manualmente).
 
-import { writeFile, mkdir } from 'node:fs/promises';
+import { writeFile, mkdir, readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { existsSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { CANONICAL_FORMATS, PresetConfigSchema, type PresetConfig } from '@video-factory/contracts';
 import { understandVideo, type VideoUnderstanding } from './video-understander';
+import { findFfmpegPath } from './ffmpeg-locator';
+import { pickReferenceFrameIndex } from './image-gen-tools';
 import { logSystemEvent } from './system-log';
+
+const execFileAsync = promisify(execFile);
 
 // Busca el directorio packages/presets/pending desde múltiples puntos de origen
 // para que funcione tanto en Next.js runtime (cwd=apps/web) como en scripts
@@ -43,6 +49,46 @@ function findPresetsPendingDir(): string {
 }
 
 const PRESETS_PENDING_DIR = findPresetsPendingDir();
+
+// === RUTA DE APRENDIZAJE (codificada): referencia representativa + densidad =====
+
+/**
+ * Downscalea un frame a 512px JPEG y lo devuelve como data-URI, para embeberlo en
+ * preset.visualStyle.referenceImages (viaja con el JSON; la creación lo usa con
+ * Nano Banana para anclar estilo + densidad). Si ffmpeg falla, devuelve null.
+ */
+async function frameToDataUri(framePath: string): Promise<string | null> {
+  try {
+    const ffmpeg = findFfmpegPath();
+    const outPath = `${framePath}.ref512.jpg`;
+    await execFileAsync(ffmpeg, [
+      '-y', '-hide_banner', '-loglevel', 'error',
+      '-i', framePath, '-vf', 'scale=512:-2', '-q:v', '5', outPath,
+    ]);
+    const buf = await readFile(outPath);
+    return `data:image/jpeg;base64,${buf.toString('base64')}`;
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[auto-learn] frameToDataUri falló:', (e as Error).message.slice(0, 200));
+    return null;
+  }
+}
+
+/**
+ * Si el estilo es DENSO, inyecta la densidad + los componentes recurrentes en el
+ * promptTemplate, para que la generación NAZCA cargada (no minimalista). Esta es la
+ * pieza de la ruta que evita aprender un estilo rico como si fuera simple.
+ */
+function enrichPromptWithDensity(
+  basePrompt: string,
+  density: VideoUnderstanding['compositionDensity'],
+  keyComponents: string[],
+): string {
+  if (density !== 'dense' && density !== 'very-dense') return basePrompt;
+  const comps =
+    keyComponents.length > 0 ? ` featuring ${keyComponents.slice(0, 6).join(', ')}` : '';
+  return `${basePrompt} DENSE, richly detailed, multi-component composition${comps} — many elements and characters per frame, layered depth, busy and full (NOT minimalist).`;
+}
 
 export interface AutoLearnOptions {
   videoPath: string;
@@ -139,6 +185,31 @@ export async function autoLearnPresetFromVideo(
     model: opts.model,
   });
 
+  // RUTA DE APRENDIZAJE (codificada): embeber una referencia REPRESENTATIVA (densa)
+  // + enriquecer el prompt con la densidad. Es el corazón de "igualar el estilo
+  // rápido": al crear, el pipeline usa esta referencia con Nano Banana (image-to-image)
+  // y el prompt ya pide la densidad correcta → la escena nace con el estilo completo.
+  let referenceImages: string[] = [];
+  try {
+    const framePaths = u.keyframes.map((k) => k.filePath);
+    if (framePaths.length > 0) {
+      const refIdx = await pickReferenceFrameIndex(framePaths);
+      const refFrame = framePaths[refIdx] ?? framePaths[Math.floor(framePaths.length / 2)];
+      if (refFrame) {
+        const dataUri = await frameToDataUri(refFrame);
+        if (dataUri) referenceImages = [dataUri];
+      }
+    }
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[auto-learn] embed referencia falló (sigo sin ella):', (e as Error).message.slice(0, 200));
+  }
+  const enrichedPromptTemplate = enrichPromptWithDensity(
+    u.understanding.suggestedPreset.promptTemplate,
+    u.understanding.compositionDensity,
+    u.understanding.keyVisualComponents,
+  );
+
   // 2) Construir PresetConfig completo desde el understanding
   const suggested = u.understanding.suggestedPreset;
   const formatCanonical = CANONICAL_FORMATS.find((f) => f.id === suggested.format);
@@ -193,13 +264,15 @@ export async function autoLearnPresetFromVideo(
     estrategia: suggested.estrategia,
     visualEngine: suggested.visualEngine,
     visualStyle: {
-      promptTemplate: suggested.promptTemplate,
+      promptTemplate: enrichedPromptTemplate,
       negativePrompt: suggested.negativePrompt,
       aspectRatio: '9:16',
-      referenceImages: [],
+      // RUTA: referencia representativa embebida (data-URI) → la creación la usa con
+      // Nano Banana para anclar estilo + densidad. Antes este array quedaba VACÍO.
+      referenceImages,
       // M B aditivo: paleta como hint en styleBoilerplate (los hex codes ayudan
       // al image generator a mantener consistencia)
-      styleBoilerplate: `${suggested.promptTemplate.slice(0, 200)} Dominant palette: ${u.understanding.palette.join(', ')}.`,
+      styleBoilerplate: `${enrichedPromptTemplate.slice(0, 240)} Dominant palette: ${u.understanding.palette.join(', ')}.`,
       forbiddenStyleTerms:
         suggested.negativePrompt
           .split(/[,;]/)

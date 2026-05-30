@@ -46,6 +46,11 @@ export interface RouteProfile {
     note: string;
   };
   animation: AnimationMode;
+  // RUTA: intensidad de movimiento al animar. Estilos animados/épicos → 'powerful'
+  // (acción dramática, no sutil); talking-head/UGC → 'subtle' (respiración, micro-
+  // cámara); 'moderate' = balance. Lo descubrimos en la frutinovela: el movimiento
+  // sutil era tibio para escenas épicas.
+  motionIntensity?: 'powerful' | 'moderate' | 'subtle';
 }
 
 // Orden = prioridad de match (el primero que matchea gana). Los más ESPECÍFICOS
@@ -77,6 +82,7 @@ const PROFILES: RouteProfile[] = [
       note: 'Criaturas cartoon: anatomía relajada (dedos/proporciones = estilo). Se mantiene el rechazo de fusiones/melted/gibberish.',
     },
     animation: 'ken-burns',
+    motionIntensity: 'powerful',
   },
   {
     id: 'illustrated',
@@ -136,6 +142,7 @@ const PROFILES: RouteProfile[] = [
       note: 'Humano real: anatomía estricta (5 dedos importa de verdad).',
     },
     animation: 'real',
+    motionIntensity: 'subtle',
   },
 ];
 
@@ -188,7 +195,7 @@ export function describeRouteProfiles(): string {
   return allRouteProfiles()
     .map(
       (p) =>
-        `- ${p.displayName} (id=${p.id}): anatomía=${p.validator.anatomyMode}, animación=${p.animation}. ${p.rationale}`,
+        `- ${p.displayName} (id=${p.id}): anatomía=${p.validator.anatomyMode}, animación=${p.animation}${p.motionIntensity ? `, movimiento=${p.motionIntensity}` : ''}. ${p.rationale}`,
     )
     .join('\n');
 }

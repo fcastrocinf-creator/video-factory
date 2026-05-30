@@ -27,7 +27,7 @@ import {
   buildImageProviderChain,
   generateImageWithReference,
   compareImagesWithVision,
-  pickCleanestFrameIndex,
+  pickReferenceFrameIndex,
 } from './image-gen-tools';
 import { autoLearnPresetFromVideo } from './auto-learn-preset';
 import { logSystemEvent } from './system-log';
@@ -180,12 +180,12 @@ export async function runPresetLearningLoop(
   if (keyframes.length === 0) {
     throw new Error('No se pudo extraer keyframe para referencia visual');
   }
-  // Elegimos el frame más LIMPIO (sin overlay de texto/UI/mockup de redes) como
-  // referencia de estilo. Antes se tomaba ciegamente el del medio — que en ads
-  // con mockup de Instagram caía justo en el frame con el texto quemado. Fallback
-  // seguro al del medio si el selector no está disponible.
-  const cleanIdx = await pickCleanestFrameIndex(keyframes.map((k) => k.filePath));
-  const referenceKeyframe = keyframes[cleanIdx] ?? keyframes[Math.floor(keyframes.length / 2)]!;
+  // Elegimos el frame más REPRESENTATIVO del estilo (rico, con la densidad típica
+  // del ad) como referencia. Antes se tomaba el "más limpio/simple" — pero eso
+  // perdía la densidad (un estilo cargado se aprendía minimalista). Fallback seguro
+  // al del medio si el selector no está disponible.
+  const refIdx = await pickReferenceFrameIndex(keyframes.map((k) => k.filePath));
+  const referenceKeyframe = keyframes[refIdx] ?? keyframes[Math.floor(keyframes.length / 2)]!;
   // Buffer de la referencia para anclar la generación (image-to-image / Nano Banana).
   const referenceBuffer = await readFile(referenceKeyframe.filePath);
 

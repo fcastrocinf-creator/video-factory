@@ -82,6 +82,17 @@ export const VideoUnderstandingSchema = z.object({
   }),
   // Análisis scene-by-scene
   scenes: z.array(VideoSceneAnalysisSchema).min(1).max(30),
+  // RUTA DE APRENDIZAJE (codificada): densidad/complejidad composicional del estilo.
+  // CRÍTICO para igualar el look — un estilo denso (muchos personajes/elementos por
+  // cuadro) se pierde si solo se captura medium+paleta. Se inyecta en el promptTemplate
+  // para que la generación NAZCA con la densidad correcta, no minimalista.
+  compositionDensity: z
+    .enum(['minimalist', 'moderate', 'dense', 'very-dense'])
+    .default('moderate'),
+  // Componentes visuales recurrentes que DEFINEN la riqueza del estilo (ej.
+  // "múltiples personajes-germen antropomórficos", "entorno interior del cuerpo con
+  // vasos sanguíneos", "efectos de fuego/energía"). Se inyectan en el prompt.
+  keyVisualComponents: z.array(z.string().min(2).max(160)).max(12).default([]),
   // Sugerencia de preset preliminar para que el pipeline lo use como punto de partida
   suggestedPreset: z.object({
     promptTemplate: z.string().min(50).max(3000),
@@ -138,6 +149,8 @@ Devolvés EXCLUSIVAMENTE JSON sin markdown fences, exactamente con este schema:
   "scenes": [
     { "sourceTimeSec": N.N, "visualDescription": "qué se ve", "characterIfPresent": "opcional", "narrativeBeat": "hook"|"problem"|"mechanism"|"demo"|"product-reveal"|"social-proof"|"cta"|"other", "shotType": "close-up"|"wide"|"split-screen"|...", "mood": "tense"|"hopeful"|... }
   ],
+  "compositionDensity": "minimalist" | "moderate" | "dense" | "very-dense",
+  "keyVisualComponents": ["elementos/personajes recurrentes que hacen RICO el estilo, ej 'multiple anthropomorphic germ characters', 'body-interior environment with blood vessels', 'fire/energy effects'"],
   "suggestedPreset": {
     "promptTemplate": "string que un image generator usará por escena — describe el estilo visual GENERAL aplicable a cualquier scene",
     "negativePrompt": "elementos a evitar",
@@ -160,6 +173,7 @@ CRITERIOS:
 - suggestedPreset.promptTemplate: debe capturar el LOOK general, no detalles per-escena (las escenas tienen su propio prompt en scenes[].visualDescription)
 - visualEngine: imagen4 si estático, veo-lite si tiene animación notable, etc.
 - estrategia: multi_escena si hay >3 shots distintos; plano_fijo si es 1 shot fijo
+- compositionDensity + keyVisualComponents: CRÍTICO para igualar el estilo. Mirá cuántos elementos/personajes hay POR cuadro: un solo sujeto en fondo liso → "minimalist"; un personaje principal + varios personajes/elementos secundarios + entorno detallado + efectos → "dense" o "very-dense". Listá en keyVisualComponents los componentes recurrentes que hacen el estilo visualmente rico (personajes secundarios, tipo de entorno, efectos). Si el estilo es denso, el promptTemplate DEBE pedir explícitamente esa densidad (ej. "DENSE, multi-component scene with multiple ... in a rich ... environment").
 
 Sé concreto y específico. NO inventes — basate solo en lo que ves en las imágenes.`;
 
