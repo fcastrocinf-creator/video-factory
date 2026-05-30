@@ -8,6 +8,7 @@ import { GoogleAuth } from 'google-auth-library';
 import { z } from 'zod';
 import {
   FalProvider,
+  GeminiImageProvider,
   GoogleImagenProvider,
   HiggsfieldImageProvider,
   OpenaiImageProvider,
@@ -156,6 +157,47 @@ export async function generateImageWithChain(
     }
   }
   throw lastError ?? new Error('Todos los providers de imagen fallaron');
+}
+
+/**
+ * Genera una imagen ANCLADA a una imagen de referencia (image-to-image) usando
+ * Gemini Nano Banana (gemini-2.5-flash-image), que soporta imagen+texto→imagen.
+ * Fija paleta, iluminación y medium al original MUCHO mejor que generar desde
+ * texto puro — que era la causa #1 del drift de paleta en el aprendizaje.
+ *
+ * El prompt instruye explícitamente: usa la referencia SOLO para estilo, genera
+ * una escena nueva, y NO copies texto/UI/logos de la referencia (para que el
+ * resultado quede limpio, listo para poner el copy en post-producción).
+ *
+ * Si no hay GOOGLE_AI_API_KEY o Nano Banana falla, cae de vuelta al chain
+ * texto-only (`generateImageWithChain`) para no romper el flujo.
+ */
+export async function generateImageWithReference(
+  prompt: string,
+  referenceImage: Buffer,
+  fallbackChain?: ProviderStep[],
+): Promise<{ buffer: Buffer; providerLabel: string }> {
+  const googleApiKey = process.env['GOOGLE_AI_API_KEY'];
+  if (googleApiKey) {
+    try {
+      const nanoBanana = new GeminiImageProvider({ apiKey: googleApiKey, name: 'gemini-image-ref' });
+      const buf = await nanoBanana.generate({
+        prompt:
+          prompt +
+          '\n\nIMPORTANT: use the provided reference image ONLY to match its visual STYLE — color palette, lighting, art medium and overall mood. Generate a NEW representative scene in that exact same style (different content/subject is fine). Do NOT copy any text, captions, social-media UI or logos from the reference image.',
+        aspectRatio: '9:16',
+        referenceImage,
+      });
+      return { buffer: buf, providerLabel: 'gemini-image-ref/nano-banana' };
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[generateImageWithReference] Nano Banana falló, fallback a texto-only: ${(e as Error).message.slice(0, 200)}`,
+      );
+    }
+  }
+  const chain = fallbackChain ?? buildImageProviderChain();
+  return generateImageWithChain(prompt, chain);
 }
 
 // === Comparator (Gemini Vision) ========================================
@@ -315,4 +357,62 @@ export async function compareImagesWithVision(
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
   if (!text) throw new Error('Comparator devolvió sin texto');
   return CompareSchema.parse(JSON.parse(text));
+}
+
+// === Selector de fotograma limpio ======================================
+
+const CLEAN_FRAME_SYSTEM = `You pick the BEST reference frame to learn an ad's VISUAL STYLE from. You receive several numbered frames from one video ad. Choose the frame that best shows the ad's native art style (the illustrated / 3D / photographic look of the main subject and scene) with the LEAST overlaid chrome: NO social-media mockup UI (Instagram/TikTok frames, like/comment/share buttons, profile headers), NO big burned-in caption/hook text, NO logos or watermarks.
+
+Prefer a clean in-world scene over a "screenshot / mockup" frame. Return EXCLUSIVELY this JSON: {"bestIndex": <0-based integer>, "reason": "<max 12 words>"}`;
+
+const CleanFrameSchema = z.object({
+  bestIndex: z.number().int().min(0),
+  reason: z.string().optional(),
+});
+
+/**
+ * De un set de keyframes, elige el más LIMPIO (sin overlay de texto/UI/mockup
+ * de redes) para usarlo como referencia de estilo. Esto evita la causa #2 del
+ * score injusto del aprendizaje: comparar/anclar contra un frame que tenía el
+ * mockup de Instagram + texto "CORTISOL" quemado.
+ *
+ * Usa Gemini Vision. Si no hay key, hay 0-1 frames, o algo falla, devuelve el
+ * índice del medio (comportamiento previo) como fallback seguro.
+ */
+export async function pickCleanestFrameIndex(framePaths: string[]): Promise<number> {
+  const midpoint = Math.floor(framePaths.length / 2);
+  if (framePaths.length <= 1) return 0;
+  const googleApiKey = process.env['GOOGLE_AI_API_KEY'];
+  if (!googleApiKey) return midpoint;
+  try {
+    const parts: Array<Record<string, unknown>> = [];
+    for (let i = 0; i < framePaths.length; i++) {
+      parts.push({ text: `Frame ${i}:` });
+      const b64 = (await readFile(framePaths[i]!)).toString('base64');
+      parts.push({ inlineData: { mimeType: 'image/png', data: b64 } });
+    }
+    parts.push({ text: 'Pick the cleanest frame (least text/UI/mockup overlay). Return the JSON.' });
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${VISION_MODEL}:generateContent`;
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'x-goog-api-key': googleApiKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts }],
+        systemInstruction: { parts: [{ text: CLEAN_FRAME_SYSTEM }] },
+        generationConfig: { responseMimeType: 'application/json', temperature: 0.1 },
+      }),
+    });
+    if (!resp.ok) return midpoint;
+    const data = (await resp.json()) as {
+      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+    };
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) return midpoint;
+    const parsed = CleanFrameSchema.parse(JSON.parse(text));
+    return parsed.bestIndex >= 0 && parsed.bestIndex < framePaths.length
+      ? parsed.bestIndex
+      : midpoint;
+  } catch {
+    return midpoint;
+  }
 }

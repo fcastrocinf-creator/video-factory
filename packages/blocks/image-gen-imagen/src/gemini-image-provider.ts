@@ -73,7 +73,7 @@ export class GeminiImageProvider implements ImageProvider {
     const model = req.model ?? this.defaultModel;
     const url = `${GEMINI_BASE}/${encodeURIComponent(model)}:generateContent`;
 
-    const body = buildRequestBody(model, req.prompt, req.aspectRatio);
+    const body = buildRequestBody(model, req.prompt, req.aspectRatio, req.referenceImage);
 
     // Internal retry: 429 transient y 5xx, hasta `internalRetries` veces con backoff.
     // Para quota-exhausted no retry-amos (lo detectamos abajo).
@@ -197,11 +197,23 @@ function buildRequestBody(
   model: string,
   prompt: string,
   aspectRatio: AspectRatio,
+  referenceImage?: Buffer,
 ): Record<string, unknown> {
+  // Partes del contenido. Si hay imagen de referencia, va ANTES del texto: el
+  // modelo la toma como base de estilo (image-to-image / edición Nano Banana),
+  // anclando paleta y composición al original en lugar de generar desde cero.
+  const parts: Array<Record<string, unknown>> = [];
+  if (referenceImage) {
+    parts.push({
+      inlineData: { mimeType: 'image/png', data: referenceImage.toString('base64') },
+    });
+  }
+  parts.push({ text: prompt });
+
   const isV3 = /^gemini-3/i.test(model);
   if (isV3) {
     return {
-      contents: [{ parts: [{ text: prompt }] }],
+      contents: [{ parts }],
       generationConfig: {
         responseModalities: ['IMAGE'],
         responseFormat: { image: { aspectRatio } },
@@ -210,7 +222,7 @@ function buildRequestBody(
   }
   // Default: shape de la 2.5 family (GA estable, Nano Banana).
   return {
-    contents: [{ parts: [{ text: prompt }] }],
+    contents: [{ parts }],
     generationConfig: {
       responseModalities: ['IMAGE'],
       imageConfig: { aspectRatio },

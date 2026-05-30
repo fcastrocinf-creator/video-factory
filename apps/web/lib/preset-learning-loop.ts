@@ -25,8 +25,9 @@ import { z } from 'zod';
 import { extractKeyframes } from './frame-extractor';
 import {
   buildImageProviderChain,
-  generateImageWithChain,
+  generateImageWithReference,
   compareImagesWithVision,
+  pickCleanestFrameIndex,
 } from './image-gen-tools';
 import { autoLearnPresetFromVideo } from './auto-learn-preset';
 import { logSystemEvent } from './system-log';
@@ -173,13 +174,20 @@ export async function runPresetLearningLoop(
   const keyframes = await extractKeyframes({
     videoPath: opts.videoPath,
     outputDir: keyframeDir,
-    count: 3, // tres frames: inicio, medio, fin — usamos el del medio como referencia
+    count: 6, // más frames para poder ELEGIR el más limpio como referencia
     widthPx: 720,
   });
   if (keyframes.length === 0) {
     throw new Error('No se pudo extraer keyframe para referencia visual');
   }
-  const referenceKeyframe = keyframes[Math.floor(keyframes.length / 2)]!;
+  // Elegimos el frame más LIMPIO (sin overlay de texto/UI/mockup de redes) como
+  // referencia de estilo. Antes se tomaba ciegamente el del medio — que en ads
+  // con mockup de Instagram caía justo en el frame con el texto quemado. Fallback
+  // seguro al del medio si el selector no está disponible.
+  const cleanIdx = await pickCleanestFrameIndex(keyframes.map((k) => k.filePath));
+  const referenceKeyframe = keyframes[cleanIdx] ?? keyframes[Math.floor(keyframes.length / 2)]!;
+  // Buffer de la referencia para anclar la generación (image-to-image / Nano Banana).
+  const referenceBuffer = await readFile(referenceKeyframe.filePath);
 
   // PASO 2: loop iterativo de generar → comparar → refinar
   const iterations: IterationResult[] = [];
@@ -202,7 +210,10 @@ export async function runPresetLearningLoop(
       const testPromptForGen =
         currentPromptTemplate +
         '\n\nScene content: a representative establishing shot capturing the overall mood and subject of the ad.';
-      const gen = await generateImageWithChain(testPromptForGen, providerChain);
+      // Generamos ANCLANDO a la imagen de referencia (Nano Banana image-to-image):
+      // fija paleta/iluminación/medium al original — el fix #1 del drift de paleta.
+      // Si Nano Banana no está disponible o falla, cae al chain texto-only.
+      const gen = await generateImageWithReference(testPromptForGen, referenceBuffer, providerChain);
       const testImagePath = resolve(
         keyframeDir,
         `test_iter${String(iter).padStart(2, '0')}.png`,

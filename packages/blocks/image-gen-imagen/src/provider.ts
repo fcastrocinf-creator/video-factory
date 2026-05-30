@@ -12,6 +12,11 @@ export interface ImageGenerationRequest {
   //   - GoogleImagenProvider: 'imagen-4.0-fast-generate-001', etc.
   //   - FalProvider: 'fal-ai/flux-pro/v1.1', 'fal-ai/flux/dev', etc.
   model?: string;
+  // OPCIONAL: imagen de referencia (buffer PNG/JPEG). Los providers que soportan
+  // image-to-image (ej. Gemini Nano Banana) la usan para ANCLAR el estilo/paleta
+  // del resultado al de la referencia. Los providers que NO la soportan la
+  // ignoran silenciosamente (se comportan como texto-only). Retrocompatible.
+  referenceImage?: Buffer;
 }
 
 export interface ImageProvider {
