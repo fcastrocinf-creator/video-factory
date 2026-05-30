@@ -96,6 +96,19 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     );
   }
 
+  // v3.3 fix: no aceptar intervenciones sobre runs que no las pueden consumir
+  // (terminados, o en modo auto). Antes quedaban como pendientes fantasma que un
+  // fork del mismo run podía consumir por error.
+  const runMode = (row as { mode?: string }).mode ?? 'auto';
+  if ((row.status !== 'running' && row.status !== 'pending') || runMode !== 'collaborative') {
+    return NextResponse.json(
+      {
+        error: `Este run no está en co-creación activa (status=${row.status}, modo=${runMode}); no hay un loop que pueda aplicar la intervención.`,
+      },
+      { status: 409 },
+    );
+  }
+
   const intervention = await recordIntervention({
     runId: params.id,
     sceneIndex: body.sceneIndex ?? null,

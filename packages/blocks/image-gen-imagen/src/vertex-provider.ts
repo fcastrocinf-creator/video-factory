@@ -153,10 +153,17 @@ export class VertexImagenProvider implements ImageProvider {
       //   - `RESOURCE_EXHAUSTED` o `quota exceeded` → patrones más amplios para
       //     cubrir otras cuotas de Vertex que también deberían escalar.
       const isQuotaExhausted =
-        resp.status === 429 &&
-        /quota.*exceeded|RESOURCE_EXHAUSTED|online_prediction_requests_per_base_model/i.test(
-          bodyText,
-        );
+        (resp.status === 429 &&
+          /quota.*exceeded|RESOURCE_EXHAUSTED|online_prediction_requests_per_base_model/i.test(
+            bodyText,
+          )) ||
+        // v3.3 fix: un 403 por billing deshabilitado / permission denied / API no
+        // habilitada NO se resuelve con retry — la cascada debe saltar al próximo
+        // provider en vez de morir. Lo tratamos como exhausted.
+        (resp.status === 403 &&
+          /PERMISSION_DENIED|SERVICE_DISABLED|billing|has not been used|consumer|disabled/i.test(
+            bodyText,
+          ));
       const retryable =
         !isQuotaExhausted && (resp.status === 429 || resp.status >= 500);
       throw new ImageProviderError(
