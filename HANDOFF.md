@@ -2,7 +2,59 @@
 
 > Documento de traspaso entre conversaciones de Claude Code.
 > Para continuar: abre un chat nuevo en este proyecto y di **"lee HANDOFF.md y seguimos"**.
-> Última actualización: 2026-05-30.
+> Última actualización: 2026-05-30 (Versión 2).
+
+---
+
+## 🏁 VERSIÓN 2 — 30-05-2026 (checkpoint, tag `v2-2026-05-30`)
+
+> El gran avance de esta sesión: **codificar la RUTA para igualar un estilo de ad
+> desde 0, rápido**. El valor de la herramienta no es un video puntual — es la
+> velocidad para clavar visualmente cualquier estilo. Eso quedó en la lógica.
+
+### Lo construido (todo con checkpoints locales, sin push a GitHub)
+1. **Aprendizaje mejorado** (`image-gen-tools.ts`, `preset-learning-loop.ts`):
+   generación con **imagen de referencia** (Nano Banana image-to-image) + selección
+   del frame **representativo** (antes "el más limpio" → perdía densidad). 93 → 99.
+2. **Referencia en creación** (`image-gen-multi/block.ts` + `pipeline.ts`): cuando el
+   preset trae `referenceImages`, el bloque antepone un step Nano Banana que ancla el
+   estilo. Gated por preset (los otros estilos no se tocan).
+3. **Perfiles de ruta** (`route-profiles.ts`) — "acá es diferente" hecho datos:
+   cartoon/ilustrado = anatomía **lenient** + motion **powerful**; UGC/real = **strict**
+   + **subtle**; default = histórico. `resolveRouteProfile()`.
+4. **Validator style-aware** (`scene-validator/validator-v3.ts`): `anatomyMode`. En
+   `lenient` NO se rechaza por conteo de dedos/toes/proporciones (son estilo en cartoon).
+   Default `strict` = comportamiento histórico. **Verificado: cartoon→0 rechazos anatómicos.**
+5. **Arquitecto IA** (`/arquitecto`, contextType `architect` en `claude-chat-discuss.ts`):
+   chat (Sonnet) que conoce pipeline + perfiles de ruta + cerebro, **propone cambios con
+   tu OK** (nunca toca código solo).
+6. **RUTA DE APRENDIZAJE CODIFICADA** (`auto-learn-preset.ts` + `video-understander.ts`):
+   captura **densidad** (`compositionDensity` + `keyVisualComponents`) + **embebe una
+   referencia representativa** en el preset (antes `referenceImages` quedaba VACÍO) +
+   **enriquece el prompt** con la densidad. Doc: `investigacion/RUTA-IGUALAR-ESTILO.md`.
+7. **Fix anti-texto** (`scene-planner/block.ts`): la **narración ya no se quema** en las
+   escenas. Causa: la frase "NO text/NO captions/NO Spanish text..." (×10) **cebaba** a
+   Imagen a dibujar texto (paradoja de la negación). Ahora 1 mención concisa + regla:
+   el único texto en pantalla son etiquetas de producto/villano vía `textOverlays`.
+
+### Videos de prueba generados (en `storage/runs/`)
+- Frutinovela SuperCalm (denso + Kling pro potente) — validó densidad + animación.
+- **Vitaly Gotas** (`final-vitaly.mp4`) — el pipeline generó escenas **densas solas**
+  para un guion/marca NUEVOS con el preset bakeado → validó que la ruta se transfiere.
+
+### Commits de la V2 (orden): `38280db` → `0dad365` → `ebba651` → `91e0884` → `1c1faf9` → `2a73a6d`
+
+### ⚠️ Pendientes de la V2 (lo importante para seguir)
+1. **Validar e2e el aprendizaje**: re-aprender un estilo DESDE 0 y confirmar que el
+   preset sale con `referenceImages` poblado + densidad en el prompt, AUTOMÁTICO. (La
+   lógica está; falta la corrida. Hoy el preset frutinovela fue medio-manual.)
+2. **Cablear `motionIntensity`** al animador (`scene-animator/buildMotionPrompt`) —
+   hoy es solo dato en el perfil de ruta; la animación potente se aplicó a mano.
+3. **Negative prompt en los providers** (refuerzo anti-texto): hoy NO se usa negative
+   prompt → suprimir texto/lettering ahí blindaría el fix del scene-planner.
+4. **Validar el fix anti-texto** con una corrida nueva (confirmar que no sale caption).
+5. **Voseo argentino** en prompts viejos (chip de tarea pendiente) — el código nuevo
+   ya está en neutro; falta limpiar `claude-chat-discuss` baseStyle + validator-chat-ia.
 
 ---
 
