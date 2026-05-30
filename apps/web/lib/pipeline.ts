@@ -873,10 +873,38 @@ export async function runPipeline(
         // está disponible en AMBOS modos para que VALIDATOR CHAT IA pueda reportar
         // anti-patrones también en modo rip-fidelity).
 
+        // ALTA FIDELIDAD (gated): si el preset trae una imagen de referencia
+        // (data-URI en visualStyle.referenceImages), la decodificamos y se la
+        // pasamos al bloque para que Nano Banana ancle el estilo a esa imagen.
+        // Si el preset NO tiene referencia, queda undefined y el bloque se
+        // comporta EXACTAMENTE igual que siempre (cero impacto en otros estilos).
+        let presetReferenceImage: Buffer | undefined;
+        {
+          const refStr = preset.visualStyle?.referenceImages?.[0];
+          if (refStr && refStr.startsWith('data:')) {
+            try {
+              presetReferenceImage = Buffer.from(
+                refStr.slice(refStr.indexOf(',') + 1),
+                'base64',
+              );
+              logger.info(
+                { runId, presetId, bytes: presetReferenceImage.length },
+                'pipeline:preset_reference_image_loaded',
+              );
+            } catch (e) {
+              logger.warn(
+                { runId, err: (e as Error).message },
+                'pipeline:preset_reference_image_decode_failed',
+              );
+            }
+          }
+        }
+
         const imageMulti = new ImageGenMultiBlock({
           concurrency: 8,
           minIntervalMs: 3500,
           providerChain,
+          referenceImage: presetReferenceImage,
           validate: true, // siempre
           // M1 (24-may-2026 post Test 5 feedback): subir agresividad del validator
           // ahora que tenemos budget paid ($5-7/video) — antes 1 retry y score 75

@@ -15,6 +15,7 @@ import {
   type SceneTrack,
 } from '@video-factory/contracts';
 import {
+  GeminiImageProvider,
   GoogleImagenProvider,
   ImageProviderError,
   type ImageProvider,
@@ -46,6 +47,10 @@ export interface ProviderStep {
   model?: string;
   // Label legible para logs.
   label?: string;
+  // OPCIONAL: imagen de referencia para este step (image-to-image). Solo la usan
+  // providers que la soportan (Gemini Nano Banana). Cuando está, el prompt se
+  // refuerza para "estilo solamente". Los demás steps la dejan undefined.
+  referenceImage?: Buffer;
 }
 
 export interface ImageGenMultiBlockOptions {
@@ -93,6 +98,11 @@ export interface ImageGenMultiBlockOptions {
   };
   // Estilo base del preset, para validar consistencia.
   styleBase?: string;
+  // ALTA FIDELIDAD (gated por preset): imagen de referencia para anclar el estilo
+  // vía Nano Banana (image-to-image). Cuando viene, se antepone un step Nano Banana
+  // que genera cada escena anclada a esta imagen. Si es undefined, el chain queda
+  // EXACTAMENTE igual que antes (cero impacto en presets sin referencia).
+  referenceImage?: Buffer;
   // FAST MODE — sacrifica algunas validaciones avanzadas para acelerar el render.
   // Cuando true:
   //   - Skip anatomy voting (2 calls Gemini paralelos por escena → ahorro ~7s)
@@ -281,7 +291,7 @@ export class ImageGenMultiBlock implements Block<SceneTrack, SceneTrack> {
     // Construir la cadena de provider-steps.
     // Precedencia: options.providerChain > options.modelChain > options.client > default.
     const apiKey = process.env['GOOGLE_AI_API_KEY'];
-    const providerSteps: ProviderStep[] = (() => {
+    const baseProviderSteps: ProviderStep[] = (() => {
       if (this.options.providerChain && this.options.providerChain.length > 0) {
         return this.options.providerChain;
       }
@@ -297,6 +307,25 @@ export class ImageGenMultiBlock implements Block<SceneTrack, SceneTrack> {
       ]);
       return models.map((m) => ({ provider: googleProvider, model: m, label: `google:${m}` }));
     })();
+
+    // ALTA FIDELIDAD (gated por preset): si llega una imagen de referencia,
+    // anteponemos un step Nano Banana que ANCLA el estilo a esa imagen
+    // (image-to-image). El resto del chain queda de fallback. SIN referencia,
+    // el chain queda EXACTAMENTE igual que antes (cero impacto en otros presets).
+    const referenceImageForGen = this.options.referenceImage;
+    const googleKeyForRef = process.env['GOOGLE_AI_API_KEY'];
+    const providerSteps: ProviderStep[] =
+      referenceImageForGen && googleKeyForRef
+        ? [
+            {
+              provider: new GeminiImageProvider({ apiKey: googleKeyForRef, name: 'gemini-image' }),
+              model: 'gemini-2.5-flash-image',
+              label: 'gemini:nano-banana-ref',
+              referenceImage: referenceImageForGen,
+            },
+            ...baseProviderSteps,
+          ]
+        : baseProviderSteps;
 
     if (providerSteps.length === 0) {
       return err(
@@ -389,9 +418,15 @@ export class ImageGenMultiBlock implements Block<SceneTrack, SceneTrack> {
             // de cada provider, no un global único. (Paso 3 del 99-PLAN-FINAL.md.)
             const buffer = await getLimiter(step.provider.name).schedule(() =>
               step.provider.generate({
-                prompt,
+                // Si este step ancla a una imagen de referencia (Nano Banana),
+                // reforzamos: usar la referencia SOLO para estilo, renderizando el
+                // contenido de ESTA escena, sin copiar objetos/UI/texto del original.
+                prompt: step.referenceImage
+                  ? `${prompt}\n\nIMPORTANT: use the provided reference image ONLY to match its visual STYLE — color palette, lighting, art medium and character-rendering style. Render THIS scene's described content in that same style. Do NOT copy the reference's specific objects, composition, or any text/UI/logos from it.`
+                  : prompt,
                 aspectRatio: '9:16',
                 model: step.model,
+                referenceImage: step.referenceImage,
               }),
             );
             readPngDimensions(buffer);
