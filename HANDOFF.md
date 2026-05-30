@@ -2,7 +2,51 @@
 
 > Documento de traspaso entre conversaciones de Claude Code.
 > Para continuar: abre un chat nuevo en este proyecto y di **"lee HANDOFF.md y seguimos"**.
-> Última actualización: 2026-05-29.
+> Última actualización: 2026-05-30.
+
+---
+
+## 0.AAAAA. SUBTÍTULOS — SRT + ZapCap + editor (30-may-2026)
+
+> Feature nueva: ponerle subtítulos al video DESPUÉS de renderizado, estilo CapCut,
+> con texto editable. El owner NO quiere subtítulos quemados por el pipeline (los
+> sacó del flujo hace tiempo porque "no tomaba bien las letras").
+
+### Lo que se construyó (todo en `apps/web/`)
+- **Export `.srt` con texto exacto** — `GET /api/runs/[id]/subtitles` genera un SRT con
+  el texto EXACTO del guion (scene-plan) + tiempos por frase. `?json=1` devuelve las
+  líneas para el editor. Sin transcripción → sin errores de letras. Botón en el video terminado.
+- **Editor de subtítulos en la página del run** — `runs/[id]/ZapCapSubtitles.tsx`: botón
+  **"Agregar subtítulos"** → muestra el guion EDITABLE (cada línea con su tiempo), se
+  corrige el texto, y se descarga el `.srt` con las ediciones (client-side).
+- **Integración ZapCap** (subtítulos animados estilo CapCut por API):
+  - `apps/web/lib/zapcap.ts` — cliente: upload (`POST /videos`) → task (`POST /videos/{id}/task`
+    con templateId + `renderOptions.styleOptions.fontUppercase`) → poll (`GET .../task/{taskId}`)
+    → descarga el MP4. Base `https://api.zapcap.ai`, auth header `x-api-key`.
+  - `POST /api/runs/[id]/subtitles/zapcap` genera (style + MAYÚSCULAS) → guarda
+    `final-subtitled.mp4`. `GET` lo sirve (inline para `<video>`; `?download=1` attachment;
+    `?check=1` dice si existe). El video subtitulado se **reproduce embebido** en la página.
+  - Templates reales (de `GET /templates`): Hormozi 3 (default), Ella, Luke, Celine, Maya.
+  - **Probado end-to-end OK** (Hormozi 3 + uppercase → final-subtitled.mp4 7.4MB).
+
+### ⚠️ Cosas a saber
+- **Marca de agua ZapCap** = plan GRATUITO. Se quita con plan pago ($10/mes Starter+);
+  misma API key, sin tocar código.
+- **Keys en `.env`** (gitignored, NUNCA en el repo): `ZAPCAP_API_KEY`, `ZAPCAP_WEBHOOK_SECRET`.
+  Placeholders en `.env.example`.
+
+### Pendientes (no implementados)
+1. **Inyectar el texto editado a ZapCap** — hoy ZapCap transcribe del audio (puede errar).
+   Su API permite editar la transcripción antes de renderizar (`autoApprove:false` +
+   `POST /videos/{id}/task/{taskId}/approve-transcript`) → con eso el video estilizado
+   usaría las palabras EXACTAS del owner. Es el siguiente paso natural.
+2. **Persistir las ediciones del editor** (hoy son client-side, se pierden al recargar).
+
+### 🔒 Git (REGLA del owner, 30-may)
+- **NO hacer `git push` a GitHub salvo que el owner lo pida explícitamente.** Commits
+  locales SÍ (red de seguridad). Repo: github.com/fcastrocinf-creator/video-factory.
+- Estado: el trabajo de subtítulos está commiteado LOCAL (no subido). `origin/main` quedó
+  en el último push autorizado (la auditoría + integración ZapCap base).
 
 ---
 
