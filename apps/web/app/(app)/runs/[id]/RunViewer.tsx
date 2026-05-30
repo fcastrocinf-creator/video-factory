@@ -183,6 +183,13 @@ export function RunViewer({ runId }: RunViewerProps) {
           >
             Descargar MP4
           </a>
+          <a
+            href={`/api/runs/${runId}/subtitles`}
+            className={cn(buttonVariants({ variant: 'outline' }))}
+            title="Subtítulos .srt con tu texto exacto — para importar en CapCut / ZapCap"
+          >
+            Descargar subtítulos (.srt)
+          </a>
           <Link
             href={`/runs/${runId}/editor`}
             className={cn(buttonVariants({ variant: 'outline' }))}
