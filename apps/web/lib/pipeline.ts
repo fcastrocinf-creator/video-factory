@@ -900,11 +900,31 @@ export async function runPipeline(
           }
         }
 
+        // RUTA POR TIPO DE VIDEO (route-profiles.ts): resolvemos el perfil del preset
+        // y aplicamos el tratamiento correcto. Hoy: anatomyMode del validator
+        // (cartoon/ilustrado = lenient; UGC/real = strict). Default = strict → cero
+        // cambio para estilos que no matchean un perfil específico.
+        const { resolveRouteProfile } = await import('./route-profiles');
+        const routeProfile = resolveRouteProfile({
+          styleBase: sceneTrack.styleBase,
+          formatId: preset.format?.id,
+          styleId: preset.style?.id,
+        });
+        logger.info(
+          {
+            runId,
+            routeProfile: routeProfile.id,
+            anatomyMode: routeProfile.validator.anatomyMode,
+          },
+          'pipeline:route_profile_resolved',
+        );
+
         const imageMulti = new ImageGenMultiBlock({
           concurrency: 8,
           minIntervalMs: 3500,
           providerChain,
           referenceImage: presetReferenceImage,
+          anatomyMode: routeProfile.validator.anatomyMode,
           validate: true, // siempre
           // M1 (24-may-2026 post Test 5 feedback): subir agresividad del validator
           // ahora que tenemos budget paid ($5-7/video) — antes 1 retry y score 75

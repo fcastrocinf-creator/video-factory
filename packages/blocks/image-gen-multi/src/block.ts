@@ -103,6 +103,10 @@ export interface ImageGenMultiBlockOptions {
   // que genera cada escena anclada a esta imagen. Si es undefined, el chain queda
   // EXACTAMENTE igual que antes (cero impacto en presets sin referencia).
   referenceImage?: Buffer;
+  // ANATOMÍA POR RUTA (ver route-profiles.ts). 'strict' (default) = anatomía humana
+  // dura (UGC/real). 'lenient' = cartoon/ilustrado (no se rechaza por conteo de
+  // dedos/toes/proporciones). Se pasa tal cual al SceneValidatorV3.
+  anatomyMode?: 'strict' | 'lenient';
   // FAST MODE — sacrifica algunas validaciones avanzadas para acelerar el render.
   // Cuando true:
   //   - Skip anatomy voting (2 calls Gemini paralelos por escena → ahorro ~7s)
@@ -635,6 +639,7 @@ export class ImageGenMultiBlock implements Block<SceneTrack, SceneTrack> {
           styleBase: this.options.styleBase,
           narratorProfile: narratorForValidator,
           fastMode,
+          anatomyMode: this.options.anatomyMode,
         });
         lastValidation = validation;
 

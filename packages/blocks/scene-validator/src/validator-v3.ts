@@ -33,6 +33,11 @@ export interface ValidationV3Input {
   // Solo deja el cuestionario estructurado. Útil para acelerar generación cuando se
   // confía en el provider primario. Trade-off: menos catches sutiles de anatomía.
   fastMode?: boolean;
+  // ANATOMÍA POR RUTA (ver route-profiles.ts). 'strict' (default) = anatomía humana
+  // dura (5 dedos/toes/proporciones son críticos) — UGC/realista. 'lenient' =
+  // criaturas cartoon / ilustrado: se ignoran conteo de dedos/toes/proporciones
+  // (son estilo). Las fusiones/melted reales las sigue cazando el panel ai-artifact.
+  anatomyMode?: 'strict' | 'lenient';
 }
 
 export type V3Verdict = 'pass' | 'regenerate' | 'fatal';
@@ -373,6 +378,7 @@ export class SceneValidatorV3 {
     // Anatomy vote: aplicar SOLO si structured detectó humanos + hands/feet visibles
     // (evita falsos positivos en paisajes / objetos puros).
     if (
+      input.anatomyMode !== 'lenient' &&
       anatomyOutcome.ok &&
       answers.humans_visible > 0 &&
       (answers.hand_1_visible || answers.foot_1_visible || answers.face_visible)
@@ -906,7 +912,15 @@ function analyzeStructuredAnswers(a: V3StructuredAnswers, input: ValidationV3Inp
   const refinementHints: string[] = [];
   let score = 100;
   let critical = false;
+  // En modo lenient (cartoon/ilustrado) saltamos los chequeos de anatomía HUMANA
+  // (dedos/toes/proporciones/simetría): son decisiones de estilo, no errores.
+  const lenient = input.anatomyMode === 'lenient';
 
+  // ANATOMÍA HUMANA (dedos / toes / proporciones / simetría). En modo lenient
+  // (criaturas cartoon / ilustrado) se SALTA todo este bloque: son decisiones de
+  // estilo, no errores. Las fusiones/melted reales las cazan el panel ai-artifact
+  // y el chequeo body_parts_fused (activos en AMBOS modos, más abajo).
+  if (!lenient) {
   // HANDS — distinguir entre "anatomía mala" (error) y "oclusión natural" (ok)
   if (a.hand_1_visible) {
     if (a.hand_1_fully_unoccluded && a.hand_1_digits_count !== 5) {
@@ -979,6 +993,7 @@ function analyzeStructuredAnswers(a: V3StructuredAnswers, input: ValidationV3Inp
     score -= 30;
     critical = true;
   }
+  } // fin anatomía humana (solo modo strict)
 
   // FACE
   if (a.face_visible) {
