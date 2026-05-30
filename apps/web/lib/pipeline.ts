@@ -1357,7 +1357,10 @@ export async function runPipeline(
                         sceneTrackWithImages = {
                           ...sceneTrackWithImages,
                           scenes: sceneTrackWithImages.scenes.map((s) =>
-                            s.index === sceneIdx ? r.updatedScene : s,
+                            // v3.3 fix: al regenerar la imagen sin re-animar, limpiamos
+                            // videoPath para que el compositor use la imagen NUEVA (Ken
+                            // Burns) en vez del clip viejo que ya no corresponde.
+                            s.index === sceneIdx ? { ...r.updatedScene, videoPath: undefined } : s,
                           ),
                         };
                         logger.info(
@@ -1627,10 +1630,14 @@ export async function runPipeline(
                       reAnimate: false, // animator complejo de pasar acá — TODO
                     });
                     // Actualizar el scene-track por scene.index (no por posición).
+                    // v3.3 fix: limpiar videoPath — la imagen cambió y NO re-animamos,
+                    // así el compositor usa la imagen nueva en vez del clip viejo.
                     sceneTrackWithImages = {
                       ...sceneTrackWithImages,
                       scenes: sceneTrackWithImages.scenes.map((s) =>
-                        s.index === action.sceneIndex ? regen.updatedScene : s,
+                        s.index === action.sceneIndex
+                          ? { ...regen.updatedScene, videoPath: undefined }
+                          : s,
                       ),
                     };
                     logger.info(
