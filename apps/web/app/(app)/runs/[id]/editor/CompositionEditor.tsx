@@ -13,6 +13,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { ClaudeChatPanel } from '@/components/ClaudeChatPanel';
 
 interface Rect {
   xPct: number;
@@ -627,6 +628,31 @@ export function CompositionEditor({ runId }: { runId: string }) {
         <Link href={`/runs/${runId}`} className="block text-xs underline text-muted-foreground">
           ← Volver al run
         </Link>
+
+        {/* M8: chat IA para discutir cambios en escenas del editor */}
+        <div className="pt-3">
+          <ClaudeChatPanel
+            contextType="scene-edit"
+            contextData={{
+              runId,
+              selectedSceneIdx,
+              selectedElementId: selectedElId,
+              totalScenes: scenes.length,
+              currentScene:
+                selectedSceneIdx !== null && scenes[selectedSceneIdx]
+                  ? {
+                      idx: selectedSceneIdx,
+                      text: scenes[selectedSceneIdx]?.text?.slice(0, 200),
+                      elementsCount:
+                        scenes[selectedSceneIdx]?.composition?.length ?? 0,
+                    }
+                  : null,
+              dirty,
+            }}
+            title="Discutí cambios con Claude"
+            placeholder="Ej: '¿Cómo cambio el prompt de scene 5 para que el producto se vea?' o 'El layout actual sobrecarga la imagen?'"
+          />
+        </div>
       </div>
     </div>
   );

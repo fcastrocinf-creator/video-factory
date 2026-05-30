@@ -5,3 +5,5 @@ export * from './composition-memory.js';
 export * from './errors.js';
 export * from './logger.js';
 export * from './pipeline.js';
+export * from './claude-judge.js';
+export * from './preset-judgment-memory.js';

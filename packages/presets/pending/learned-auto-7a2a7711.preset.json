@@ -1,0 +1,70 @@
+{
+  "id": "learned-auto-7a2a7711",
+  "displayName": "🧠 Auto · ugc testimonial herbal remedy",
+  "description": "Preset auto-aprendido por Claude (haiku-4.5) desde un video. Ad de testimonio UGC para suplemento herbal de drenaje linfático. Abre con hook visual dramático (anatomía 3D inflamada) + ingrediente natural (trébol rojo), luego pivota a testimonios reales de mujeres mostrando el producto y resultados en timeline (72h, 14 días). Fuerza: autenticidad UGC + urgenci",
+  "category": {
+    "id": "mujer_protagonista",
+    "displayName": "Mujer protagonista",
+    "description": "La narradora es una mujer que cuenta su propia historia."
+  },
+  "format": {
+    "id": "ugc-testimony",
+    "displayName": "UGC Testimonio",
+    "description": "Persona hablando a cámara (selfie/talking-head amateur). Idealmente con Veo Talking Head."
+  },
+  "style": {
+    "id": "ugc-testimonial-herbal-remedy",
+    "displayName": "Ugc Testimonial Herbal Remedy"
+  },
+  "classification": {
+    "formato": "ugc",
+    "hookAngulo": "autoridad",
+    "funnelStage": "tofu",
+    "awareness": "problem_aware"
+  },
+  "estrategia": "multi_escena",
+  "visualEngine": "veo-lite",
+  "visualStyle": {
+    "promptTemplate": "UGC-style testimonial video for herbal wellness product. Mix of: (1) dramatic 3D medical anatomy visualization with red/orange inflammation overlay and neon green text callouts for hook, (2) close-up product shots of dark glass herbal tincture bottle with white/green label, (3) authentic real-woman testimonials in home bathroom/bedroom settings with natural or warm lighting, shot on smartphone. Women of diverse ethnicities, ages 25-50, speaking directly to camera with genuine expressions progressing from concern to relief. Neon green text overlays with bold claims about timeline results (14 days, 72 hours). Aspect ratio 9:16 vertical.",
+    "negativePrompt": "avoid: overly polished studio lighting, professional actors, artificial backgrounds, medical disclaimers visible, skeptical expressions, product not visible in testimonial scenes, horizontal orientation, watermarks, low-quality phone footage artifacts",
+    "aspectRatio": "9:16",
+    "referenceImages": [],
+    "styleBoilerplate": "UGC-style testimonial video for herbal wellness product. Mix of: (1) dramatic 3D medical anatomy visualization with red/orange inflammation overlay and neon green text callouts for hook, (2) close-up  Dominant palette: #8B0000, #FF6B35, #00FF00, #F5F5DC, #2F4F4F, #FFFFFF.",
+    "forbiddenStyleTerms": [
+      "professional actors",
+      "artificial backgrounds",
+      "medical disclaimers visible",
+      "skeptical expressions",
+      "horizontal orientation",
+      "watermarks"
+    ]
+  },
+  "subtitles": {
+    "style": "word_level_kinetic",
+    "font": "Inter",
+    "fontSize": 64,
+    "color": "#FFFFFF",
+    "strokeColor": "#000000",
+    "strokeWidth": 4,
+    "highlightColor": "#8B0000",
+    "position": "bottom",
+    "allCaps": false
+  },
+  "defaultDurationSeconds": 70,
+  "scenesPerMinute": 12,
+  "composition": {
+    "kenBurns": {
+      "enabled": false,
+      "zoomStart": 1,
+      "zoomEnd": 1,
+      "panX": 0,
+      "panY": 0
+    },
+    "backgroundMusic": {
+      "enabled": false,
+      "volumeDb": -20
+    }
+  },
+  "createdAt": "2026-05-25T06:23:21.133Z",
+  "updatedAt": "2026-05-25T06:23:21.133Z"
+}

@@ -12,12 +12,14 @@
 // Para File API solo Google AI Studio (Vertex requiere GCS bucket aparte).
 
 import { readFile } from 'node:fs/promises';
+import { spawn } from 'node:child_process';
 import { GoogleAuth } from 'google-auth-library';
 import {
   AdAnalysisSchema,
   AdVisualStyleProfileSchema,
   type AdAnalysis,
 } from '@video-factory/contracts';
+import { findFfmpegPath } from './ffmpeg-locator';
 
 const VERTEX_LOCATION = process.env['GCP_LOCATION'] ?? 'us-central1';
 const VERTEX_MODEL = 'gemini-2.5-pro';
@@ -32,13 +34,14 @@ const INLINE_LIMIT_MB = 14;
 const MAX_VIDEO_MB = 200;
 
 export class AdAnalyzerError extends Error {
-  constructor(
-    message: string,
-    public readonly statusCode: number = 500,
-    public readonly responseBody: string = '',
-  ) {
+  readonly statusCode: number;
+  readonly responseBody: string;
+
+  constructor(message: string, statusCode: number = 500, responseBody: string = '') {
     super(message);
     this.name = 'AdAnalyzerError';
+    this.statusCode = statusCode;
+    this.responseBody = responseBody;
   }
 }
 
@@ -53,8 +56,31 @@ EXCEPTIONS:
 
 RULES:
 1. Detect the ad's language from the narration (ISO 639-1: "en", "es", "pt", "fr", etc.).
-2. Identify scenes by visual change. A "scene" is a continuous shot with the same composition. Most ads have 8-25 scenes.
-3. For each scene, write a SPECIFIC visualDescription: characters' age/gender/clothing/expression, location, objects visible, action happening, color palette.
+
+2. SCENE DETECTION — be EXHAUSTIVE. A "scene" is a single continuous shot with stable composition/framing/subject. EVERY cut, EVERY camera switch, EVERY change of subject/background/composition = NEW scene. Modern fast-paced vertical ads (TikTok/Reels) typically have **1 scene every 2-6 seconds**. For a 60s ad expect 12-30 scenes; for a 120s ad expect 25-50; for a 180s ad expect 35-65. UNDER-counting is the MOST common error of analysts — when in doubt, split into MORE scenes, not fewer. Do NOT group visually distinct shots just because they share a narrative beat or topic.
+
+   COUNT AS NEW SCENE:
+   - Hard cut to a different setting / background
+   - Hard cut to a different character (or same character in different setting/angle)
+   - Hard cut to a different angle or framing of the same subject (close-up → wide, front → side)
+   - Before/after split-screen appearing or disappearing
+   - Picture-in-picture (PiP) overlay appearing or disappearing
+   - Full-screen text card / chyron appearing or disappearing
+   - Transition to/from a product close-up
+   - Transition to/from an anatomical diagram, chart, or illustration
+   - Transition to/from a testimonial card or social proof element
+   - Cross-fade / dissolve between two visually different shots (count both endpoints as separate scenes)
+   - In animated/illustrated ads: every new illustrated frame with different composition counts
+
+   DO NOT COUNT AS NEW SCENE:
+   - Small camera movement (slow pan, slow zoom in/out) within the SAME shot/setting/subject
+   - Overlay text appearing or disappearing while the background stays the same
+   - Brief 1-frame flash transitions between two identical/near-identical shots
+   - Color grade or filter shift mid-shot
+
+   BEFORE FINALIZING: re-watch mentally and verify scene count matches density rule above. If the ad is 150s and you got 12 scenes, you almost certainly missed cuts — revise upward.
+
+3. For each scene, write a SPECIFIC visualDescription in 25-60 WORDS MAX (be concise; long descriptions blow the token budget when there are many scenes): characters' age/gender/clothing/expression, location, objects visible, action happening, color palette. Skip fluff and adjectives — just observable facts.
 4. Identify the product if visible: name (if shown), packaging description (color/shape/label), main claim spoken about it.
 5. Editorial line = the persuasion mechanic. Describe: hook type, narrative arc, emotional appeal, tone, target audience inferred.
 6. Hook type — pick from the enum.
@@ -150,23 +176,78 @@ interface GenerateContentResponse {
   error?: { code?: number; message?: string };
 }
 
-function buildBody(videoBase64: string, mimeType: string, includeRole: boolean): Record<string, unknown> {
+/**
+ * Detecta la duración exacta del video con ffprobe local. Lo usamos para:
+ *   1) Pasarle a Gemini el rango temporal CORRECTO como hint hard del prompt.
+ *      Sin esto, Gemini a veces alucina y reporta duración mayor a la real,
+ *      asignando timestamps a escenas que no existen.
+ *   2) Validar post-parse que ninguna escena tenga endSec > duración real.
+ *
+ * Si ffprobe falla devuelve null — el caller decide qué hacer (degradar gracefully).
+ */
+async function probeVideoDurationSec(videoPath: string): Promise<number | null> {
+  const ffmpegBin = findFfmpegPath();
+  // ffprobe vive al lado de ffmpeg con misma extensión
+  const ffprobeBin = ffmpegBin.replace(/ffmpeg(\.exe)?$/, 'ffprobe$1');
+  return new Promise((resolve) => {
+    let stderr = '';
+    const proc = spawn(
+      ffprobeBin,
+      [
+        '-v',
+        'error',
+        '-show_entries',
+        'format=duration',
+        '-of',
+        'default=noprint_wrappers=1:nokey=1',
+        videoPath,
+      ],
+      { stdio: ['ignore', 'pipe', 'pipe'] },
+    );
+    let stdout = '';
+    proc.stdout.on('data', (c) => (stdout += c.toString()));
+    proc.stderr.on('data', (c) => (stderr = stderr + c.toString()));
+    proc.on('close', () => {
+      const n = parseFloat(stdout.trim());
+      resolve(Number.isFinite(n) && n > 0 ? n : null);
+    });
+    proc.on('error', () => resolve(null));
+  });
+}
+
+function buildUserText(realDurationSec: number | null): string {
+  const base = 'Analyze this ad and return the structured JSON exactly as specified in your system instruction. No extra prose.';
+  if (realDurationSec === null) return base;
+  return (
+    base +
+    `\n\nHARD CONSTRAINT: the video's EXACT duration is ${realDurationSec.toFixed(2)} seconds (measured by ffprobe). Set totalDurationSeconds = ${realDurationSec.toFixed(2)}. EVERY scene's startSec and endSec MUST be within [0, ${realDurationSec.toFixed(2)}]. Do NOT report timestamps beyond ${realDurationSec.toFixed(2)}s — there is no video content there. If you find yourself wanting to write a scene with endSec > ${realDurationSec.toFixed(2)}, you are hallucinating; revise.`
+  );
+}
+
+function buildBody(
+  videoBase64: string,
+  mimeType: string,
+  includeRole: boolean,
+  realDurationSec: number | null,
+): Record<string, unknown> {
   const userContent = {
     parts: [
       { inlineData: { mimeType, data: videoBase64 } },
-      {
-        text: 'Analyze this ad and return the structured JSON exactly as specified in your system instruction. No extra prose.',
-      },
+      { text: buildUserText(realDurationSec) },
     ],
   };
   return {
     contents: [includeRole ? { role: 'user', ...userContent } : userContent],
     systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
-    generationConfig: { responseMimeType: 'application/json', temperature: 0.2 },
+    generationConfig: { responseMimeType: 'application/json', temperature: 0, maxOutputTokens: 65536 },
   };
 }
 
-async function callVertex(videoBase64: string, mimeType: string): Promise<string> {
+async function callVertex(
+  videoBase64: string,
+  mimeType: string,
+  realDurationSec: number | null,
+): Promise<string> {
   const projectId = process.env['GCP_PROJECT_ID'];
   if (!projectId) {
     throw new AdAnalyzerError('GCP_PROJECT_ID no configurado para Vertex AI Gemini');
@@ -179,7 +260,7 @@ async function callVertex(videoBase64: string, mimeType: string): Promise<string
       Authorization: `Bearer ${token}`,
       'content-type': 'application/json',
     },
-    body: JSON.stringify(buildBody(videoBase64, mimeType, true)),
+    body: JSON.stringify(buildBody(videoBase64, mimeType, true, realDurationSec)),
   });
   if (!resp.ok) {
     const body = await resp.text();
@@ -201,7 +282,11 @@ async function callVertex(videoBase64: string, mimeType: string): Promise<string
   return text;
 }
 
-async function callAiStudio(videoBase64: string, mimeType: string): Promise<string> {
+async function callAiStudio(
+  videoBase64: string,
+  mimeType: string,
+  realDurationSec: number | null,
+): Promise<string> {
   const apiKey = process.env['GOOGLE_AI_API_KEY'];
   if (!apiKey) throw new AdAnalyzerError('GOOGLE_AI_API_KEY no configurado para AI Studio Gemini');
   const url = `${AI_STUDIO_BASE}/models/${VERTEX_MODEL}:generateContent`;
@@ -211,7 +296,7 @@ async function callAiStudio(videoBase64: string, mimeType: string): Promise<stri
       'x-goog-api-key': apiKey,
       'content-type': 'application/json',
     },
-    body: JSON.stringify(buildBody(videoBase64, mimeType, false)),
+    body: JSON.stringify(buildBody(videoBase64, mimeType, false, realDurationSec)),
   });
   if (!resp.ok) {
     const body = await resp.text();
@@ -375,7 +460,11 @@ async function deleteFromGcsBestEffort(
   }
 }
 
-async function callVertexWithGcs(gsUri: string, mimeType: string): Promise<string> {
+async function callVertexWithGcs(
+  gsUri: string,
+  mimeType: string,
+  realDurationSec: number | null,
+): Promise<string> {
   const projectId = process.env['GCP_PROJECT_ID'];
   if (!projectId) {
     throw new AdAnalyzerError('GCP_PROJECT_ID no configurado para Vertex+GCS');
@@ -388,14 +477,12 @@ async function callVertexWithGcs(gsUri: string, mimeType: string): Promise<strin
         role: 'user',
         parts: [
           { fileData: { mimeType, fileUri: gsUri } },
-          {
-            text: 'Analyze this ad and return the structured JSON exactly as specified in your system instruction. No extra prose.',
-          },
+          { text: buildUserText(realDurationSec) },
         ],
       },
     ],
     systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
-    generationConfig: { responseMimeType: 'application/json', temperature: 0.2 },
+    generationConfig: { responseMimeType: 'application/json', temperature: 0, maxOutputTokens: 65536 },
   };
   const resp = await fetch(url, {
     method: 'POST',
@@ -592,6 +679,7 @@ async function callAiStudioWithFile(
   fileUri: string,
   mimeType: string,
   apiKey: string,
+  realDurationSec: number | null,
 ): Promise<string> {
   const url = `${AI_STUDIO_BASE}/models/${VERTEX_MODEL}:generateContent`;
   const body = {
@@ -599,14 +687,12 @@ async function callAiStudioWithFile(
       {
         parts: [
           { fileData: { mimeType, fileUri } },
-          {
-            text: 'Analyze this ad and return the structured JSON exactly as specified in your system instruction. No extra prose.',
-          },
+          { text: buildUserText(realDurationSec) },
         ],
       },
     ],
     systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
-    generationConfig: { responseMimeType: 'application/json', temperature: 0.2 },
+    generationConfig: { responseMimeType: 'application/json', temperature: 0, maxOutputTokens: 65536 },
   };
   const resp = await fetch(url, {
     method: 'POST',
@@ -672,17 +758,30 @@ export async function analyzeAd(opts: AnalyzeAdOptions): Promise<AdAnalysis> {
   }
   const mimeType = opts.mimeType ?? 'video/mp4';
 
+  // Detectar duración REAL con ffprobe ANTES de llamar Gemini. Si tenemos la
+  // duración exacta, se la pasamos como hard constraint del prompt para que NO
+  // alucine timestamps fuera del rango real. Si ffprobe falla, seguimos sin el
+  // hint (degradación graceful).
+  const realDurationSec = await probeVideoDurationSec(opts.videoPath);
+  if (realDurationSec === null) {
+    // eslint-disable-next-line no-console
+    console.warn('[ad-analyzer] ffprobe no pudo medir duración — Gemini puede alucinar timestamps');
+  } else {
+    // eslint-disable-next-line no-console
+    console.info(`[ad-analyzer] duración real detectada: ${realDurationSec.toFixed(2)}s (hard constraint para Gemini)`);
+  }
+
   let rawJson: string;
   if (mb <= INLINE_LIMIT_MB) {
     // PATH RÁPIDO: inline base64 vía Vertex (primary) + AI Studio (fallback prepay)
     const videoBase64 = videoBuffer.toString('base64');
     try {
-      rawJson = await callVertex(videoBase64, mimeType);
+      rawJson = await callVertex(videoBase64, mimeType, realDurationSec);
     } catch (e) {
       if (isPrepayDepleted(e)) {
         // eslint-disable-next-line no-console
         console.warn('[ad-analyzer] Vertex prepay depleted, fallback AI Studio');
-        rawJson = await callAiStudio(videoBase64, mimeType);
+        rawJson = await callAiStudio(videoBase64, mimeType, realDurationSec);
       } else {
         throw e;
       }
@@ -710,7 +809,7 @@ export async function analyzeAd(opts: AnalyzeAdOptions): Promise<AdAnalysis> {
           aiStudioKey,
         );
         try {
-          rawJson = await callAiStudioWithFile(fileUri, mimeType, aiStudioKey);
+          rawJson = await callAiStudioWithFile(fileUri, mimeType, aiStudioKey, realDurationSec);
         } finally {
           void deleteFileBestEffort(fileName, aiStudioKey);
         }
@@ -736,7 +835,7 @@ export async function analyzeAd(opts: AnalyzeAdOptions): Promise<AdAnalysis> {
           projectId,
         );
         try {
-          rawJson = await callVertexWithGcs(gsUri, mimeType);
+          rawJson = await callVertexWithGcs(gsUri, mimeType, realDurationSec);
         } finally {
           void deleteFromGcsBestEffort(bucketName, objectName);
         }
@@ -751,7 +850,7 @@ export async function analyzeAd(opts: AnalyzeAdOptions): Promise<AdAnalysis> {
         projectId,
       );
       try {
-        rawJson = await callVertexWithGcs(gsUri, mimeType);
+        rawJson = await callVertexWithGcs(gsUri, mimeType, realDurationSec);
       } finally {
         void deleteFromGcsBestEffort(bucketName, objectName);
       }
@@ -801,5 +900,70 @@ export async function analyzeAd(opts: AnalyzeAdOptions): Promise<AdAnalysis> {
       `AdAnalysis schema validation falló: ${validated.error.message.slice(0, 500)}`,
     );
   }
-  return validated.data;
+
+  // POST-PROCESSING: corregir timestamps y duración usando la duración REAL
+  // medida con ffprobe. Gemini a veces alucina (reporta duración mayor a la real
+  // o asigna escenas a tiempos inexistentes). Si tenemos realDurationSec, lo
+  // tomamos como fuente de verdad y normalizamos.
+  const result = validated.data;
+  if (realDurationSec !== null) {
+    if (Math.abs(result.totalDurationSeconds - realDurationSec) > 1) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[ad-analyzer] Gemini reportó duración ${result.totalDurationSeconds.toFixed(1)}s pero ffprobe midió ` +
+          `${realDurationSec.toFixed(1)}s. Corrigiendo a la real (ffprobe).`,
+      );
+      result.totalDurationSeconds = realDurationSec;
+    }
+    // Filtrar escenas con startSec >= duración real (no existen en el video)
+    const beforeCount = result.scenes.length;
+    result.scenes = result.scenes.filter((s) => s.startSec < realDurationSec);
+    if (result.scenes.length < beforeCount) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[ad-analyzer] Descarté ${beforeCount - result.scenes.length} escena(s) con startSec fuera del rango real del video.`,
+      );
+    }
+    // Truncar endSec si excede la duración real
+    let truncated = 0;
+    for (const s of result.scenes) {
+      if (s.endSec > realDurationSec) {
+        s.endSec = realDurationSec;
+        truncated++;
+      }
+    }
+    if (truncated > 0) {
+      // eslint-disable-next-line no-console
+      console.warn(`[ad-analyzer] Truncado endSec en ${truncated} escena(s) que excedían la duración real.`);
+    }
+    // Re-indexar tras filtros
+    result.scenes.forEach((s, i) => (s.index = i));
+  }
+
+  // SANITY CHECK de densidad de escenas. Si Gemini subdetectó, logueamos warning
+  // visible. Heurística: ads vertical fast-pace tienen ~1 escena cada 2-6s. Si la
+  // ratio es < 1 escena cada 8s, casi seguro hay sub-counting.
+  const durationSec = result.totalDurationSeconds || 0;
+  const scenesPerSec = durationSec > 0 ? result.scenes.length / durationSec : 0;
+  const lowDensity = durationSec > 30 && scenesPerSec < 1 / 8; // <1 escena cada 8s en ad >30s
+  if (lowDensity) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[ad-analyzer] WARNING posible sub-counting de escenas: ${result.scenes.length} escenas en ${durationSec.toFixed(1)}s ` +
+        `(1 cada ${(durationSec / result.scenes.length).toFixed(1)}s). Ads vertical fast-pace típicamente ` +
+        `tienen 1 cada 2-6s. Si el resultado no refleja la cantidad real de cortes visuales del original, ` +
+        `el rip-fidelity-aligner va a producir menos escenas que el original — perdiendo fidelidad.`,
+    );
+  }
+  // Validación duraciones por escena: si alguna escena dura > 15s en un ad de
+  // < 180s, probablemente agrupó varios cortes en una. Logueamos para revisión.
+  const suspiciousScenes = result.scenes.filter((s) => s.endSec - s.startSec > 15);
+  if (suspiciousScenes.length > 0) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[ad-analyzer] ${suspiciousScenes.length} escena(s) > 15s — probablemente agrupó varios cortes en una sola: ` +
+        suspiciousScenes.map((s) => `#${s.index} (${(s.endSec - s.startSec).toFixed(1)}s)`).join(', '),
+    );
+  }
+  return result;
 }

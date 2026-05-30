@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import Bottleneck from 'bottleneck';
 import { err, ok, type Result } from 'neverthrow';
 import {
   BlockError,
@@ -24,6 +25,11 @@ import {
   SceneValidatorV3,
   type V3ValidationResult,
 } from '@video-factory/block-scene-validator';
+import {
+  judgeImage,
+  type JudgeReport,
+  type JudgeOptions,
+} from '@video-factory/block-preview-judge';
 
 function readPngDimensions(buffer: Buffer): { width: number; height: number } {
   if (buffer.length < 24) throw new Error('PNG demasiado corto');
@@ -98,6 +104,43 @@ export interface ImageGenMultiBlockOptions {
   // Total ahorro estimado: ~10-15 min en peor caso para 27 escenas.
   // Trade-off: ~10-15% mayor probabilidad de pasar errores anatómicos sutiles.
   fastMode?: boolean;
+
+  // M2 (24-may-2026) — segundo par de ojos con Claude. Cuando true Y hay
+  // ANTHROPIC_API_KEY, después de que SceneValidatorV3 dice "pass", invocamos
+  // judgeImage() (Haiku 4.5 default) que evalúa scoreVisual / scoreBrandFit /
+  // scoreHookStrength + issues categorizados + suggestions accionables.
+  // Si Claude rechaza, tratamos como V3 regenerate-style usando suggestions
+  // como refinementHint (consume 1 attempt del MAX_VALIDATION_RETRIES).
+  // Costo: ~$0.001-0.003 por imagen con Haiku 4.5. Latencia: +2-4s por imagen.
+  useClaudeJudge?: boolean;
+  claudeJudgeOptions?: JudgeOptions;
+  // Contexto de brand que se pasa al judge para evaluar scoreBrandFit con info real.
+  // No se usa para V3 (V3 trabaja a nivel anatomía/semántica).
+  brandContext?: {
+    brandId?: string;
+    palette?: string[];
+    styleSummary?: string;
+    productName?: string;
+    productDescription?: string;
+    productUsageForm?: string;
+    language?: string;
+  };
+  // v2 (27-may-2026): callback que se dispara cada vez que el judge sugiere un
+  // patch sistémico (`suggestedSystemicPatch` en algún issue). El caller
+  // (pipeline.ts) trackea cross-scene del mismo run — si el mismo patch aparece
+  // en 2+ scenes → registra como propuesta en prompt-patches para review.
+  // Esto IMPLEMENTA el flujo que pidió el owner:
+  //   scene → judge → si problema sistémico → propone corrección permanente al preset
+  onSystemicPatchSuggested?: (info: {
+    patch: string;
+    sceneIndex: number;
+    severity: 'minor' | 'major' | 'critical';
+    category: string;
+    description: string;
+  }) => void;
+  // Script completo (resumen) para inyectar como context al judge — permite
+  // detectar inconsistencias narrativas más profundas.
+  scriptFullSummary?: string;
 }
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
@@ -142,6 +185,80 @@ function parseRetryDelaySeconds(body: string): number | null {
   const m = body.match(/"retryDelay"\s*:\s*"([0-9.]+)s"/);
   if (!m) return null;
   return parseFloat(m[1]!);
+}
+
+// ============================================================================
+// Throttling per-provider via Bottleneck
+// ============================================================================
+// Cada provider del chain tiene su propio rate limit real; usar UN throttle
+// GLOBAL (como el `acquireSlot + MIN_INTERVAL_MS` anterior) no respeta esa
+// diversidad — algunos providers reciben demasiados requests y otros muy pocos.
+//
+// TUNING POST 24-MAY-2026 — BUDGET $5-7/VIDEO (paid tier):
+// Subimos los límites después de validar que el modo fast era demasiado lento
+// (~20+ min vs 5-7 min del benchmark del owner) por throttling conservador.
+// El owner confirmó budget paid, así que destrabamos:
+//   - Gemini Nano Banana (Tier 1 paid): subimos reservoir 10→30 IPM, concurrency 4→8.
+//   - Vertex Imagen us-central1: minTime 1200→600ms, concurrency 2→4 (proyecto billed).
+//   - OpenAI gpt-image-1: concurrency 5→10, minTime 200→100ms (Tier 2+ permitido).
+//   - AI Studio Imagen tier 1: SIN CAMBIO — daily caps son hard, no sirve subir.
+//   - Higgsfield / fal: subimos para aprovechar paid tier.
+//
+// Los limiters viven a NIVEL MÓDULO (no por instancia del block) para que dos
+// rips concurrentes compartan el mismo throttle por provider — si fueran
+// per-instancia, cada rip dispararía su quota independientemente y reventaríamos
+// todos los caps.
+//
+// Si reverse: bajamos a los valores anteriores (commit anterior) — el sistema
+// funcionaba pero conservador para tier gratuito.
+//
+// Ver investigacion/99-PLAN-FINAL.md paso 3 + investigacion/04-resilience-patterns-ts.md.
+
+const limiters = new Map<string, Bottleneck>();
+
+function makeLimiterFor(providerName: string): Bottleneck {
+  switch (providerName) {
+    case 'gemini-image':
+      // Nano Banana paid tier: 30 IPM (3x el conservador previo). Reservoir
+      // refills cada 60s. maxConcurrent 8 = doble el anterior.
+      return new Bottleneck({
+        reservoir: 30,
+        reservoirRefreshAmount: 30,
+        reservoirRefreshInterval: 60_000,
+        maxConcurrent: 8,
+        minTime: 100,
+      });
+    case 'vertex-imagen':
+      // Vertex Imagen `us-central1` paid: target ~100 RPM. minTime 600ms,
+      // concurrency 4 (doble el anterior). Si pega quota Bug 1 + Bug 2 saltan.
+      return new Bottleneck({ minTime: 600, maxConcurrent: 4 });
+    case 'openai-image':
+      // OpenAI gpt-image-1: ya tiene retry interno con backoff explícito por 429.
+      // En Tier 2+ subimos concurrencia 10 y minTime 100ms (vs 5 / 200 anterior).
+      return new Bottleneck({ maxConcurrent: 10, minTime: 100 });
+    case 'google-imagen':
+      // AI Studio Imagen tier 1: daily caps + RPM bajo. SIN CAMBIO — subir no
+      // sirve, el cap es del lado del proveedor (gratuito).
+      return new Bottleneck({ maxConcurrent: 1, minTime: 6000 });
+    case 'higgsfield-image':
+      // Higgsfield paid tier permite más concurrencia que conservador.
+      return new Bottleneck({ maxConcurrent: 8, minTime: 150 });
+    case 'fal-image':
+      // fal.ai paga por uso, sin RPM limit estricto. Subimos concurrency.
+      return new Bottleneck({ maxConcurrent: 12, minTime: 100 });
+    default:
+      // Provider desconocido: pacing conservador (no causar daño).
+      return new Bottleneck({ maxConcurrent: 2, minTime: 1000 });
+  }
+}
+
+function getLimiter(providerName: string): Bottleneck {
+  let limiter = limiters.get(providerName);
+  if (!limiter) {
+    limiter = makeLimiterFor(providerName);
+    limiters.set(providerName, limiter);
+  }
+  return limiter;
 }
 
 export class ImageGenMultiBlock implements Block<SceneTrack, SceneTrack> {
@@ -200,8 +317,11 @@ export class ImageGenMultiBlock implements Block<SceneTrack, SceneTrack> {
     await mkdir(ctx.workDir, { recursive: true });
 
     const CONCURRENCY = this.options.concurrency ?? 2;
-    const MIN_INTERVAL_MS = this.options.minIntervalMs ?? 6500;
     const MAX_API_RETRIES = this.options.maxApiRetries ?? 5;
+    // Nota: `options.minIntervalMs` queda DEPRECATED — el throttling ahora es
+    // per-provider via Bottleneck (ver helpers `getLimiter` arriba). Si llega
+    // configurado, lo ignoramos silenciosamente para mantener backward compat.
+    void this.options.minIntervalMs;
     // En fastMode reducimos retries de validación de 3 a 1 (ahorra ~10 min peor caso)
     const fastMode = this.options.fastMode ?? false;
     const MAX_VALIDATION_RETRIES = this.options.maxValidationRetries ?? (fastMode ? 1 : 3);
@@ -227,13 +347,10 @@ export class ImageGenMultiBlock implements Block<SceneTrack, SceneTrack> {
     let completed = 0;
     const scenes: Scene[] = new Array(input.scenes.length);
 
-    let nextSlotAt = 0;
-    const acquireSlot = async (): Promise<void> => {
-      const now = Date.now();
-      const wait = Math.max(0, nextSlotAt - now);
-      nextSlotAt = Math.max(now, nextSlotAt) + MIN_INTERVAL_MS;
-      if (wait > 0) await sleep(wait);
-    };
+    // Throttling per-provider lo maneja ahora `getLimiter()` (Bottleneck) — ver
+    // helpers al inicio del archivo. Reemplaza el throttle GLOBAL anterior basado
+    // en `nextSlotAt + acquireSlot()` (un único MIN_INTERVAL_MS para todos los
+    // providers, que no respeta caps individuales). Paso 3 del 99-PLAN-FINAL.md.
 
     // Llama a un provider con dos niveles de resiliencia:
     //   1. Retry-with-backoff para errores transitorios (429 per-minute, 5xx)
@@ -267,13 +384,16 @@ export class ImageGenMultiBlock implements Block<SceneTrack, SceneTrack> {
 
         let stepExhausted = false;
         for (let i = 0; i <= MAX_API_RETRIES; i++) {
-          await acquireSlot();
           try {
-            const buffer = await step.provider.generate({
-              prompt,
-              aspectRatio: '9:16',
-              model: step.model,
-            });
+            // Bottleneck per-provider — throttling según los rate limits reales
+            // de cada provider, no un global único. (Paso 3 del 99-PLAN-FINAL.md.)
+            const buffer = await getLimiter(step.provider.name).schedule(() =>
+              step.provider.generate({
+                prompt,
+                aspectRatio: '9:16',
+                model: step.model,
+              }),
+            );
             readPngDimensions(buffer);
             return buffer;
           } catch (e) {
@@ -327,7 +447,28 @@ export class ImageGenMultiBlock implements Block<SceneTrack, SceneTrack> {
               throw e;
             }
             const retryable = isProvErr ? e.retryable : true;
-            if (!retryable || i === MAX_API_RETRIES) throw e;
+            // Bug 2 fix (investigacion/01-image-gen-multi-block-analysis.md):
+            // si AGOTAMOS retries en un step retryable, NO hacemos throw —
+            // marcamos el step como exhausted y dejamos que el while exterior
+            // salte al próximo provider. Sin esto, un provider que se queda
+            // colgado en 429 transient tumba el rip entero después de N retries
+            // sin tocar Higgsfield / fal / AI Studio.
+            if (i === MAX_API_RETRIES) {
+              ctx.logger.warn(
+                {
+                  runId: ctx.runId,
+                  scene: sceneIdx,
+                  step: stepLabel,
+                  maxRetries: MAX_API_RETRIES,
+                  lastStatus: isProvErr ? e.statusCode : undefined,
+                },
+                'image-gen-multi:step_retries_exhausted_marking_dead',
+              );
+              exhaustedSteps.add(stepIdx);
+              stepExhausted = true;
+              break;
+            }
+            if (!retryable) throw e;
             const explicit = isProvErr ? parseRetryDelaySeconds(e.responseBody) : null;
             const backoffSec = explicit ?? Math.min(60, 4 * 2 ** i);
             ctx.logger.warn(
@@ -342,7 +483,9 @@ export class ImageGenMultiBlock implements Block<SceneTrack, SceneTrack> {
               },
               'image-gen-multi:api_retrying',
             );
-            nextSlotAt = Math.max(nextSlotAt, Date.now() + backoffSec * 1000);
+            // El throttling per-provider (Bottleneck) maneja el pacing entre
+            // requests automáticamente; solo necesitamos el sleep para el backoff
+            // de retry. Ya no hace falta actualizar nextSlotAt (no existe).
             await sleep(backoffSec * 1000);
           }
         }
@@ -361,6 +504,11 @@ export class ImageGenMultiBlock implements Block<SceneTrack, SceneTrack> {
     ) => callProviderWithApiRetry(prompt, sceneIdx, attempt);
 
     // Genera UNA escena con validación + re-generación si falla.
+    // v3.3 (29-may #fix-fork): los archivos se nombran por `scene.index` (NO por la
+    // posición `index` del array). En runs normales coinciden, pero en un FORK el
+    // track viene filtrado (solo las scenes nuevas) → usar la posición escribiría
+    // scene_00.png y CLOBBEARÍA la scene 0 aprobada. `index` queda solo para el
+    // placement en `scenes[]` (que el pipeline fusiona por .index al volver del fork).
     const generateAndValidate = async (scene: Scene, index: number): Promise<void> => {
       let currentPrompt = scene.imagePrompt;
       let lastValidation: V3ValidationResult | null = null;
@@ -410,7 +558,7 @@ export class ImageGenMultiBlock implements Block<SceneTrack, SceneTrack> {
               throw e2;
             }
             // Aceptamos el placeholder con warning + record en Error Memory
-            const imagePath = join(ctx.workDir, `scene_${index.toString().padStart(2, '0')}.png`);
+            const imagePath = join(ctx.workDir, `scene_${scene.index.toString().padStart(2, '0')}.png`);
             await writeFile(imagePath, buffer);
             completed++;
             scenes[index] = { ...scene, imagePath };
@@ -426,7 +574,7 @@ export class ImageGenMultiBlock implements Block<SceneTrack, SceneTrack> {
 
         // Si no hay validator activo, aceptamos la primera imagen.
         if (!validator || !validator.isAvailable()) {
-          const imagePath = join(ctx.workDir, `scene_${index.toString().padStart(2, '0')}.png`);
+          const imagePath = join(ctx.workDir, `scene_${scene.index.toString().padStart(2, '0')}.png`);
           await writeFile(imagePath, buffer);
           completed++;
           scenes[index] = { ...scene, imagePath };
@@ -470,14 +618,147 @@ export class ImageGenMultiBlock implements Block<SceneTrack, SceneTrack> {
 
         // Aceptamos sólo si verdict=pass Y score >= MIN_PASS_SCORE. Si pasa pero
         // con score bajo, lo tratamos como regenerate para forzar más iteraciones.
-        if (validation.verdict === 'pass' && validation.score >= MIN_PASS_SCORE) {
-          const imagePath = join(ctx.workDir, `scene_${index.toString().padStart(2, '0')}.png`);
+        let v3PassesGate = validation.verdict === 'pass' && validation.score >= MIN_PASS_SCORE;
+        let claudeReport: JudgeReport | null = null;
+
+        // M2 — Segundo par de ojos con Claude (si está habilitado y V3 ya pasó).
+        // Solo invocamos Claude cuando V3 ya dio luz verde — gastar tokens de Claude
+        // en una imagen que V3 ya rechazó sería redundante.
+        if (
+          v3PassesGate &&
+          this.options.useClaudeJudge &&
+          process.env['ANTHROPIC_API_KEY'] &&
+          !process.env['ANTHROPIC_API_KEY']!.startsWith('ROTATE_')
+        ) {
+          // v2: contexto cross-scene para detectar continuity issues
+          const prevScenesContext = input.scenes
+            .slice(Math.max(0, index - 2), index)
+            .map((s: Scene) => ({
+              index: s.index,
+              visualDescription: (s.imagePrompt ?? '').slice(0, 200),
+              narration: (s.text ?? '').slice(0, 100),
+            }));
+          const judgeResult = await judgeImage(
+            {
+              imageBuffer: buffer,
+              imageMimeType: 'image/png',
+              prompt: currentPrompt,
+              sceneNarration: scene.text,
+              brandContext: this.options.brandContext,
+              expectedStyle: this.options.styleBase,
+              scenePosition: {
+                index,
+                total: input.scenes.length,
+                // narrativeBeat + shotType vienen del scene-planner si los seteó
+                shotType: (scene as { shotType?: string }).shotType,
+              },
+              prevScenesContext: prevScenesContext.length > 0 ? prevScenesContext : undefined,
+              scriptFullSummary: this.options.scriptFullSummary,
+            },
+            this.options.claudeJudgeOptions ?? {},
+          );
+          if (judgeResult.isErr()) {
+            // Claude falló (API down, parse error, etc.) — no bloqueamos el pipeline,
+            // solo logueamos y aceptamos lo que V3 dijo. Mejor pass tibio que fail
+            // por dependencia externa caída.
+            ctx.logger.warn(
+              {
+                runId: ctx.runId,
+                scene: index,
+                attempt,
+                judgeError: judgeResult.error,
+              },
+              'image-gen-multi:claude_judge_error_continuing_with_v3',
+            );
+          } else {
+            claudeReport = judgeResult.value;
+            ctx.logger.info(
+              {
+                runId: ctx.runId,
+                scene: index,
+                attempt,
+                judgePass: claudeReport.pass,
+                scoreVisual: claudeReport.scoreVisual,
+                scoreBrandFit: claudeReport.scoreBrandFit,
+                scoreHookStrength: claudeReport.scoreHookStrength,
+                scoreLogicalCoherence: claudeReport.scoreLogicalCoherence,
+                scoreViveness: claudeReport.scoreViveness,
+                issuesCount: claudeReport.issues.length,
+                rationale: claudeReport.rationale,
+              },
+              'image-gen-multi:claude_judge_verdict',
+            );
+            // v2 (27-may-2026): si el judge sugirió un patch sistémico en algún
+            // issue, lo emitimos via callback. El caller (pipeline.ts) trackea
+            // cross-scene y registra como propuesta en prompt-patches si N+ scenes
+            // reportan el mismo patch.
+            if (this.options.onSystemicPatchSuggested) {
+              for (const issue of claudeReport.issues) {
+                const i = issue as typeof issue & { suggestedSystemicPatch?: string };
+                if (i.suggestedSystemicPatch && i.suggestedSystemicPatch.trim().length > 10) {
+                  try {
+                    this.options.onSystemicPatchSuggested({
+                      patch: i.suggestedSystemicPatch.trim(),
+                      sceneIndex: index,
+                      severity: issue.severity,
+                      category: issue.category,
+                      description: issue.description,
+                    });
+                  } catch {
+                    // best-effort — callback no debe romper el pipeline
+                  }
+                }
+              }
+            }
+            if (!claudeReport.pass) {
+              // Claude rechazó — tratamos como V3 regenerate-style.
+              // Las suggestions se convierten en refinementHint para el próximo attempt.
+              v3PassesGate = false;
+              const claudeIssuesAsText = claudeReport.issues
+                .map(
+                  (i: { severity: string; category: string; description: string }) =>
+                    `[${i.severity}/${i.category}] ${i.description}`,
+                )
+                .join(' | ');
+              const claudeHint =
+                claudeReport.suggestions.length > 0
+                  ? claudeReport.suggestions.join('. ')
+                  : `Improve quality. ${claudeReport.rationale}`;
+              // Override lastValidation con el feedback de Claude para que el
+              // bloque downstream (refinement) use el hint del judge. Poblamos
+              // los campos required de V3ValidationResult con valores derivados
+              // del judge — más limpio que cast forzado, y mantiene compatibilidad
+              // con recordSceneError() que lee issues[] / refinementHint / score.
+              lastValidation = {
+                verdict: 'regenerate' as const,
+                score: claudeReport.scoreVisual,
+                issues: [`claude-judge: ${claudeIssuesAsText}`],
+                refinementHint: claudeHint,
+                reasoning: `Claude judge rejected: ${claudeReport.rationale}`,
+                structuredAnswers: null,
+              };
+            }
+          }
+        }
+
+        if (v3PassesGate) {
+          const imagePath = join(ctx.workDir, `scene_${scene.index.toString().padStart(2, '0')}.png`);
           await writeFile(imagePath, buffer);
           completed++;
           scenes[index] = { ...scene, imagePath };
           ctx.onBlockProgress?.(Math.round((completed / input.scenes.length) * 100));
           ctx.logger.info(
-            { runId: ctx.runId, scene: index, attempt, bytes: buffer.length, score: validation.score, completed, total: input.scenes.length, refinementsApplied: refinementLog.length },
+            {
+              runId: ctx.runId,
+              scene: index,
+              attempt,
+              bytes: buffer.length,
+              score: validation.score,
+              claudeScore: claudeReport?.scoreVisual,
+              completed,
+              total: input.scenes.length,
+              refinementsApplied: refinementLog.length,
+            },
             'image-gen-multi:scene_done',
           );
           return;
@@ -485,7 +766,7 @@ export class ImageGenMultiBlock implements Block<SceneTrack, SceneTrack> {
 
         // Si es fatal o se acabaron los reintentos → guardamos lo que hay y warning.
         if (validation.verdict === 'fatal' || attempt === MAX_VALIDATION_RETRIES) {
-          const imagePath = join(ctx.workDir, `scene_${index.toString().padStart(2, '0')}.png`);
+          const imagePath = join(ctx.workDir, `scene_${scene.index.toString().padStart(2, '0')}.png`);
           await writeFile(imagePath, buffer);
           completed++;
           scenes[index] = { ...scene, imagePath };

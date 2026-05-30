@@ -1,0 +1,101 @@
+{
+  "styleId": "ugc-testimonial-herbal-remedy",
+  "styleDescription": "Mezcla de animación médica 3D (problema) con testimonios UGC reales de mujeres en espacios domésticos. Paleta rojo-naranja para dramatizar síntomas, verde neón para CTAs. Tono confesional y directo.",
+  "hookType": "stat-shock",
+  "hookDescription": "Abre con anatomía 3D de inflamación facial/sistémica en rojo intenso + texto 'FIRST 14 DAYS' en verde neón. Genera urgencia visual inmediata sobre un problema de salud femenina (drenaje linfático/flujo).",
+  "palette": [
+    "#8B0000",
+    "#FF6B35",
+    "#00FF00",
+    "#F5F5DC",
+    "#2F4F4F",
+    "#FFFFFF"
+  ],
+  "character": {
+    "gender": "female",
+    "ageRange": "25-45",
+    "description": "Múltiples testimonialistas reales: mujeres de distintas etnias, en espacios domésticos (baños, salas), con ropa casual. Expresiones de alivio/satisfacción progresivo.",
+    "stateProgression": [
+      "struggling",
+      "trying",
+      "restored"
+    ]
+  },
+  "productPresentation": {
+    "productVisualDescription": "Botella de tónico/extracto herbal (Nature's Sunrise 'Lymphatic Drainage') en vidrio oscuro con etiqueta blanca/verde. Líquido oscuro visible. Se sostiene en mano de mujer adulta.",
+    "usageForm": "oral",
+    "appearsInScenes": [
+      2,
+      6
+    ]
+  },
+  "scenes": [
+    {
+      "sourceTimeSec": 7.7,
+      "visualDescription": "Cabeza 3D renderizada en rojo inflamado con ojos y facciones en blanco/beige. Fondo degradado rojo-naranja. Texto verde neón 'FIRST 14 DAYS' superpuesto en zona de boca.",
+      "characterIfPresent": null,
+      "narrativeBeat": "hook",
+      "shotType": "close-up",
+      "mood": "alarming"
+    },
+    {
+      "sourceTimeSec": 18,
+      "visualDescription": "Canasta de mimbre con flores de trébol rojo púrpura sobre tela gris. Fondo verde natural desenfocado. Texto verde 'RED CLOVER' identifica el ingrediente.",
+      "characterIfPresent": null,
+      "narrativeBeat": "mechanism",
+      "shotType": "product-detail",
+      "mood": "natural"
+    },
+    {
+      "sourceTimeSec": 28.4,
+      "visualDescription": "Mujer morena (30s) en baño blanco/mármol, sostiene botella 'Lymphatic Drainage' en primer plano. Espejo detrás. Viste bata blanca. Expresión de presentación. Texto verde 'AND HERE'S WHERE'.",
+      "characterIfPresent": "female, 30-35, morena, cabello ondulado",
+      "narrativeBeat": "product-reveal",
+      "shotType": "close-up",
+      "mood": "hopeful"
+    },
+    {
+      "sourceTimeSec": 38.7,
+      "visualDescription": "Mujer asiática (25-30) en interior gris, sostiene botella oscura en mano. Viste top gris oscuro. Expresión sonriente/aliviada. Texto verde 'AFTER 72 HOURS THOSE'.",
+      "characterIfPresent": "female, 25-30, asiática, cabello negro",
+      "narrativeBeat": "social-proof",
+      "shotType": "medium",
+      "mood": "satisfied"
+    },
+    {
+      "sourceTimeSec": 49,
+      "visualDescription": "Mujer rubia (30-40) en interior beige/teal, primer plano facial. Expresión pensativa/reflexiva, mano en barbilla. Viste top negro. Texto verde 'AFTER 14 DAYS PEOPLE'.",
+      "characterIfPresent": "female, 30-40, rubia, cabello largo",
+      "narrativeBeat": "social-proof",
+      "shotType": "close-up",
+      "mood": "contemplative"
+    },
+    {
+      "sourceTimeSec": 59.3,
+      "visualDescription": "Mujer morena (35-45) en interior oscuro con luz cálida de fondo. Expresión seria/reflexiva, mano en barbilla. Viste suéter beige. Texto verde 'FLOW HAD BEEN CAUSING'.",
+      "characterIfPresent": "female, 35-45, morena, cabello largo oscuro",
+      "narrativeBeat": "problem",
+      "shotType": "close-up",
+      "mood": "serious"
+    },
+    {
+      "sourceTimeSec": 69.6,
+      "visualDescription": "Mujer rubia (40-50) en interior oscuro con luz ambiental cálida. Sostiene botella 'Lymphatic Drainage' en primer plano. Expresión de confianza/alivio. Viste suéter blanco. Texto verde 'EVERY TIME'.",
+      "characterIfPresent": "female, 40-50, rubia, cabello largo",
+      "narrativeBeat": "cta",
+      "shotType": "close-up",
+      "mood": "confident"
+    }
+  ],
+  "suggestedPreset": {
+    "promptTemplate": "UGC-style testimonial video for herbal wellness product. Mix of: (1) dramatic 3D medical anatomy visualization with red/orange inflammation overlay and neon green text callouts for hook, (2) close-up product shots of dark glass herbal tincture bottle with white/green label, (3) authentic real-woman testimonials in home bathroom/bedroom settings with natural or warm lighting, shot on smartphone. Women of diverse ethnicities, ages 25-50, speaking directly to camera with genuine expressions progressing from concern to relief. Neon green text overlays with bold claims about timeline results (14 days, 72 hours). Aspect ratio 9:16 vertical.",
+    "negativePrompt": "avoid: overly polished studio lighting, professional actors, artificial backgrounds, medical disclaimers visible, skeptical expressions, product not visible in testimonial scenes, horizontal orientation, watermarks, low-quality phone footage artifacts",
+    "aspectRatio": "9:16",
+    "format": "ugc-testimony",
+    "estrategia": "multi_escena",
+    "visualEngine": "veo-lite",
+    "scenesPerMinute": 12,
+    "defaultDurationSeconds": 70
+  },
+  "executiveSummary": "Ad de testimonio UGC para suplemento herbal de drenaje linfático. Abre con hook visual dramático (anatomía 3D inflamada) + ingrediente natural (trébol rojo), luego pivota a testimonios reales de mujeres mostrando el producto y resultados en timeline (72h, 14 días). Fuerza: autenticidad UGC + urgencia médica + diversidad de testimonialistas genera confianza y FOMO."
+}

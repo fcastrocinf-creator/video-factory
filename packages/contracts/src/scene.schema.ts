@@ -169,6 +169,20 @@ export const SceneSchema = z.object({
   // ediciones complejas, la que el editor manual manipula, y sobre la que el
   // loop de aprendizaje registra las correcciones humanas.
   composition: z.array(CompositeElementSchema).default([]).optional(),
+  // v3.2 #145 (29-may-2026): ¿el personaje en pantalla HABLA esta línea en
+  // primera persona (lip-sync) o es VOICE-OVER / B-ROLL (narración off-screen,
+  // boca NO sincroniza con el texto)?
+  //   - true  → el personaje DICE este texto → la animación mueve la boca
+  //     sincronizada (talking-head, testimonial, diálogo en 1ª persona).
+  //   - false → voice-over/B-roll → el personaje NO mueve la boca con el texto,
+  //     solo gestos/expresión ambiente (DEFAULT — la mayoría de ads D2C son VO).
+  // El scene-planner lo decide por escena. El motion prompt ramifica con esto.
+  speaking: z.boolean().default(false).optional(),
+  // v3.2 #145: override MANUAL de duración de la escena en segundos. Cuando el
+  // owner recorta una escena a mano ("cortá en el segundo 2.3"), se guarda acá.
+  // Si está, el compositor usa ESTO en vez de (endTimeSeconds - startTimeSeconds).
+  // null/undefined = usar el auto-trim normal.
+  manualDurationSeconds: z.number().positive().optional().nullable(),
 });
 
 export type Scene = z.infer<typeof SceneSchema>;

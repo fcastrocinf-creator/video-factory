@@ -15,6 +15,10 @@ export const STORAGE_DIR = resolve(REPO_ROOT, 'storage');
 export const RUNS_DIR = resolve(STORAGE_DIR, 'runs');
 export const RIPS_DIR = resolve(STORAGE_DIR, 'rips');
 export const TRAINING_DIR = resolve(STORAGE_DIR, 'training');
+// Sugerencias de mejora dejadas por el operador desde /sugerencias.
+// Persistidas como JSON por archivo. NUNCA se aplican automáticamente —
+// el owner las revisa cuando quiere.
+export const SUGERENCIAS_DIR = resolve(STORAGE_DIR, 'sugerencias');
 
 export function workDirFor(runId: string): string {
   return resolve(RUNS_DIR, runId);

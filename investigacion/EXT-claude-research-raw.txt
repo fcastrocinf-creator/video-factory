@@ -1,0 +1,225 @@
+Video Factory — Multi-Provider Image Generation Plan
+TL;DR
+Replace the Imagen 4 dependency with Gemini 2.5 Flash Image ("Nano Banana") as primary, keep BFL Flux 2 Pro and fal.ai as resilient fallbacks, and demote OpenAI gptimage-1 to a secondary lane. Imagen 4 is scheduled to shut down on June 24, 2026 (per Google's Gemini API deprecation/Firebase rate-limits doc, last updated 2026-05-19: "All Imagen models will shut down on June 24, 2026. Learn about migrating your apps to use Nano Banana.") and Imagen 4 still uses the legacy per-base-model RPM quota that is exactly what is breaking your rips today. Firebase Firebase Fix the cascade by separating "retry within provider" from "fail-over to next provider," driven by error classification (quota-exhausted, content-rejection, transient). Implement it with cockatiel (retry + circuit-breaker + bulkhead) plus bottleneck (per-provider RPM/IPM token-bucket). Treat per-base-model 429s as a circuit-open signal — never iterate within the same provider's other models on a quota error. Add Nano Banana (Gemini API, paid Tier 1 = 10 IPM with billing enabled; independent quota pool from Vertex Imagen) and route by preset style (photoreal → Nano Banana / Flux 2 Pro; illustration/comic → Recraft V3 or Ideogram 3; medical/pediatric brand → Nano Banana first, never gpt-image-1).
+Key Findings
+A. The current cascade is broken because errors aren't classified
+Vertex AI returns 429 with the metric aiplatform.googleapis.com/online_prediction_requests_per_base_model when the perminute RPM quota for that specific Imagen base model is exhausted. Your pipeline currently iterates Vertex fast → std → ultra inside the same project, but all three share the same projectlevel quota envelope and Imagen 4 is NOT in Google's Dynamic Shared Quota (DSQ) list ( cloud.google.com/vertex-ai/generative-ai/docs/resources/dynamic-shared-quota enumerates only Gemini models; Imagen 4 still uses the legacy per-base-model RPM system). When fast 429s, std and ultra will 429 too within seconds — the cascade MUST jump to a different provider, not a different Imagen SKU.
+B. Imagen 4 has an end-of-life date
+The Gemini API deprecations page (surfaced in the Firebase AI Logic rate-limits doc, last updated 2026-05-19) states: "All Imagen models will shut down on June 24, 2026. Learn about
+
+migrating your apps to use Nano Banana." That makes the Vertex Imagen quota fight a temporary problem — the strategic move is to migrate the primary lane to Nano Banana now.
+Firebase Firebase
+C. Nano Banana is the right primary
+Model ID (Gemini API & Vertex): gemini-2.5-flash-image (generally available since October 2, 2025, per Google Developers Blog: "Our state-of-the-art image generation and
+editing model which has captured the imagination of the world, Gemini 2.5 Flash Image ������,
+is now generally available, ready for production environments." The preview alias gemini2.5-flash-image-preview was shut down January 15, 2026 per Google's changelog.)
+Google Developers
+Pricing: $0.039 per 1024-class image (1,290 output tokens × $30/M output tokens).
+C# Corner + 2
+Aspect ratios: 10 supported, including 9:16 natively (also 21:9, 16:9, 4:3, 3:2, 1:1, 3:4, 2:3, 5:4, 4:5). Google Developers + 2 Quotas (Gemini API paid Tier 1, instant after enabling Cloud Billing): 10 IPM for the Imagen-family models; for Nano Banana, ~500 RPD on Tier 1, scaling to 20 IPM on Tier 2 ($250 cumulative spend + 30 days) and 60+ IPM on Tier 3. LaoZhang AI Blog AI Free API Critical: The Gemini DeveloperAPI ( generativelanguage.googleapis.com ) and Vertex AI ( aiplatform.googleapis.com ) maintain separate quota pools even for the same model name. This is the lever — you can dual-key the same model across two independent ratelimit buckets.
+D. Newer Gemini 3 image models exist
+gemini-3.1-flash-image-preview ("Nano Banana 2"): $0.045 (0.5K) → $0.067 (1K) → $0.101 (2K) → $0.15 (4K) per image; adds an imageSize ladder. Currently #3 on the Artificial Analysis Text-to-Image leaderboard (Elo 1264) as of May 23, 2026. Google Cloud gemini-3-pro-image-preview ("Nano Banana Pro"): $0.134 at 1K/2K, $0.24 at 4K; best text rendering and prompt adherence (Elo 1220, #4). Use only for hero scenes — too expensive as the default workhorse. Google Cloud AI Free API Worth knowing: per the live Artificial Analysis Text-to-Image leaderboard (artificialanalysis.ai, checked May 23, 2026), the top five are now GPT Image 2 (high) — Elo 1339; GPT Image 1.5 (high) — Elo 1266; Nano Banana 2 — Elo 1264; Nano Banana Pro — Elo 1220; MAI-Image-2 — Elo 1197. Recraft V3's October 2024 #1 ranking no longer holds; use Recraft for its style-control feature, not for raw quality leadership. Artificial Analysis
+E. Cascade libraries
+Cockatiel ( connor4312/cockatiel , the Polly port for Node/TS): retry + circuit-breaker +
+
+bulkhead + timeout + fallback policies, all composable via wrap() . This is the unanimous community pick for TypeScript resilience patterns. Deno Bottleneck for per-provider RPM/IPM throttling (reservoir + minTime + maxConcurrent). p-queue if you want a simpler per-provider priority queue without reservoir semantics.
+F. AI-Studio-auto-created projects have a known billing-sync bug gen-lang-client-* projects (auto-created by Google AI Studio) frequently stay stuck on the free-tier 0 IPM limit even after Cloud Billing is linked, with the quota editor refusing values ("Enter a new quota value between 0 and 0"). Multiple Google Developer Forum threads confirm this. Recommendation: create a fresh GCP project manually, link billing, then file Imagen QIRs against it. Quota-increase approval is typically "within a few business days," per Google Cloud staff replies on the developer forum. Google AI Google
+G. Vercel AI Gateway is a credible reference architecture For TypeScript, the Vercel AI Gateway already implements the exact pattern you need: providerOptions.gateway.models declares a fallback model array, order declares provider preference per model, and the response metadata includes modelAttempts[] with per-attempt status, error, statusCode, responseTimeMs. Use it as a reference architecture even if you keep direct provider keys per your constraint. Vercel Vercel
+Details
+1. Recommended provider ordering and routing logic Route by preset style first, then cost tier:
+
+Preset / content Primary type
+
+Secondary Tertiary
+
+Photoreal (D2C product, lifestyle)
+
+Nano Banana (Gemini BFL Flux 2
+
+API)
+
+Pro (direct)
+
+fal.ai Flux 2 Pro
+
+Illustration / cartoon
+
+Recraft V3 (digital_illustration)
+
+Nano Banana Ideogram V3
+
+Comic / stylized Nano Banana
+
+Ideogram V3 Recraft V3 (vector_illustration)
+
+Text-heavy poster scene
+
+Ideogram V3
+
+Gemini 3 Pro Recraft V3 Image
+
+Medical / pediatric / health brand
+
+Nano Banana
+
+Flux 2 Pro fal.ai Flux Dev (BFL direct)
+
+Emergency
+Recraft V3 (realistic)
+fal.ai Flux Dev
+fal.ai Flux Dev
+Nano Banana
+Recraft V3 — NEVER gptimage-1 here
+
+Why these picks over alternatives:
+Nano Banana over Imagen 4 Fast as primary: Imagen 4 dies June 24, 2026; Nano Banana has an independent quota pool from Vertex (you can stay on the Gemini API while Vertex Imagen is on legacy quota); per-image cost is ~2× Imagen Fast ($0.039 vs $0.02) but eliminates the 429 cascade you're losing money to today. Nano Banana also supports native 9:16 aspect_ratio — no upscale/crop needed.
+BFL Flux 2 Pro direct over fal.ai as secondary: BFL's own API ( api.us1.bfl.ai/v1/fluxpro-1.1 ) gives you the lowest-latency Flux endpoint, distinct from fal.ai's resold pricing. Use fal.ai as tertiary because it adds independent infrastructure — per fal's own "10 Best AI Video Generators in 2026" page (fal.ai/learn/tools/ai-video-generators): "Cold starts land between 5 and 10 seconds on fal, compared to 20 to 60 seconds (or more) on alternatives … fal's inference engine was built from scratch with custom CUDA kernels tuned to specific model architectures, not layered on top of general-purpose frameworks." fal also describes itself (Business Wire, May 19, 2026) as "the world's largest generative media platform" serving 2.5 million developers, and reports that it currently powers 40% of Poe's official image and video generation bots. FAL FAL
+Recraft over Replicate: Recraft V3 ships a true style parameter ( realistic_image , digital_illustration , vector_illustration , icon ) that maps to your preset taxonomy cleanly. Replicate is a generic compute marketplace — fal is faster.
+gpt-image-1 demoted, not removed: It's strong on text rendering and brand colors but is the most aggressive content filter in the field (it has rejected children + dog beach scenes in
+
+production, per Microsoft Q&A reports). Keep it for non-sensitive product hero shots where text rendering matters. Never put it ahead of Nano Banana on a medical/pediatric preset. Drop Higgsfield Flux Pro Kontext Max from the primary chain — Flux Pro Kontext is best-in-class for editing a reference image but is overkill and slower than Nano Banana/Flux 2 for fresh scene generation. Keep the key for the edit/upscale stage only.
+2. Adding Gemini Image — concrete specifics Model ID: gemini-2.5-flash-image (production GA name; the -preview alias was shut down January 15, 2026 — don't use it). AI Free API
+Endpoint (Gemini DeveloperAPI, recommended):
+POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flashimage:generateContent Header: x-goog-api-key: $GOOGLE_AI_API_KEY
+Example request body for 9:16 portrait:
+json
+{ "contents": [{ "parts": [{ "text": "<your scene prompt>" }] }], "generationConfig": { "responseModalities": ["IMAGE"], "imageConfig": { "aspectRatio": "9:16" } }
+}
+Response decoding: read candidates[0].content.parts[i].inlineData.data (base64 PNG) → Buffer.from(data, 'base64') → wrap in your existing ImageProvider.generate() return shape. Strip the inlineData.mimeType to choose extension.
+Caveats Google's docs flag:
+Field name shift between SDK versions: 2.5 Flash Image uses imageConfig.aspectRatio ; Gemini 3 family uses responseFormat.image.aspectRatio (and adds imageSize: "1K"|"2K"|"4K" ). Wrap both shapes in a small per-model adapter inside your provider class. Google AI All Nano Banana outputs include an invisible SynthID watermark. That's fine for marketing video frames. Google Developers AdwaitX Default behavior when aspectRatio is omitted in image-editing is to keep the source aspect ratio; in text-to-image it defaults to 1:1. Always set aspectRatio explicitly to "9:16"
+
+for Video Factory to avoid the silent 1:1 fallback that bit other developers. Apiyi.com Blog Tier 1 paid quota is 10 IPM. Your pipeline fires ~22 requests in parallel — even Nano Banana will 429 you. Throttle to ≤10 IPM (one every 6s) via Bottleneck, or upgrade to Tier 2 (20 IPM, requires $250 cumulative GCP spend + 30 days).
+Quotas independence from Vertex Imagen: Yes — the Gemini Developer API ( generativelanguage.googleapis.com ) has a totally separate quota pool from Vertex AI ( aiplatform.googleapis.com ). You can run Nano Banana via the Gemini API as primaryAND keep Vertex Imagen as a fallback path; their 429s are independent. This is the single best architectural win available today.
+3. Fixing the cascade behavior
+The bug pattern in your current code is conflating two separate concerns: intra-provider retry (transient 5xx, network blips, rate-limit with Retry-After ) and inter-provider failover (provider down, quota exhausted for entire window, content-policy reject). They need different policies.
+Pseudocode pattern:
+ts
+
+import { retry, circuitBreaker, handleWhen, wrap, ConsecutiveBreaker, ExponentialBac import Bottleneck from "bottleneck";
+
+// One throttler per provider, sized to that provider's safe RPM/IPM
+
+const limiters = {
+
+gemini: new Bottleneck({ reservoir: 10, reservoirRefreshAmount: 10, reservoirRefr
+
+bfl:
+
+new Bottleneck({ maxConcurrent: 6, minTime: 200 }),
+
+fal:
+
+new Bottleneck({ maxConcurrent: 8, minTime: 150 }),
+
+recraft: new Bottleneck({ maxConcurrent: 4, minTime: 500 }),
+
+openai: new Bottleneck({ maxConcurrent: 3, minTime: 1_000 }),
+
+vertex: new Bottleneck({ reservoir: 5, reservoirRefreshAmount: 5, reservoirRefr
+
+};
+
+// One circuit breaker per provider — opens for 60s after 3 consecutive non-content const breakers = Object.fromEntries(Object.keys(limiters).map(k => [k,
+circuitBreaker( handleWhen(e => (e as ImageProviderError).isTransient || (e as ImageProviderErro { halfOpenAfter: 60_000, breaker: new ConsecutiveBreaker(3) }
+) ]));
+
+// Intra-provider retry: only for transient errors (NOT content rejection, NOT quota const intraRetry = retry(
+handleWhen(e => (e as ImageProviderError).isTransient && !(e as ImageProviderError { maxAttempts: 3, backoff: new ExponentialBackoff({ initialDelay: 500, maxDelay: 8 );
+
+async function callProvider(p: ImageProvider, req: GenRequest) { return limiters[p.id].schedule(() => wrap(intraRetry, breakers[p.id]).execute(() => p.generate(req)) );
+}
+
+async function cascade(req: GenRequest, chain: ImageProvider[]) { const failures: Array<{provider: string, reason: string}> = []; for (const p of chain) { try { const img = await callProvider(p, req); return { img, provider: p.id, failures }; } catch (e) { const err = e as ImageProviderError; failures.push({ provider: p.id, reason: err.kind /* 'quota'|'content'|'transie // Skip to next provider IMMEDIATELY on quota-exhausted, circuit-open, or cont
+
+continue; } } throw new AllProvidersFailedError(failures); // triggers graceful degradation (see }
+The decisive rules:
+1. isContentRejection → skip to next provider IMMEDIATELY, never retry within. A 400 from gpt-image-1 saying "policy violation" will keep saying that.
+2. isDailyQuotaExhausted or online_prediction_requests_per_base_model 429 → open the circuit for that provider for 60s AND skip to next. Don't burn budget probing.
+3. Transient (5xx, network reset, generic 429 without per-base-model metric) → exponential backoff with jitter, up to 3 attempts.
+4. Auth (401/403) → fail loudly, do not retry, do not cascade silently — this should page an operator (it's a config bug, not a runtime fault).
+Error classifier responsibility: put it INSIDE each ImageProvider's generate() so the cascade doesn't need to know provider-specific error shapes. Each provider maps to one of: { kind:
+'transient'|'quota'|'content'|'auth'|'unknown', retryable, isDailyQuotaExhausted,
+isContentRejection } . This is your existing interface — the bug is that nobody is reading the kind field at the cascade layer.
+4. Throttling / rate-limit design
+Recommendation: Bottleneck per-provider limiters keyed by provider ID, configured per provider's documented RPM/IPM, paired with Cockatiel circuit breakers.
+Why Bottleneck over p-queue/p-limit: it supports a reservoir that refills on a schedule (matches Google's IPM token-bucket exactly), supports maxConcurrent and minTime simultaneously, has clustered Redis support if you later horizontally scale workers, and exposes depleted / error events for observability. p-queue is simpler but lacks reservoir semantics; plimit is concurrency-only. npm + 3
+Concrete per-provider settings (starting points, tune from logs):
+Gemini API (Nano Banana, Tier 1): reservoir 10/60 s, maxConcurrent 4, minTime 6000 ms. Vertex Imagen (assuming a 5–20 RPM default for the auto-created project per community forum reports; treat 5 RPM as worst case): reservoir 5/60 s, maxConcurrent 2. BFL direct: maxConcurrent 6, minTime 200 ms (BFL is async polling, so concurrency cap matters more than RPM). fal.ai: maxConcurrent 8, minTime 150 ms.
+
+Recraft: maxConcurrent 4, minTime 500 ms. OpenAI gpt-image-1: maxConcurrent 3, minTime 1000 ms.
+Burst control at the orchestration layer: even with per-provider throttling, do NOT fire all 22 scenes' generate() in Promise.all . Use p-queue or a Bottleneck at the rip level with maxConcurrent 6-8 across all providers combined, so cascades from a failed provider don't dogpile the secondary. The 22-parallel pattern is the proximate cause of your current spike failures.
+5. Vertex / GCP quota strategy
+Order of operations:
+1. TODAY: Move primary off Vertex Imagen onto Nano Banana via the Gemini Developer API. Use your existing GOOGLE_AI_API_KEY . Enable Cloud Billing on the AI Studio project to land on Tier 1 (10 IPM) — this is instant. This alone fixes ~80% of your reliability problem because the Gemini API quota pool is independent from the Vertex base-model quota that's 429-ing you.
+2. Create a fresh manually-created GCP project (do not reuse gen-lang-client0913919937 ). The AI-Studio-auto-created projects have a documented paid-tier sync bug where billing-linking doesn't lift the free-tier 0 limit, and the quota editor refuses values. Multiple Google Developer Forum threads confirm this.
+3. In the new project, enable Vertex AI API and file a Quota Increase Request for aiplatform.googleapis.com/online_prediction_requests_per_base_model for imagen-4.0-fast-generate , imagen-4.0-generate , and imagen-4.0-ultra-generate in us-central1 . Ask for 60 RPM per base model, justifying it with "production batch image generation for short-form video; 22 scenes per rip × N rips/day." Approval is typically "within a few business days" per Google Cloud staff replies on the developer forum. Do NOT ask for 500+ — large jumps get denied; ask for ~5-10× your need. Google OneUptime
+4. Add a second region as a quota fan-out: europe-west2 or us-east4 . Vertex Imagen quotas are per-region. If you initialize a Vertex client per region and round-robin scene requests, you double your effective RPM with zero extra approval cost. OneUptime
+5. Imagen 4 is end-of-life June 24, 2026. Whatever quota you get is a 30-day bandage. Don't invest more than that. The migration target is Nano Banana, and Vertex is best used only as a tertiary failover from June onward.
+On Provisioned Throughput (PT): PT reserves capacity at a fixed monthly cost via GSU (Generative AI Scale Unit). It's overkill for your volume (under 50,000 images/month) — DSQ + Nano Banana is sufficient. Revisit only if you scale past ~100k images/month. Medium
+Apiyi.com Blog
+6. Safety / content policy strategy
+
+Empirical permissiveness ranking for legitimate-but-sensitive cases (medical, children's products, anatomy in product context), worst to best for production:
+1. gpt-image-1 (OpenAI) — most aggressive. Microsoft Q&A threads document false-positive blocks on "child + puppy on beach" scenes. It scans both prompt AND output and silently fails the entire call. Never put it ahead of others on health/pediatric presets.
+2. Imagen 4 / Nano Banana (Google) — strict on anatomical terms (will block isolated "skin," "body parts"), but generally pass educational/medical-illustration framings. Default-safe for D2C consumer products including baby goods, as long as prompts use parental/branded language ("baby teether held by parent," not "child's mouth"). Glbgpt
+3. Flux 2 Pro (BFL) — most permissive of the major commercial APIs for legitimate content. safety_tolerance: 2 is the production-balanced setting. Strong on real-people-ish scenes that gpt-image-1 will reject.
+4. fal.ai-hosted open models (Flux Dev, SDXL, Wan) — most permissive overall; appropriate as a fallback only because they're also the lowest brand-control. Use them sparingly for the "all primaries failed, render anything legitimate" emergency lane.
+Prompt-engineering pattern (no jailbreaks, just disambiguation):
+Replace clinical anatomy terms with brand/role language: "doctor expert" → "smiling healthcare professional in white coat reviewing product label"; "pediatric" → "for parents and small children, family-friendly setting." Always include explicit non-violation phrases when context is borderline: "wholesome family photography, soft daylight, professional advertising style." Use structured prompts (subject + action + context + style) — BFL's prompting guide explicitly recommends this and disallows negative prompts; never write "no violence" because the filter sees the word. Glbgpt Pre-flight prompts through a quick policy classifier (one Gemini Flash call, ~$0.0001) on flagged presets (medical, children, health) and rewrite if the classifier scores >0.7 risk.
+Per-content-type provider mapping is the second half of the safety story — see the routing table in §1.
+7. Animation stage (Kling → Veo)
+You're open to replacing Kling/Veo. Keep both, swap the primary:
+Primary: Kling 2.5 Turbo Pro via fal.ai ( fal-ai/kling-video/v2.5/turbo/pro/image-tovideo ), $0.07/sec → ~$0.35 per 5-sec clip. Best motion fluidity in the mid-tier and lets you reuse your fal.ai key. fal.ai FAL Secondary: Veo 3.1 Fast. Per fal.ai's Veo 3.1 Fast model page: "For every second of video you generate you will be charged $0.10 without audio or $0.15 with audio for 720p or 1080p." Use
+
+the $0.10/sec (no-audio) tier because ElevenLabs is already producing your TTS. fal.ai Drop Kling direct if you're not using their multi-shot or native-audio features — fal.ai's resold endpoint is cheaper and shares your existing key infrastructure. Avoid Veo 3.1 Standard with audio ($0.40/sec) — pay only for visuals.
+At 22 scenes × 5 sec × $0.07/sec = $7.70/rip on animation IF you animate every scene. Recommend animating only ~30% of scenes (the hooks and transitions); use Remotion's Img + Ken Burns transform for the rest. That keeps animation cost ~$2-3/rip and total rip cost under $5.
+8. Graceful degradation when ALL providers fail
+In order of preference:
+1. Try a relaxed-prompt regeneration via your cheapest available provider (rewrite prompt to remove anything that looks like a policy trigger).
+2. Use a brand-safe placeholder — render the scene in Remotion with brand-color background + product overlay + the scene's text/subtitle. Acceptable for a B-roll scene and the rip still completes.
+3. Skip the scene entirely if it's a B-roll filler (metadata flag optional: true ); compositor extends the preceding scene's duration to cover the audio.
+4. Pause the rip and emit an actionable diagnostic (see §9) only if a hook scene (scene 0 or 1) fails fully — those are visually critical.
+The rule: the rip MUST complete unless a non-skippable hook scene cannot be rendered. Manual retries are forbidden by your "100% automatic" requirement.
+9. Observability / diagnostics
+Minimum useful telemetry per rip:
+Per scene: { scene_id, provider_used, attempts: [{ provider, status, latency_ms, error_kind?, error_message? }], elapsed_ms, fallback_depth } . Per provider per rip: cumulative success, fail-by-kind (quota/content/transient/auth), p50/p95 latency, circuit-open events. Per rip: total cost (computed from provider × image-count × pricing table), wall-clock duration, degraded-scene count. Store as columns on the rip row in your libsql/Drizzle DB; expose a /api/rip/:id/diagnostics route returning the JSON. The compositor stage embeds provider_used as a small overlay in dev mode for quick QA. Set up a single Slack/email webhook that fires only when (a) a rip completes with >3 degraded scenes, or (b) a provider's circuit stayed open >5 minutes — both are operatoractionable.
+
+Use OpenTelemetry only if you already have a collector. Otherwise simple structured console.log lines that Vercel/Fly logs ingest are sufficient at your scale.
+Real Open-Source References
+Vercel AI Gateway model-fallback docs — canonical reference for the cascade-withattempts-metadata pattern. https://vercel.com/docs/ai-gateway/models-and-
+providers/model-fallbacks
+Vercel AI SDK Image Generator template (Next.js + AI SDK, multi-provider: Replicate, Vertex, OpenAI, Fireworks). https://vercel.com/templates/next.js/ai-sdk-image-
+generator Vercel
+cockatiel (TS resilience patterns — retry, circuit-breaker, bulkhead, fallback, wrap).
+https://github.com/connor4312/cockatiel GitHub
+bottleneck (per-provider RPM throttling with reservoirs).
+https://www.npmjs.com/package/bottleneck
+rushindrasinha/youtube-shorts-pipeline — Python equivalent of your pipeline (script → AI visuals → TTS → Whisper captions → 9:16 render), with an explicit "stock footage fallback when AI images fail" pattern. Good architectural reference even though it's Python. https://github.com/rushindrasinha/youtube-shorts-pipeline GitHub backblaze-b2-samples/image-generation-prompt-flow — Next.js 14 + Drizzle + multiprovider (OpenAI gpt-image-1 + Gemini Imagen) reference with SSE streaming of the cascade steps. Almost your exact stack. https://github.com/backblaze-b2-
+samples/image-generation-prompt-flow GitHub
+Remotion official org — for the compositor stage, including the music-visualization and faceless-video templates. https://github.com/remotion-dev GitHub fal.ai's @fal-ai/client — drop-in replacement for any Flux/Kling/Wan call; same auth model across all 600+ image and video models, single billing. https://fal.ai/ Google AI for Developers image-generation reference — source of truth for the Nano Banana / Gemini 3 image request body shape. https://ai.google.dev/gemini-
+api/docs/image-generation
+Google's Dynamic Shared Quota doc — confirms Imagen 4 is NOT in DSQ (only Gemini family). Use this to push for QIR rather than wait for DSQ rollout.
+https://cloud.google.com/vertex-ai/generative-ai/docs/resources/dynamicshared-quota
+Recommendations (staged)
+
+Stage 1 — This week (no quota waits needed):
+1. Add GeminiNanoBananaProvider (new ImageProvider impl) that calls gemini-2.5flash-image via the Gemini DeveloperAPI with imageConfig.aspectRatio: "9:16" . Use existing GOOGLE_AI_API_KEY .
+2. Make it the first provider in the cascade for ALL presets. 3. Wrap every provider call in cockatiel 's retry × circuit-breaker policy plus a
+Bottleneck limiter — settings per §4. 4. Move the cascade orchestration to classify errors via kind and skip to next provider on
+kind === 'quota' | 'content' without retrying within. 5. Cap rip-level parallelism at 6-8 with a global Bottleneck.
+Stage 2 — Within 2 weeks (parallel to Stage 1): 6. Enable Cloud Billing on the Gemini API project; confirm Tier 1 (10 IPM) is active. Plan upgrade to Tier 2 (~$250 spend) within 30 days if rip volume requires it. 7. Create a fresh manual GCP project (NOT gen-lang-client-* ); enable Vertex AI API; file a QIR for Imagen base-model RPM = 60 in us-central1 . Expect approval in a few business days. 8. Add BFLFluxProvider (direct api.us1.bfl.ai ) as secondary for photoreal presets. Move Higgsfield to "edit-only" (out of the main chain). 9. Add RecraftProvider and IdeogramProvider for illustration/text-heavy presets.
+Stage 3 — Within 30 days (before June 24, 2026): 10. Complete migration off Vertex Imagen entirely. Demote Vertex to a single 4th-position fallback or remove. 11. Switch animation primary from Kling direct to Kling 2.5 Turbo Pro via fal.ai ( fal-ai/kling-video/v2.5/turbo/pro/imageto-video ). Mark Veo 3.1 Fast (no-audio, $0.10/sec) as fallback. 12. Implement diagnostics endpoint + Slack alert webhook with the rip-summary JSON schema from §9. 13. Wire a perpreset routing policy (the §1 table) into your scene-planner output so each scene carries preferredProviderChain: string[] .
+Benchmarks that would change these recommendations:
+If Imagen 4 EOL date slips past June 24, 2026 (check Google's deprecations page weekly), keep Vertex Imagen as a real third-tier with a QIR'd quota. If your per-rip volume exceeds 100k images/month, evaluate Vertex Provisioned Throughput (GSU subscription). If Nano Banana quality regresses on photoreal product shots in your QA, promote BFL Flux 2 Pro to primary for photoreal presets and keep Nano Banana for illustration. If content rejections exceed 5% on a specific preset, build a Gemini-Flash pre-flight prompt classifier in scene-planner that rewrites high-risk prompts before they hit the image generator. If a single provider's circuit opens >10× per day, that's a config or pricing issue — re-tune its Bottleneck reservoir down by 30%.
+
+Caveats
+Several quota numbers above are sourced from secondary aggregator blogs and Google Developer Forum reports where Google does not publish a definitive number. Treat any non-Google-doc number as "best community estimate" and verify in the GCP Console quota editor for your actual project before sizing limiters. In particular, the "default 5–20 RPM" for new-project Imagen 4 is from community forum reports, not an official Google number.
+Gemini API response shape differs between gemini-2.5-flash-image (uses imageConfig ) and gemini-3.1-flash-image-preview / gemini-3-pro-image-preview (use responseFormat.image with both aspectRatio and imageSize ). If you decide to add Gemini 3 image models later, the adapter inside GeminiImageProvider needs a permodel branch.
+The June 24, 2026 Imagen shutdown is announced on Google's deprecations page; Google has been known to extend such dates. Don't bet on the deadline, but plan as if it's firm.
+BFL "Flux 2" and "Flux Pro 1.1" both exist; confirm the exact endpoint and pricing on bfl.ai/pricing at integration time — pricing has been changing every few months.
+Artificial Analysis leaderboard positions change frequently; the current top-5 ordering (GPT Image 2 high, GPT Image 1.5 high, Nano Banana 2, Nano Banana Pro, MAI-Image-2) is the May 23, 2026 snapshot — re-check before any quality-driven reordering.
+Vercel AI Gateway is a viable alternative architecture if you want to outsource the cascade. We recommend keeping direct keys per your constraint, but the gateway is a valid Plan B if you find yourself rebuilding too much resilience logic.
+All recommendations assume your pipeline runs on a long-lived Node/Vercel function (not a short-lived edge worker). Circuit breakers and Bottleneck reservoirs need shared inmemory state per worker; if you scale to multiple worker instances, switch Bottleneck to its Redis-backed clustering mode.
+
+

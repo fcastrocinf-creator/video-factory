@@ -1,0 +1,120 @@
+{
+  "styleId": "vintage-sepia-narrative-animation",
+  "styleDescription": "Animación estilo cómic/ilustración vintage con paleta sepia-dorada, líneas negras definidas y sombreado clásico. Narrativa visual que mezcla personajes icónicos (Mickey Mouse) con escenas cotidianas y médicas, todo en tonos cálidos nostálgicos.",
+  "hookType": "negative",
+  "hookDescription": "Abre con Mickey Mouse en cama despierto a las 3 AM ('AÑOS CREYENDO INCURABLE'), estableciendo un problema de insomnio/enfermedad crónica que genera tensión emocional inmediata.",
+  "palette": [
+    "#C4A574",
+    "#8B6F47",
+    "#D4AF8F",
+    "#2C1810",
+    "#F5E6D3",
+    "#A0826D"
+  ],
+  "character": {
+    "gender": "neutral",
+    "ageRange": "timeless",
+    "description": "Mickey Mouse como personaje protagonista, usado como avatar relatable para la audiencia. Aparece en diferentes contextos (cama, calle, consulta médica) representando la jornada del paciente.",
+    "stateProgression": [
+      "struggling",
+      "desperate",
+      "informed",
+      "restored"
+    ]
+  },
+  "productPresentation": {
+    "productVisualDescription": "Omeprazol (medicamento para reflujo/gastritis) presentado en botella de farmacia con etiqueta visible. Se muestra en contexto de consulta médica y en visualización microscópica de su mecanismo de acción en tejido gástrico.",
+    "usageForm": "oral",
+    "appearsInScenes": [
+      2,
+      3,
+      5,
+      8
+    ]
+  },
+  "scenes": [
+    {
+      "sourceTimeSec": 16.7,
+      "visualDescription": "Mickey Mouse despierto en cama a las 3 AM, mirando reloj de alarma que marca las 3:00. Habitación con cortinas doradas, luz cálida entrando por ventana. Expresión de preocupación/insomnio.",
+      "characterIfPresent": "Mickey Mouse",
+      "narrativeBeat": "hook",
+      "shotType": "wide",
+      "mood": "tense"
+    },
+    {
+      "sourceTimeSec": 33.4,
+      "visualDescription": "Personaje encadenado en callejón oscuro/ruinas, con expresión de sufrimiento. Fondo urbano desolado con figuras borrosas. Cadena visible simbolizando esclavitud a la enfermedad.",
+      "characterIfPresent": "Hombre joven encadenado",
+      "narrativeBeat": "problem",
+      "shotType": "close-up",
+      "mood": "hopeless"
+    },
+    {
+      "sourceTimeSec": 50.1,
+      "visualDescription": "Consulta médica: mujer mayor y doctor con gafas en escritorio de madera. Botella de Omeprazol visible sobre la mesa. Reloj de pared de fondo. Ambiente cálido de consultorio clásico.",
+      "characterIfPresent": "Mujer mayor + Doctor",
+      "narrativeBeat": "mechanism",
+      "shotType": "medium",
+      "mood": "hopeful"
+    },
+    {
+      "sourceTimeSec": 66.9,
+      "visualDescription": "Visualización microscópica de tejido gástrico con células redondeadas en tonos beige/marrón. Líneas cruzadas superpuestas representando el mecanismo de acción del medicamento a nivel celular.",
+      "characterIfPresent": null,
+      "narrativeBeat": "mechanism",
+      "shotType": "extreme-close-up",
+      "mood": "clinical"
+    },
+    {
+      "sourceTimeSec": 83.6,
+      "visualDescription": "Multitud de personas en fila frente a edificio de gobierno/parlamento (arquitectura neoclásica). Silhuetas en contra luz. Transición visual que sugiere aprobación regulatoria o reconocimiento oficial.",
+      "characterIfPresent": null,
+      "narrativeBeat": "social-proof",
+      "shotType": "wide",
+      "mood": "authoritative"
+    },
+    {
+      "sourceTimeSec": 100.3,
+      "visualDescription": "Close-up de boca abierta mostrando lengua y cavidad oral. Mano aplicando medicamento directamente bajo la lengua (sublingual). Iluminación cálida de interior.",
+      "characterIfPresent": null,
+      "narrativeBeat": "demo",
+      "shotType": "extreme-close-up",
+      "mood": "clinical"
+    },
+    {
+      "sourceTimeSec": 117,
+      "visualDescription": "Escena de comida familiar feliz: abuela sonriente en centro de mesa rodeada de familia (padres e hijos) comiendo tacos. Cocina tradicional de fondo. Expresiones de alegría y normalidad restaurada.",
+      "characterIfPresent": "Abuela + Familia",
+      "narrativeBeat": "product-reveal",
+      "shotType": "wide",
+      "mood": "joyful"
+    },
+    {
+      "sourceTimeSec": 133.7,
+      "visualDescription": "Split-screen: izquierda muestra hombre mayor triste/enfermo sentado en sillón oscuro; derecha muestra el mismo hombre joven, saludable, caminando por calle soleada con confianza. Contraste visual antes/después.",
+      "characterIfPresent": "Hombre (transformación)",
+      "narrativeBeat": "cta",
+      "shotType": "split-screen",
+      "mood": "transformative"
+    },
+    {
+      "sourceTimeSec": 150.4,
+      "visualDescription": "Marco ornamental estilo vintage con símbolos chinos/asiáticos alrededor. Centro muestra molécula/estructura química del medicamento con etiquetas de ingredientes activos (Zn, K, etc.). Retrato pequeño de doctor en marco inferior. Texto '11 ACTIVOS EN DOSIS CLÍNICAS'.",
+      "characterIfPresent": null,
+      "narrativeBeat": "cta",
+      "shotType": "close-up",
+      "mood": "authoritative"
+    }
+  ],
+  "suggestedPreset": {
+    "promptTemplate": "Vintage sepia-toned narrative animation with warm golden-brown palette, comic book illustration style with bold black outlines, nostalgic 1950s-inspired aesthetic. Characters drawn in expressive cartoon style with detailed cross-hatching and classical shading. Settings range from intimate domestic spaces to institutional/medical environments. Warm directional lighting creating dramatic shadows. All scenes maintain consistent warm color grading with cream, tan, and dark brown tones.",
+    "negativePrompt": "Modern flat design, bright neon colors, 3D rendering, photorealistic, cold color palette, minimalist, contemporary style, digital gloss, saturated colors, anime style",
+    "aspectRatio": "9:16",
+    "format": "voiceover-animated",
+    "estrategia": "multi_escena",
+    "visualEngine": "veo-standard",
+    "scenesPerMinute": 9,
+    "defaultDurationSeconds": 150
+  },
+  "executiveSummary": "Narrativa emocional de transformación médica que usa personajes icónicos (Mickey Mouse) y storytelling visual clásico para posicionar Omeprazol como solución a enfermedad crónica. La fortaleza radica en el arco emocional claro (sufrimiento → consulta → mecanismo → vida restaurada) combinado con validación científica y social, todo envuelto en estética vintage nostálgica que genera confianza y familiaridad."
+}

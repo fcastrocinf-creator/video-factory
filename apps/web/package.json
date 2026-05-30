@@ -15,6 +15,8 @@
     "@video-factory/block-image-gen-imagen": "workspace:*",
     "@video-factory/block-image-gen-multi": "workspace:*",
     "@video-factory/block-narrator-analyzer": "workspace:*",
+    "@video-factory/block-post-render-judge": "workspace:*",
+    "@video-factory/block-preview-judge": "workspace:*",
     "@video-factory/block-scene-planner": "workspace:*",
     "@video-factory/block-scene-validator": "workspace:*",
     "@video-factory/block-script-processor": "workspace:*",

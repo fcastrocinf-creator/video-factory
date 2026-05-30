@@ -4,8 +4,17 @@ import { fileURLToPath } from 'node:url';
 
 // Cargar las variables de entorno desde la raíz del monorepo (un solo .env compartido).
 // Next.js sólo lee .env del cwd de apps/web, así que duplicamos el comportamiento manual.
+//
+// 25-may-2026: cambio de comportamiento — el loader AHORA SOBREESCRIBE siempre el
+// valor de process.env desde el .env raíz. Antes hacía `if (!(key in process.env))`
+// que dejaba al .env raíz ser fuente "fallback only" — y algunas vars (como
+// ANTHROPIC_API_KEY) terminaban en process.env como string vacío o con valor stale
+// de algún arranque previo, impidiendo que el judge IA / editor IA funcionaran.
+// El .env del root ES la única fuente de verdad para este monorepo.
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootEnvPath = resolve(__dirname, '../../.env');
+let loadedCount = 0;
+let loadedKeys = [];
 if (existsSync(rootEnvPath)) {
   const content = readFileSync(rootEnvPath, 'utf-8');
   for (const rawLine of content.split(/\r?\n/)) {
@@ -24,10 +33,15 @@ if (existsSync(rootEnvPath)) {
       const commentIdx = value.indexOf(' #');
       if (commentIdx >= 0) value = value.slice(0, commentIdx).trim();
     }
-    if (!(key in process.env)) {
-      process.env[key] = value;
-    }
+    // OVERRIDE siempre — el .env raíz es fuente de verdad.
+    process.env[key] = value;
+    loadedCount++;
+    loadedKeys.push(`${key}(${value.length}ch)`);
   }
+  // eslint-disable-next-line no-console
+  console.log(`[next.config] cargadas ${loadedCount} vars desde ${rootEnvPath}:`);
+  // eslint-disable-next-line no-console
+  console.log(`  ${loadedKeys.join(', ')}`);
 }
 
 /** @type {import('next').NextConfig} */
@@ -52,12 +66,21 @@ const nextConfig = {
     '@video-factory/ui',
     '@video-factory/block-script-processor',
     '@video-factory/block-tts-elevenlabs',
+    '@video-factory/block-tts-openai',
     '@video-factory/block-subtitles-google',
+    '@video-factory/block-subtitles-whisper',
     '@video-factory/block-image-gen-imagen',
     '@video-factory/block-image-gen-multi',
     '@video-factory/block-scene-planner',
+    '@video-factory/block-scene-validator',
+    '@video-factory/block-narrator-analyzer',
     '@video-factory/block-video-gen-veo',
     '@video-factory/block-compositor-remotion',
+    // 25-may-2026: agregados para que Next.js los transpile y permita que el
+    // env loader (arriba) propague process.env a su runtime. Sin esto, el
+    // judge Claude y el editor IA NO veían ANTHROPIC_API_KEY (Test 6/7/8).
+    '@video-factory/block-preview-judge',
+    '@video-factory/block-post-render-judge',
   ],
   webpack: (config, { isServer }) => {
     // Permite que webpack resuelva imports `./foo.js` a `./foo.ts` (estilo Node ESM

@@ -28,7 +28,20 @@
     "promptTemplate": "A hyper-realistic photographic frame in selfie-style or UGC testimonial format. The look transitions from clinical and scientific (red/flesh tones) to natural and hopeful (warm indoor lighting, sunny outdoor shots). Dominant palette: #D4A79A, #C73D3A, #F5E9E2, #5C3D2E, #A9A9A9. Characters: Caucasian women, ages 35 to 65. They appear in selfie-style videos, in casual settings like bathrooms, cars, and living rooms. They transition from looking tired, puffy, or concerned to looking happy, confident, and refreshed. Clothing is casual (t-shirts, robes, sweaters). Aesthetic: medical illustration when appropriate, UGC testimonials, problem-solution, natural remedy, timeline transformation. Vertical 9:16 composition. CRITICAL CONSTRAINTS: (1) ONE single coherent shot — NOT a grid, NOT a split-screen, NOT a collage, NOT a before-after layout, NOT multiple panels, NOT picture-in-picture. (2) ABSOLUTELY NO text, captions, labels, watermarks, signs, or written words anywhere in the image. The photograph must be 100% CLEAN of typography — all text overlays are added in post-production as vector graphics.",
     "negativePrompt": "low quality, blurry, watermark, extra fingers, malformed limbs, deformed hands, distorted face anatomy, illustration, drawing, painting, watercolor, comic, cartoon, 3d render, sepia tone, text, caption, label, sign, written words, typography, lettering, subtitle, banner, overlay text, green text, TikTok overlay, split-screen, grid layout, collage, multiple panels, before-after layout, picture-in-picture",
     "aspectRatio": "9:16",
-    "referenceImages": []
+    "referenceImages": [],
+    "styleBoilerplate": "Hyper-realistic photographic frame, UGC testimonial / selfie-style, vertical 9:16 composition. ONE single coherent shot — NOT a grid, NOT a collage, NOT a split-screen, NOT a before-after layout. ABSOLUTELY NO text, captions, labels, or typography rendered in the image — all overlays are added in post-production.",
+    "forbiddenStyleTerms": [
+      "illustration",
+      "drawing",
+      "painting",
+      "watercolor",
+      "comic",
+      "cartoon",
+      "3d render",
+      "sepia tone",
+      "claymation",
+      "anime"
+    ]
   },
   "subtitles": {
     "style": "word_level_kinetic",

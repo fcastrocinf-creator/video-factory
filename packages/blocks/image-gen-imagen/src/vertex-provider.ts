@@ -141,16 +141,30 @@ export class VertexImagenProvider implements ImageProvider {
 
     if (!resp.ok) {
       const bodyText = await resp.text();
-      // Vertex 429 puede ser RPM (per-minute) o quota request — pero NO tiene daily caps
-      // como AI Studio, así que isDailyQuotaExhausted siempre false: el retry-with-backoff
-      // del image-gen-multi se encarga.
-      const retryable = resp.status === 429 || resp.status >= 500;
+      // Vertex 429 puede ser:
+      //   - RPM transient: retry-with-backoff lo resuelve.
+      //   - Quota-exhausted per-base-model: la cuota está agotada para este
+      //     modelo en este proyecto; retry no resuelve nada porque cada intento
+      //     vuelve a chocar. La cascada debe saltar al próximo provider.
+      // (Bug 1 fix — ver investigacion/01-image-gen-multi-block-analysis.md.)
+      //
+      // Detectamos el caso quota-exhausted por el body del 429:
+      //   - `online_prediction_requests_per_base_model` → match exacto del caso real.
+      //   - `RESOURCE_EXHAUSTED` o `quota exceeded` → patrones más amplios para
+      //     cubrir otras cuotas de Vertex que también deberían escalar.
+      const isQuotaExhausted =
+        resp.status === 429 &&
+        /quota.*exceeded|RESOURCE_EXHAUSTED|online_prediction_requests_per_base_model/i.test(
+          bodyText,
+        );
+      const retryable =
+        !isQuotaExhausted && (resp.status === 429 || resp.status >= 500);
       throw new ImageProviderError(
         `Vertex Imagen ${resp.status} ${resp.statusText}: ${bodyText.slice(0, 400)}`,
         resp.status,
         bodyText,
         retryable,
-        false,
+        isQuotaExhausted,
         this.name,
       );
     }

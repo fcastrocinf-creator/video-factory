@@ -1,0 +1,74 @@
+{
+  "id": "learned-auto-418fba61",
+  "displayName": "🎯 Auto-learned from rip f1979a90",
+  "description": "Preset auto-aprendido por Claude (haiku-4.5) desde un video. Narrativa emocional de transformación médica que usa personajes icónicos (Mickey Mouse) y storytelling visual clásico para posicionar Omeprazol como solución a enfermedad crónica. La fortaleza radica en el arco emocional claro (sufrimiento → consulta → mecanismo → vida restaurada) combinado con vali",
+  "category": {
+    "id": "voiceover_impersonal",
+    "displayName": "Voz Over Impersonal",
+    "description": "Narración sin protagonista identificable."
+  },
+  "format": {
+    "id": "voiceover-animated",
+    "displayName": "Voice Over Animado",
+    "description": "Motion graphics / explainer animado (no fotorrealista): kinetic typography, ilustración animada, diagramas dinámicos."
+  },
+  "style": {
+    "id": "vintage-sepia-narrative-animation",
+    "displayName": "Vintage Sepia Narrative Animation"
+  },
+  "classification": {
+    "formato": "educativo",
+    "hookAngulo": "objeciones",
+    "funnelStage": "tofu",
+    "awareness": "problem_aware"
+  },
+  "estrategia": "multi_escena",
+  "visualEngine": "veo-standard",
+  "visualStyle": {
+    "promptTemplate": "Vintage sepia-toned narrative animation with muted brownish-sepia palette, deep ochre and burnt sienna tones instead of bright gold. Comic book illustration style with bold black outlines, nostalgic 1950s aesthetic. Wide establishing shots with simplified, silhouetted characters against expansive backgrounds. Expressive cartoon style with classical cross-hatching and subtle shading. Intimate domestic spaces to grand institutional environments with epic depth. Soft, diffused directional lighting creating gentle shadows and atmospheric perspective. Consistent warm color grading: muted cream, dark tan, deep brown. CLEAN background, NO text overlay, NO burned-in text — text rendering is done in post-production.",
+    "negativePrompt": "Modern flat design, bright neon colors, 3D rendering, photorealistic, cold color palette, minimalist, contemporary style, digital gloss, saturated colors, anime style",
+    "aspectRatio": "9:16",
+    "referenceImages": [],
+    "styleBoilerplate": "Vintage sepia-toned narrative animation with warm golden-brown palette, comic book illustration style with bold black outlines, nostalgic 1950s-inspired aesthetic. Characters drawn in expressive carto Dominant palette: #C4A574, #8B6F47, #D4AF8F, #2C1810, #F5E6D3, #A0826D.",
+    "forbiddenStyleTerms": [
+      "Modern flat design",
+      "bright neon colors",
+      "3D rendering",
+      "photorealistic",
+      "cold color palette",
+      "minimalist",
+      "contemporary style",
+      "digital gloss",
+      "saturated colors",
+      "anime style"
+    ]
+  },
+  "subtitles": {
+    "style": "word_level_kinetic",
+    "font": "Inter",
+    "fontSize": 64,
+    "color": "#FFFFFF",
+    "strokeColor": "#000000",
+    "strokeWidth": 4,
+    "highlightColor": "#C4A574",
+    "position": "bottom",
+    "allCaps": false
+  },
+  "defaultDurationSeconds": 150,
+  "scenesPerMinute": 9,
+  "composition": {
+    "kenBurns": {
+      "enabled": false,
+      "zoomStart": 1,
+      "zoomEnd": 1,
+      "panX": 0,
+      "panY": 0
+    },
+    "backgroundMusic": {
+      "enabled": false,
+      "volumeDb": -20
+    }
+  },
+  "createdAt": "2026-05-28T23:40:47.537Z",
+  "updatedAt": "2026-05-28T23:42:21.224Z"
+}

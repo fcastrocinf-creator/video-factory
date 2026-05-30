@@ -16,6 +16,9 @@ const GenerateRequestSchema = z.object({
   // Overrides opcionales desde la UI. Si vienen null o undefined, se infieren del guion.
   voiceOverride: z.string().nullable().optional(),
   narratorGenderOverride: z.enum(['male', 'female', 'neutral']).nullable().optional(),
+  // v3.2 #115: modo colaborativo "Hacer video en conjunto" — pipeline pausa
+  // entre cada scene esperando aprobación del owner.
+  mode: z.enum(['auto', 'collaborative']).optional().default('auto'),
 });
 
 export async function POST(req: Request) {
@@ -35,7 +38,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: parsed.error.message }, { status: 400 });
   }
 
-  const { brandId, presetId, productId, script, voiceOverride, narratorGenderOverride } =
+  const { brandId, presetId, productId, script, voiceOverride, narratorGenderOverride, mode } =
     parsed.data;
   const runId = randomUUID();
   const workDir = workDirFor(runId);
@@ -49,15 +52,19 @@ export async function POST(req: Request) {
     status: 'pending',
     workDir,
     progress: 0,
+    mode,
+    awaitingApproval: false,
   });
 
   void runPipeline(runId, brandId, presetId, script, {
     voiceOverride: voiceOverride ?? null,
     narratorGenderOverride: narratorGenderOverride ?? null,
+    productId: productId ?? null,
+    mode,
   }).catch((err) => {
     // eslint-disable-next-line no-console
     console.error('[pipeline] uncaught error for run', runId, err);
   });
 
-  return NextResponse.json({ runId });
+  return NextResponse.json({ runId, mode });
 }

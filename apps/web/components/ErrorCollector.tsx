@@ -30,6 +30,11 @@ export function ErrorCollector() {
   const [errors, setErrors] = useState<CapturedError[]>([]);
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  // v3.2 #123: auto-fix state
+  const [autoFixState, setAutoFixState] = useState<
+    'idle' | 'sending' | 'processing' | 'done' | 'error'
+  >('idle');
+  const [autoFixResult, setAutoFixResult] = useState<string | null>(null);
 
   useEffect(() => {
     const isFromExtension = (text: string): boolean =>
@@ -180,6 +185,69 @@ export function ErrorCollector() {
     setErrors([]);
   };
 
+  // v3.2 #123: Auto-fix con Claude. Envía los errores propios al endpoint de
+  // auto-fix, que los pasa por Sonnet para diagnóstico + aplica fixes seguros.
+  const handleAutoFix = async () => {
+    const targets = ourErrors.slice(-10); // últimos 10 errores propios
+    if (targets.length === 0) return;
+    setAutoFixState('sending');
+    setAutoFixResult(null);
+    try {
+      // 1. Reportar cada error al queue
+      for (const e of targets) {
+        try {
+          await fetch('/api/admin/auto-fix/report', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              message: e.message,
+              stack: e.stack,
+              source: 'client',
+              context: `${e.type} from ${e.source ?? 'browser'}`,
+            }),
+          });
+        } catch {
+          /* ignore individual failures */
+        }
+      }
+      // 2. Disparar el procesamiento
+      setAutoFixState('processing');
+      const res = await fetch('/api/admin/auto-fix', { method: 'POST' });
+      if (!res.ok) {
+        setAutoFixState('error');
+        setAutoFixResult(`HTTP ${res.status}`);
+        return;
+      }
+      const data = await res.json();
+      setAutoFixState('done');
+      const s = data.summary as {
+        total: number;
+        applied: number;
+        queued: number;
+        noFix: number;
+      };
+      setAutoFixResult(
+        `${s.applied}/${s.total} fixes aplicados automáticamente · ${s.queued} encolados para review · ${s.noFix} sin fix conocido`,
+      );
+      if (s.applied > 0) {
+        // Si se aplicaron fixes, limpiar los errores resueltos
+        setTimeout(() => setErrors([]), 2000);
+      }
+    } catch (e) {
+      setAutoFixState('error');
+      setAutoFixResult((e as Error).message);
+    }
+  };
+
+  // v3.2 (29-may-2026): si TODOS son de extensiones, mostramos la chapita
+  // en color ÁMBAR (info) en vez de ROJO (alerta). Una pestaña roja te hace
+  // pensar que algo está roto cuando en realidad es solo ruido de Grammarly,
+  // MetaMask, AdBlock, etc. — bugs que vienen de OTRAS apps cargadas en tu
+  // browser, no de Video Factory. Y la colapsamos por defecto a ICONO chico.
+  const onlyExtensionNoise = ourErrors.length === 0 && extensionErrors.length > 0;
+  const badgeBg = onlyExtensionNoise ? 'rgba(217,119,6,0.92)' : 'rgba(220,38,38,0.95)';
+  const borderColor = onlyExtensionNoise ? 'rgba(217,119,6,0.4)' : 'rgba(220,38,38,0.4)';
+
   return (
     <div
       style={{
@@ -187,13 +255,14 @@ export function ErrorCollector() {
         right: '16px',
         bottom: '16px',
         zIndex: 9999,
-        maxWidth: open ? '480px' : '220px',
+        maxWidth: open ? '480px' : onlyExtensionNoise ? '180px' : '240px',
         fontFamily: 'system-ui, -apple-system, sans-serif',
-        fontSize: '13px',
+        fontSize: onlyExtensionNoise && !open ? '11px' : '13px',
         boxShadow: '0 10px 28px rgba(0,0,0,0.25)',
         borderRadius: '8px',
         overflow: 'hidden',
-        border: '1px solid rgba(220,38,38,0.4)',
+        border: `1px solid ${borderColor}`,
+        opacity: onlyExtensionNoise && !open ? 0.75 : 1,
       }}
     >
       {/* Header colapsado */}
@@ -201,20 +270,30 @@ export function ErrorCollector() {
         onClick={() => setOpen((o) => !o)}
         style={{
           width: '100%',
-          padding: '10px 14px',
-          background: 'rgba(220,38,38,0.95)',
+          padding: onlyExtensionNoise && !open ? '6px 10px' : '10px 14px',
+          background: badgeBg,
           color: 'white',
           border: 'none',
           cursor: 'pointer',
           textAlign: 'left',
           fontWeight: 600,
         }}
+        title={
+          onlyExtensionNoise
+            ? 'Todos estos errores vienen de extensiones de Chrome (Grammarly, MetaMask, AdBlock, etc.). NO son bugs de Video Factory. Para verlos sin ruido, abre la herramienta en modo Incógnito.'
+            : 'Errores capturados en la sesión actual. Click para ver detalle.'
+        }
       >
-        {open ? '▾' : '▸'} {errors.length} {errors.length === 1 ? 'error' : 'errores'} capturado{errors.length === 1 ? '' : 's'}
-        {extensionErrors.length > 0 && ourErrors.length === 0 && (
-          <span style={{ marginLeft: '6px', fontWeight: 400, opacity: 0.85 }}>
-            (todos de extensiones)
-          </span>
+        {open ? '▾' : '▸'}{' '}
+        {onlyExtensionNoise ? (
+          <>
+            ⚠ {errors.length} ruido extensiones
+          </>
+        ) : (
+          <>
+            {errors.length} {errors.length === 1 ? 'error' : 'errores'} capturado
+            {errors.length === 1 ? '' : 's'}
+          </>
         )}
       </button>
 
@@ -266,7 +345,54 @@ export function ErrorCollector() {
             >
               Limpiar
             </button>
+            {ourErrors.length > 0 && (
+              <button
+                onClick={handleAutoFix}
+                disabled={autoFixState === 'sending' || autoFixState === 'processing'}
+                style={{
+                  padding: '6px 12px',
+                  background: autoFixState === 'done' ? '#10b981' : '#a855f7',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  fontWeight: 600,
+                  cursor:
+                    autoFixState === 'sending' || autoFixState === 'processing'
+                      ? 'wait'
+                      : 'pointer',
+                  fontSize: '12px',
+                  opacity:
+                    autoFixState === 'sending' || autoFixState === 'processing' ? 0.6 : 1,
+                }}
+                title="Envía los errores a Claude Sonnet para diagnóstico + auto-aplica fixes con confidence ≥85%"
+              >
+                {autoFixState === 'sending' && '🤖 Enviando...'}
+                {autoFixState === 'processing' && '🤖 Claude analizando...'}
+                {autoFixState === 'done' && '✓ Auto-fix completado'}
+                {autoFixState === 'error' && '⚠ Reintentar'}
+                {autoFixState === 'idle' && '🤖 Solucionar con Claude'}
+              </button>
+            )}
           </div>
+          {autoFixResult && (
+            <div
+              style={{
+                padding: '8px 10px',
+                background:
+                  autoFixState === 'done'
+                    ? 'rgba(16,185,129,0.15)'
+                    : 'rgba(220,38,38,0.15)',
+                borderLeft: `3px solid ${
+                  autoFixState === 'done' ? '#10b981' : '#dc2626'
+                }`,
+                marginBottom: '10px',
+                borderRadius: '3px',
+                fontSize: '11px',
+              }}
+            >
+              {autoFixResult}
+            </div>
+          )}
 
           {/* Resumen */}
           {extensionErrors.length > 0 && (

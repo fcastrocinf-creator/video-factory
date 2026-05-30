@@ -286,6 +286,37 @@ const SceneFrame: React.FC<{
   const FADE_FRAMES = animatedScenes ? 6 : 4;
   const opacity = Math.min(1, localFrame / FADE_FRAMES);
 
+  // N1 fix defensivo (25-may-2026): si por algún edge case el imageSrc viene
+  // vacío/undefined, renderizamos un placeholder VISIBLE en vez de transparent/negro.
+  // Eso permite que el post-render judge (M5) detecte el problema sin que el
+  // viewer vea un frame negro silencioso. Color #2a1810 (sepia oscuro) matchea
+  // mejor con presets acuarela; sino fallback a #1a1a1a.
+  if (!imageSrc || imageSrc.length === 0) {
+    return (
+      <AbsoluteFill
+        style={{
+          backgroundColor: '#2a1810',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <div
+          style={{
+            color: '#ffcc88',
+            fontSize: 48,
+            fontFamily: 'Inter, sans-serif',
+            opacity: 0.5,
+            textAlign: 'center',
+            padding: '0 60px',
+          }}
+        >
+          [missing visual · scene {sceneIndex}]
+        </div>
+      </AbsoluteFill>
+    );
+  }
+
   return (
     <AbsoluteFill style={{ opacity }}>
       <Img

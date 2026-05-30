@@ -1,0 +1,52 @@
+{
+  "videoPath": "C:\\Users\\cmktc\\proyectos\\video-factory\\storage\\rips\\d83eaa0e-d1f9-471a-86ad-f4617d0a5044\\source.mp4",
+  "targetScore": 95,
+  "maxIterations": 4,
+  "approved": true,
+  "exhausted": false,
+  "finalScore": 98,
+  "loopAbortedEarly": false,
+  "abortReason": null,
+  "iterations": [
+    {
+      "iteration": 1,
+      "score": 92,
+      "details": {
+        "palette": 98,
+        "composition": 75,
+        "character": 88,
+        "mood": 95
+      },
+      "hint": "Use wider shots with more simplified, almost silhouetted characters to better match the original's epic scale.",
+      "promptTemplate": "Vintage sepia-toned narrative animation with warm golden-brown palette, comic book illustration style with bold black outlines, nostalgic 1950s-inspired aesthetic. Characters drawn in expressive cartoon style with detailed cross-hatching and classical shading. Settings range from intimate domestic spaces to institutional/medical environments. Warm directional lighting creating dramatic shadows. All scenes maintain consistent warm color grading with cream, tan, and dark brown tones.",
+      "testImagePath": "C:\\Users\\cmktc\\proyectos\\video-factory\\storage\\rips\\d83eaa0e-d1f9-471a-86ad-f4617d0a5044\\source.mp4.iterloop-keyframes\\test_iter01.png"
+    },
+    {
+      "iteration": 2,
+      "score": 92,
+      "details": {
+        "palette": 88,
+        "composition": 75,
+        "character": 100,
+        "mood": 95
+      },
+      "hint": "Use a more muted, brownish-sepia palette instead of the brighter golden tones for a closer match.",
+      "promptTemplate": "Vintage sepia-toned narrative animation with warm golden-brown palette, comic book illustration style with bold black outlines, nostalgic 1950s-inspired aesthetic. Wide establishing shots with simplified, silhouetted characters against expansive backgrounds. Expressive cartoon style with classical shading and cross-hatching. Intimate domestic spaces to grand institutional environments with epic scale and depth. Warm directional lighting creating dramatic shadows and atmospheric perspective. Consistent warm color grading: cream, tan, dark brown. CLEAN background, NO text overlay, NO burned-in text — text rendering is done in post-production.",
+      "testImagePath": "C:\\Users\\cmktc\\proyectos\\video-factory\\storage\\rips\\d83eaa0e-d1f9-471a-86ad-f4617d0a5044\\source.mp4.iterloop-keyframes\\test_iter02.png"
+    },
+    {
+      "iteration": 3,
+      "score": 98,
+      "details": {
+        "palette": 99,
+        "composition": 90,
+        "character": 99,
+        "mood": 99
+      },
+      "hint": "Excellent match. To be perfect, add a subtle aged paper texture to the background for a more vintage feel.",
+      "promptTemplate": "Vintage sepia-toned narrative animation with muted brownish-sepia palette, deep ochre and burnt sienna tones instead of bright gold. Comic book illustration style with bold black outlines, nostalgic 1950s aesthetic. Wide establishing shots with simplified, silhouetted characters against expansive backgrounds. Expressive cartoon style with classical cross-hatching and subtle shading. Intimate domestic spaces to grand institutional environments with epic depth. Soft, diffused directional lighting creating gentle shadows and atmospheric perspective. Consistent warm color grading: muted cream, dark tan, deep brown. CLEAN background, NO text overlay, NO burned-in text — text rendering is done in post-production.",
+      "testImagePath": "C:\\Users\\cmktc\\proyectos\\video-factory\\storage\\rips\\d83eaa0e-d1f9-471a-86ad-f4617d0a5044\\source.mp4.iterloop-keyframes\\test_iter03.png"
+    }
+  ],
+  "keyframeReferencePath": "C:\\Users\\cmktc\\proyectos\\video-factory\\storage\\rips\\d83eaa0e-d1f9-471a-86ad-f4617d0a5044\\source.mp4.iterloop-keyframes\\keyframe_01.png"
+}

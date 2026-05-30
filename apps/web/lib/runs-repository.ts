@@ -19,7 +19,7 @@ export interface RunSummary {
   brandId: string;
   productId: string | null;
   presetId: string;
-  status: 'pending' | 'running' | 'completed' | 'failed';
+  status: 'pending' | 'running' | 'completed' | 'completed-with-warnings' | 'failed';
   durationSeconds: number | null;
   outputPath: string | null;
   workDir: string | null;
@@ -67,7 +67,7 @@ function row(r: typeof runs.$inferSelect): RunSummary {
 export async function listActiveRuns(opts?: {
   brandId?: string;
   productId?: string | null;
-  status?: 'pending' | 'running' | 'completed' | 'failed';
+  status?: 'pending' | 'running' | 'completed' | 'completed-with-warnings' | 'failed';
 }): Promise<RunSummary[]> {
   const conditions = [isNull(runs.deletedAt)];
   if (opts?.brandId) conditions.push(eq(runs.brandId, opts.brandId));

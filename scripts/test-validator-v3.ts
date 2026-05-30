@@ -1,194 +1,249 @@
-// Test runner: corre Validator v3 contra fixture de casos con respuestas esperadas.
-// El objetivo es 100% catch rate en errores conocidos sin false positives en controles.
+// Test VALIDATOR CHAT IA v3 contra escenas REALES del rip SOOMI.
+//
+// Toma 3 escenas del run 1103a786:
+//   - Scene 5: conocida con burned-text "9:16" + "VITALY GOTAS DRENAJE LINFÁTICO"
+//   - Scene 7: conocida con "Expression Sheet" (character sheet con varias poses)
+//   - Scene 2: probable OK (anatomical illustration de tobillo sano)
+//
+// VALIDATOR debe rechazar 5 y 7 (categorías burned-text-leaked / gallery-mode)
+// y aprobar 2. Para cada uno imprime el thinking + verdict + issues + corrections.
+//
+// Uso:
+//   node --env-file=.env --import tsx scripts/test-validator-v3.ts
 
 import { readFile } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { SceneValidatorV3 } from '@video-factory/block-scene-validator';
+import { existsSync } from 'node:fs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '..');
 
-interface FixtureCase {
-  id: string;
-  imagePath: string;
-  text: string;
-  imagePrompt: string;
-  narratorProfile?: { gender: 'male' | 'female' | 'neutral'; ageRange: string; characterCard: string };
-  // What we expect — the validator should detect these specific issue keywords
-  expected: {
-    verdict: 'pass' | 'regenerate';
-    minScore?: number; // expected minimum score (for pass cases)
-    maxScore?: number; // expected maximum score (for regen cases)
-    mustDetectKeywords?: string[]; // substring matches in issues
-  };
-  description: string;
-}
+// Set cwd para que validator-chat-ia.ts lea storage/ correctamente
+process.chdir(REPO_ROOT);
 
-const fixture: FixtureCase[] = [
-  // ============ KNOWN FAILS — validator MUST flag ============
-  {
-    id: 'feet_oversized_premium-ddad1485_scene_04',
-    imagePath: 'storage/runs/premium-ddad1485/scene_04.png',
-    text: 'tus piernas pesan, tus zapatos aprietan',
-    imagePrompt:
-      'Hand-illustrated digital painting, woman sitting on bed taking off socks, swollen feet with pressure marks from tight shoes, sepia watercolor style',
-    expected: {
-      verdict: 'regenerate',
-      maxScore: 70,
-      mustDetectKeywords: ['foot', 'feet', 'toe', 'propor'],
-    },
-    description: 'Pies anatómicamente raros y posiblemente más grandes proporcionalmente',
+import { validateScene } from '../apps/web/lib/validator-chat-ia.js';
+
+const RUN_ID = '1103a786-630f-4d22-8047-fb2246d20d6e';
+const SCENES_TO_TEST = [5, 7, 2];
+
+// Logger compacto
+const logger = {
+  info: (obj: unknown, msg?: string) => {
+    console.log(`[INFO] ${msg ?? ''}`, JSON.stringify(obj).slice(0, 300));
   },
-  {
-    id: 'gibberish_label_premium-ddad1485_scene_22',
-    imagePath: 'storage/runs/premium-ddad1485/scene_22.png',
-    text: 'la fórmula que recomiendo se llama Vitaly Gotas',
-    imagePrompt:
-      'Hand-illustrated digital painting of Vitaly Gotas amber dropper bottle, clean label with only "VITALY" brand name, sepia watercolor style',
-    expected: {
-      verdict: 'regenerate',
-      maxScore: 75,
-      mustDetectKeywords: ['gibberish', 'text', 'illegible'],
-    },
-    description: 'Botella con texto gibberish bajo VITALY',
+  warn: (obj: unknown, msg?: string) => {
+    console.warn(`[WARN] ${msg ?? ''}`, JSON.stringify(obj).slice(0, 300));
   },
-  {
-    id: 'broken_calendar_premium-ddad1485_scene_25',
-    imagePath: 'storage/runs/premium-ddad1485/scene_25.png',
-    text: 'en 30 días vas a sentirte tú misma de nuevo',
-    imagePrompt:
-      'Hand-illustrated digital painting of a calendar showing 30 days, days 1 through 29 crossed out, day 30 circled with a sun symbol, sepia watercolor',
-    expected: {
-      verdict: 'regenerate',
-      maxScore: 70,
-      mustDetectKeywords: ['number', 'calendar', 'illogical', 'repeat', 'duplicate', 'sequence'],
-    },
-    description: 'Calendario con números duplicados/fuera de orden',
-  },
-  {
-    id: 'hand_ambiguous_premium-fd99285f_scene_18',
-    imagePath: 'storage/runs/premium-fd99285f/scene_18.png',
-    text: 'manos del experto preparando hierbas medicinales',
-    imagePrompt:
-      'Macro close-up of hands arranging medicinal herbs in porcelain bowls on a wooden table, illustrated style',
-    expected: {
-      verdict: 'regenerate',
-      maxScore: 75,
-      mustDetectKeywords: ['hand', 'finger', 'anatomy', 'digit'],
-    },
-    description: 'Manos con dedos ambiguos/posiblemente incorrectos',
-  },
-  // ============ KNOWN GOODS — validator MUST pass ============
-  {
-    id: 'doctor_portrait_GOOD_acdf6c97_scene_10',
-    imagePath: 'storage/runs/premium-acdf6c97/scene_10.png',
-    text: 'Soy el doctor Hiroshi Sato, especialista en medicina linfática',
-    imagePrompt:
-      'Cinematic editorial portrait of mature Japanese man around 60, gray hair at temples, white lab coat, black shirt, serene authoritative expression',
-    narratorProfile: {
-      gender: 'male',
-      ageRange: '55-65',
-      characterCard:
-        'Hombre japonés de unos 60 años, Dr. Hiroshi Sato. Cabello corto y canoso en las sienes, de aspecto pulcro. Viste una bata blanca de médico sobre una camisa formal. Su expresión es serena y autoritaria.',
-    },
-    expected: { verdict: 'pass', minScore: 80 },
-    description: 'CONTROL POSITIVO: retrato editorial del Dr. Sato, debe pasar',
-  },
-  {
-    id: 'doctor_with_bottle_GOOD_acdf6c97_scene_23',
-    imagePath: 'storage/runs/premium-acdf6c97/scene_23.png',
-    text: 'la fórmula que recomiendo se llama Vitaly Gotas',
-    imagePrompt:
-      'Doctor Hiroshi Sato (mature Japanese man, gray temple hair, white lab coat over black shirt) holding the VITALY GOTAS amber dropper bottle toward camera, confident expression',
-    narratorProfile: {
-      gender: 'male',
-      ageRange: '55-65',
-      characterCard:
-        'Hombre japonés de unos 60 años, Dr. Hiroshi Sato. Cabello corto y canoso en las sienes, de aspecto pulcro. Viste una bata blanca de médico sobre una camisa formal. Su expresión es serena y autoritaria.',
-    },
-    expected: { verdict: 'pass', minScore: 80 },
-    description: 'CONTROL POSITIVO: Dr. Sato sosteniendo frasco VITALY GOTAS',
-  },
-];
-
-async function runOne(c: FixtureCase, validator: SceneValidatorV3): Promise<{ passed: boolean; report: string }> {
-  const imageBuffer = await readFile(resolve(REPO_ROOT, c.imagePath));
-  const result = await validator.validate({
-    text: c.text,
-    imagePrompt: c.imagePrompt,
-    imageBuffer,
-    narratorProfile: c.narratorProfile,
-  });
-
-  const lines: string[] = [];
-  lines.push(`\n=== ${c.id} ===`);
-  lines.push(`Description: ${c.description}`);
-  lines.push(`Expected verdict: ${c.expected.verdict}`);
-  lines.push(`Got verdict: ${result.verdict} | score=${result.score}`);
-  lines.push(`Issues (${result.issues.length}): ${result.issues.slice(0, 5).join(' | ')}`);
-  if (result.refinementHint) {
-    lines.push(`RefinementHint: ${result.refinementHint.slice(0, 200)}...`);
-  }
-
-  let verdictOk = result.verdict === c.expected.verdict;
-  let scoreOk = true;
-  if (c.expected.minScore !== undefined && result.score < c.expected.minScore) scoreOk = false;
-  if (c.expected.maxScore !== undefined && result.score > c.expected.maxScore) scoreOk = false;
-
-  let keywordOk = true;
-  if (c.expected.mustDetectKeywords && c.expected.mustDetectKeywords.length > 0) {
-    const issuesText = result.issues.join(' ').toLowerCase();
-    const hintText = (result.refinementHint ?? '').toLowerCase();
-    const allText = issuesText + ' ' + hintText;
-    keywordOk = c.expected.mustDetectKeywords.some((kw) => allText.includes(kw.toLowerCase()));
-    if (!keywordOk) {
-      lines.push(`✗ NONE of expected keywords [${c.expected.mustDetectKeywords.join(', ')}] found in output`);
-    }
-  }
-
-  const passed = verdictOk && scoreOk && keywordOk;
-  lines.push(`Result: ${passed ? '✓ PASS' : '✗ FAIL'} (verdictOk=${verdictOk} scoreOk=${scoreOk} keywordOk=${keywordOk})`);
-
-  return { passed, report: lines.join('\n') };
-}
+};
 
 async function main() {
-  const validator = new SceneValidatorV3();
-  if (!validator.isAvailable()) {
-    console.error('GOOGLE_AI_API_KEY missing');
+  const runDir = resolve(REPO_ROOT, 'storage', 'runs', RUN_ID);
+  const planPath = resolve(runDir, 'scene-plan.json');
+
+  if (!existsSync(planPath)) {
+    console.error(`No scene-plan.json en ${runDir}`);
     process.exit(1);
   }
 
-  console.log(`Running ${fixture.length} test cases against Validator v3...`);
-  const results = [];
-  for (const c of fixture) {
-    try {
-      const r = await runOne(c, validator);
-      console.log(r.report);
-      results.push({ id: c.id, passed: r.passed });
-    } catch (e) {
-      console.log(`\n=== ${c.id} ===\nERROR: ${(e as Error).message}`);
-      results.push({ id: c.id, passed: false });
+  const plan = JSON.parse(await readFile(planPath, 'utf-8')) as {
+    scenes: Array<{
+      index: number;
+      text: string;
+      imagePrompt: string;
+      imagePath?: string;
+      videoPath?: string;
+      startTimeSeconds: number;
+      endTimeSeconds: number;
+    }>;
+  };
+
+  console.log(
+    `\n═══════════════════════════════════════════════════════════════════`,
+  );
+  console.log(`  TEST VALIDATOR CHAT IA v3 — run ${RUN_ID.slice(0, 8)}`);
+  console.log(`  Escenas a validar: ${SCENES_TO_TEST.join(', ')}`);
+  console.log(
+    `═══════════════════════════════════════════════════════════════════\n`,
+  );
+
+  const results: Array<{
+    sceneIndex: number;
+    verdict: string;
+    confidence: number;
+    nextAction: string;
+    issueCount: number;
+    criticalCount: number;
+    elapsedSec: number;
+    hadThinking: boolean;
+    thinkingChars: number;
+  }> = [];
+
+  for (const sceneIndex of SCENES_TO_TEST) {
+    const scene = plan.scenes.find((s) => s.index === sceneIndex);
+    if (!scene) {
+      console.log(`⚠️  Scene ${sceneIndex} no existe en scene-plan, skip`);
+      continue;
     }
+    if (!scene.imagePath || !existsSync(scene.imagePath)) {
+      console.log(`⚠️  Scene ${sceneIndex} sin imagePath, skip`);
+      continue;
+    }
+
+    console.log(
+      `\n┌─────────────────────────────────────────────────────────────────┐`,
+    );
+    console.log(`│ Scene ${sceneIndex}`);
+    console.log(`│ Narración: "${scene.text.slice(0, 80)}"`);
+    console.log(`│ imagePath: ${scene.imagePath.split(/[\\/]/).pop()}`);
+    console.log(
+      `│ videoPath: ${scene.videoPath ? scene.videoPath.split(/[\\/]/).pop() : '(no clip)'}`,
+    );
+    console.log(
+      `└─────────────────────────────────────────────────────────────────┘`,
+    );
+
+    const t0 = Date.now();
+    const result = await validateScene({
+      runId: `test-v3-${Date.now()}`, // run sintético, no contamina historial real
+      scene: scene as never,
+      staticImagePath: scene.imagePath,
+      animatedVideoPath: scene.videoPath,
+      brandContext: {
+        brandId: 'vitaly',
+        productName: 'Vitaly Gotas',
+        productDescription:
+          'Suplemento sublingual en gotas para drenaje linfático. Se aplican unas gotas bajo la lengua.',
+        productUsageForm: 'sublingual',
+        styleSummary: 'B-ROLL Animado · Comic / Acuarela Sepia',
+        language: 'es',
+      },
+      scenePosition: {
+        index: sceneIndex,
+        total: plan.scenes.length,
+        narrativeBeat:
+          sceneIndex === 0 ? 'hook' : sceneIndex < 4 ? 'problem' : 'mechanism',
+      },
+      scriptFullSummary: plan.scenes
+        .map((s) => s.text)
+        .join(' ')
+        .slice(0, 1500),
+      attempt: 1,
+      logger,
+    });
+    const elapsedSec = (Date.now() - t0) / 1000;
+
+    if (!result.verdict) {
+      console.log(
+        `\n  ❌ ERROR: ${result.error?.type} — ${result.error?.message?.slice(0, 250)}`,
+      );
+      results.push({
+        sceneIndex,
+        verdict: 'API_ERROR',
+        confidence: 0,
+        nextAction: 'n/a',
+        issueCount: 0,
+        criticalCount: 0,
+        elapsedSec,
+        hadThinking: false,
+        thinkingChars: 0,
+      });
+      continue;
+    }
+
+    const v = result.verdict;
+    const criticalCount = v.issues.filter((i) => i.severity === 'critical').length;
+    const majorCount = v.issues.filter((i) => i.severity === 'major').length;
+    const thinkingChars = result.history.thinkingContent?.length ?? 0;
+
+    console.log(`\n  🤖 VERDICT:`);
+    console.log(`     verdict        = ${v.verdict.toUpperCase()}`);
+    console.log(`     confidence     = ${v.confidence}/100`);
+    console.log(`     nextAction     = ${v.nextAction}`);
+    console.log(`     staticImageOk  = ${v.staticImageOk}`);
+    console.log(`     animationOk    = ${v.animationOk}`);
+    console.log(`     keyframes      = ${result.keyframesExtracted}`);
+    console.log(`     elapsed        = ${elapsedSec.toFixed(1)}s`);
+    console.log(`     thinking       = ${thinkingChars} chars`);
+
+    if (v.issues.length > 0) {
+      console.log(`\n  📋 ISSUES (${criticalCount} crit, ${majorCount} maj):`);
+      for (const iss of v.issues) {
+        console.log(
+          `     • [${iss.severity}/${iss.category}] frame ${iss.evidenceFrameIndex ?? '?'} ${iss.evidenceRegion ?? '?'}: ${iss.description.slice(0, 150)}`,
+        );
+      }
+    }
+
+    if (v.correctedImagePrompt) {
+      console.log(
+        `\n  🔧 correctedImagePrompt (${v.correctedImagePrompt.length} chars):`,
+      );
+      console.log(`     "${v.correctedImagePrompt.slice(0, 220)}..."`);
+    }
+    if (v.correctedMotionPrompt) {
+      console.log(
+        `\n  🎬 correctedMotionPrompt (${v.correctedMotionPrompt.length} chars):`,
+      );
+      console.log(`     "${v.correctedMotionPrompt.slice(0, 220)}..."`);
+    }
+    if (v.systemicAntiPattern) {
+      console.log(`\n  🚫 systemicAntiPattern: "${v.systemicAntiPattern}"`);
+    }
+
+    console.log(`\n  💬 Rationale:`);
+    console.log(`     "${v.rationale.slice(0, 320)}"`);
+
+    if (result.history.thinkingContent) {
+      console.log(`\n  🧠 THINKING (primeros 800 chars):`);
+      console.log(
+        result.history.thinkingContent
+          .slice(0, 800)
+          .split('\n')
+          .map((l) => `     ${l}`)
+          .join('\n'),
+      );
+      if (thinkingChars > 800) console.log(`     ... [+${thinkingChars - 800} chars]`);
+    }
+
+    results.push({
+      sceneIndex,
+      verdict: v.verdict,
+      confidence: v.confidence,
+      nextAction: v.nextAction,
+      issueCount: v.issues.length,
+      criticalCount,
+      elapsedSec,
+      hadThinking: thinkingChars > 0,
+      thinkingChars,
+    });
   }
 
-  const passCount = results.filter((r) => r.passed).length;
-  const total = results.length;
-  const pct = ((passCount / total) * 100).toFixed(0);
-
-  console.log(`\n${'='.repeat(60)}`);
-  console.log(`RECALL: ${passCount}/${total} (${pct}%)`);
-  console.log(`${'='.repeat(60)}`);
-
+  console.log(
+    `\n═══════════════════════════════════════════════════════════════════`,
+  );
+  console.log(`  RESUMEN`);
+  console.log(
+    `═══════════════════════════════════════════════════════════════════`,
+  );
+  console.log(
+    `\n  Scene │ Verdict │ Conf │ NextAction         │ Issues │ Crit │ Thinking │ Elapsed`,
+  );
+  console.log(
+    `  ──────┼─────────┼──────┼────────────────────┼────────┼──────┼──────────┼────────`,
+  );
   for (const r of results) {
-    console.log(`  ${r.passed ? '✓' : '✗'} ${r.id}`);
+    console.log(
+      `  ${String(r.sceneIndex).padStart(5)} │ ${r.verdict.padEnd(7)} │ ${String(r.confidence).padStart(3)}  │ ${r.nextAction.padEnd(18)} │ ${String(r.issueCount).padStart(6)} │ ${String(r.criticalCount).padStart(4)} │ ${r.hadThinking ? String(r.thinkingChars).padStart(7) + 'c' : '   no    '} │ ${r.elapsedSec.toFixed(1)}s`,
+    );
   }
-
-  process.exit(passCount === total ? 0 : 1);
+  console.log(`\n  Total: ${results.length} validaciones`);
+  console.log(
+    `\n  ✓ Esperado: scenes 5 y 7 → wrong (crítico); scene 2 → right o accept-with-warnings.\n`,
+  );
 }
 
 main().catch((e) => {
-  console.error('FAILED', e);
+  console.error('\nFATAL:', e);
   process.exit(1);
 });

@@ -11,8 +11,12 @@ export const runs = sqliteTable('runs', {
 
   scriptRaw: text('script_raw').notNull(),
 
+  // v3.2 #105 (28-may-2026): añadido 'completed-with-warnings' — el video se
+  // entregó pero el editor post-render lo marcó con advisories. Owner ve el
+  // video + recibe instrucciones de qué revisar. Mejor que 'failed' (que dejaba
+  // al owner sin nada). 'failed' queda reservado para errores infra reales.
   status: text('status', {
-    enum: ['pending', 'running', 'completed', 'failed'],
+    enum: ['pending', 'running', 'completed', 'completed-with-warnings', 'failed'],
   })
     .notNull()
     .default('pending'),
@@ -44,6 +48,24 @@ export const runs = sqliteTable('runs', {
   createdAt: integer('created_at', { mode: 'timestamp' })
     .notNull()
     .default(sql`(unixepoch())`),
+
+  // v3.2 #114 (28-may-2026): modo colaborativo "Hacer video en conjunto" — el
+  // pipeline pausa entre cada scene esperando aprobación del owner. Sequential
+  // por diseño (concurrency=1) para que el owner pueda revisar/corregir cada
+  // scene antes de proceder a la siguiente. 'auto' (default) corre todo el
+  // pipeline sin esperar intervención humana.
+  mode: text('mode', {
+    enum: ['auto', 'collaborative'],
+  })
+    .notNull()
+    .default('auto'),
+  // Cuando mode='collaborative' y el pipeline está pausado esperando aprobación,
+  // este campo contiene el sceneIndex de la scene cuya aprobación se espera.
+  pausedAtSceneIndex: integer('paused_at_scene_index'),
+  // Boolean: ¿pipeline está actualmente esperando intervención humana?
+  awaitingApproval: integer('awaiting_approval', { mode: 'boolean' })
+    .notNull()
+    .default(false),
 });
 
 export type Run = typeof runs.$inferSelect;

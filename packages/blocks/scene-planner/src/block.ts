@@ -32,12 +32,21 @@ export interface ScenePlannerOptions {
   // similar al ritmo de los videos de referencia premium).
   targetSceneCount?: number;
   geminiModel?: string;
+  // v3.2 #139 (29-may-2026): KNOWLEDGE BASE — preferencias visuales del owner
+  // acumuladas cross-run para este brand+preset. El pipeline las lee de
+  // owner-feedback-memory y las pasa acá para que la PRIMERA generación de
+  // prompts ya las respete (en vez de generarlas mal y corregir reactivamente).
+  // Texto en lenguaje natural, ej: "La protagonista debe ser mujer de ~50 años,
+  // nunca embarazada. Estilo acuarela cálida, no fotorealista."
+  ownerPreferences?: string;
 }
 
 interface SceneIdea {
   sceneIndex: number;
   text: string;
   shotType?: string;
+  // v3.2 #145: ¿el personaje habla esta línea (lip-sync) o es voice-over/B-roll?
+  speaking?: boolean;
   imagePrompt: string;
   textOverlays?: Array<{
     kind: 'product-label' | 'day-counter' | 'metric-callout' | 'subtitle-banner';
@@ -232,11 +241,41 @@ REGLAS GENERALES DE PROMPTS:
 - Palabras prohibidas (safety filters): "doctor", "lab coat", "stethoscope", "clinic", "medical", "patient", "child", "young", "kid", "naked", "blood". Reemplazá por equivalentes neutros ("wise elder", "expert", "wellness setting").
 - NO escribas: "looking at camera", "eye contact" — usá "facing the viewer" o "subject centered".
 
-TEXT OVERLAYS — ESTRATEGIA:
-Los generadores de imagen (Imagen, Flux, gpt-image-1) suelen fallar con texto: labels con gibberish, números fuera de orden, **TEXTO EN INGLÉS cuando el ad es para audiencia hispana** (los modelos copian patrones del entrenamiento e incrustan inglés en vez de respetar el idioma destino). Para resolverlo: TODA escena debe instruir al generator que produzca imagen LIMPIA SIN TEXTO BURNED-IN. El renderer sobrepone texto vectorial perfecto en el idioma correcto.
+CRÍTICO — REGLA ANTI-EMBARAZO (hinchazón / retención de líquidos / vientre inflamado):
+Cuando la narración hable de HINCHAZÓN, RETENCIÓN DE LÍQUIDOS, vientre inflamado o
+sensación de inflamación, NUNCA generes iconografía de embarazo. Los modelos de imagen
+IGNORAN los negativos ("not pregnant"), así que el problema es la COMPOSICIÓN, no la palabra.
+POSES PROHIBIDAS (leen como embarazo aunque digas "no embarazada"):
+  ❌ persona de perfil/sideways con vientre redondo protuberante
+  ❌ ambas manos acunando/cradling el vientre (gesto maternal)
+  ❌ mirándose el vientre en un espejo de perfil
+  ❌ panza redonda esférica tipo "baby bump"
+EN SU LUGAR, mostrá la hinchazón así (composición NO ambigua):
+  ✅ persona DE FRENTE (no de perfil), expresión de incomodidad/cansancio
+  ✅ UNA mano presionando el estómago con gesto de molestia (no acunando)
+  ✅ ropa/cinturón visiblemente apretado en la cintura, tela tirante
+  ✅ cara y mejillas algo hinchadas, ojeras, dedos/anillos apretados
+  ✅ vientre distendido pero PLANO-ish, NUNCA un bulto redondo maternal
+  ✅ contexto cotidiano de malestar (sentada incómoda, tocándose el costado)
+Esta regla es OBLIGATORIA — el owner reportó este error múltiples veces.
 
-REGLA OBLIGATORIA: en CADA imagePrompt incluí explícitamente esta frase al final, palabra por palabra:
-"CLEAN background, NO text overlay, NO captions, NO burned-in text, NO English captions, NO subtitle bars on image — text rendering is done in post-production."
+TEXT OVERLAYS — ESTRATEGIA CRÍTICA:
+Los generadores de imagen (Imagen, Flux, gpt-image-1) CONSTANTEMENTE fallan con texto: labels con gibberish, números fuera de orden, **TEXTO EN INGLÉS cuando el ad es para audiencia hispana** (los modelos copian patrones del entrenamiento e incrustan inglés en vez de respetar el idioma destino). Este es un problema SISTÉMICO que arruina entregas.
+
+EJEMPLOS DE ERRORES REALES QUE DEBÉS EVITAR:
+❌ MAL: Botón con "Click Here" burned-in cuando el ad es en español
+❌ MAL: Etiquetas de producto con texto inglés incrustado
+❌ MAL: Números o porcentajes renderizados directamente en la imagen
+❌ MAL: Cualquier palabra visible en la imagen generada
+
+✅ BIEN: Imagen completamente limpia, texto agregado después por el renderer
+
+REGLA OBLIGATORIA — REPETIR EN CADA ESCENA:
+Al final de CADA imagePrompt, incluí LITERALMENTE esta frase completa (copia-pega, no parafrasees):
+
+"CLEAN background, NO text overlay, NO captions, NO burned-in text, NO English captions, NO Spanish text, NO numbers, NO labels, NO writing of any kind on the image — absolutely zero text rendering, all text is added in post-production with perfect typography."
+
+Si la escena requiere mostrar un producto, botón, cartel o métrica: describe el OBJETO visual sin texto (ej: "clean white button shape" en vez de "button with text"), y usá textOverlays para el contenido textual.
 
 CASOS donde DEBÉS usar textOverlays:
 1. Producto por nombre → kind:"product-label", text:"<NOMBRE>"
@@ -246,6 +285,20 @@ CASOS donde DEBÉS usar textOverlays:
 
 Cuando uses textOverlays, el imagePrompt DEBE incluir: "clean background with NO text, no labels, no writing, no numbers — text will be added in post-production".
 
+CRÍTICO — REGLA "speaking" (HABLA vs VOICE-OVER):
+Para CADA escena decidí si el personaje en pantalla DICE esa línea en primera
+persona (lip-sync, boca se mueve) o si es VOICE-OVER / B-ROLL (narración off-
+screen, la boca NO debe sincronizar con el texto).
+  - "speaking": true  → SOLO cuando la escena muestra al NARRADOR/personaje
+    diciendo literalmente esa frase en primera persona (testimonial directo a
+    cámara, diálogo del personaje). Es el caso MENOS común.
+  - "speaking": false → DEFAULT. Voice-over o B-roll: el narrador habla en off
+    mientras vemos escenas ilustrativas (una persona con un gesto, un producto,
+    una anatomía, un objeto). La boca NO se mueve con el texto. La MAYORÍA de
+    las escenas de ads D2C son ASÍ.
+Regla práctica: si dudás, poné false. Solo true para talking-head testimonial
+explícito en primera persona.
+
 Devolvé EXCLUSIVAMENTE JSON con este shape, sin texto adicional:
 {
   "scenes": [
@@ -253,6 +306,7 @@ Devolvé EXCLUSIVAMENTE JSON con este shape, sin texto adicional:
       "sceneIndex": 0,
       "text": "<frase EXACTA literal del transcript narrada en esta escena, NUNCA vacía>",
       "shotType": "<close-up|anatomy|action|object|product|comic-panel|talking-head|wide|stock-detail>",
+      "speaking": false,
       "imagePrompt": "<prompt de 30-70 palabras EMPEZANDO con el styleBase literal, después la escena específica>",
       "textOverlays": [
         { "kind": "product-label" | "day-counter" | "metric-callout" | "subtitle-banner", "text": "<TEXTO>", "position": "center" | "bottom" | "top" }
@@ -260,7 +314,23 @@ Devolvé EXCLUSIVAMENTE JSON con este shape, sin texto adicional:
     }
   ]
 }
-textOverlays es OPCIONAL — solo cuando aplique uno de los 4 casos.`;
+textOverlays es OPCIONAL — solo cuando aplique uno de los 4 casos.
+
+CRÍTICO — REGLA #4: DURACIÓN TOTAL Y COBERTURA DE AUDIO.
+La suma de las duraciones de TODAS las escenas (calculada desde el texto narrado) DEBE coincidir EXACTAMENTE con la duración total del audio del script. NO dejes huecos al final. NO termines el video antes de que termine la narración.
+
+PROCESO DE VERIFICACIÓN OBLIGATORIO:
+1. Antes de devolver el JSON, calculá mentalmente: sum(duration_of_each_scene_text) ≈ total_audio_duration
+2. Si la última escena termina ANTES del final del audio, EXTENDÉ su texto para cubrir el resto de la narración.
+3. Si te sobra narración sin asignar a ninguna escena, creá escenas adicionales hasta agotar TODO el transcript.
+4. NUNCA devuelvas un plan donde queden frases del transcript sin asignar a ninguna scene.
+
+EJEMPLO DE ERROR A EVITAR:
+- Audio total: 45 segundos
+- Escenas planificadas: 8 escenas que cubren solo 38 segundos
+- RESULTADO: Los últimos 7 segundos quedan sin video → INACEPTABLE.
+
+SOLUCIÓN: La escena 8 debe extenderse o agregar escena 9 para cubrir esos 7 segundos faltantes con el texto restante del transcript.`;
 
     const narratorBlock = narratorProfile?.narratorPresent && narratorProfile.characterCard
       ? `NARRATOR CHARACTER CARD (usar LITERALMENTE en cada prompt que muestre al narrador):
@@ -297,9 +367,19 @@ Rango de edad: ${narratorProfile.ageRange}`
 
     const ingredientsBlock = buildIngredientsBlock(ctx.brand);
 
+    // v3.2 #139: KNOWLEDGE BASE — preferencias visuales del owner acumuladas.
+    // Se inyectan ARRIBA de todo (después de la narración) con prioridad ALTA
+    // porque son decisiones explícitas del dueño que sobrescriben defaults.
+    const ownerPreferencesBlock = this.options.ownerPreferences?.trim()
+      ? `\n🧠 PREFERENCIAS DEL OWNER (PRIORIDAD MÁXIMA — aplícalas a TODAS las escenas, son correcciones que ya dio en videos anteriores de este mismo brand+preset):
+${this.options.ownerPreferences.trim()}
+
+Estas preferencias GANAN sobre cualquier default. Si contradicen el estilo base, respeta las preferencias del owner. NO repitas errores que el owner ya corrigió antes.\n`
+      : '';
+
     const userPrompt = `NARRACIÓN CON TIMESTAMPS (${totalDurationSeconds.toFixed(1)}s total):
 ${timedNarration}
-
+${ownerPreferencesBlock}
 ${narratorBlock}
 
 ESTILO BASE DEL PROYECTO (úsalo como referencia de paleta y atmósfera, no como copy):
@@ -527,6 +607,8 @@ function distributeTimestamps(ideas: SceneIdea[], totalDuration: number): Scene[
       startTimeSeconds,
       endTimeSeconds,
       imagePrompt: idea.imagePrompt,
+      // v3.2 #145: propagar speaking (default false = voice-over/B-roll)
+      speaking: idea.speaking === true,
       ...(textOverlays && textOverlays.length > 0 ? { textOverlays } : {}),
     };
   });

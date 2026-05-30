@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { ClaudeChatPanel } from '@/components/ClaudeChatPanel';
 
 interface BrandAsset {
   id: string;
@@ -560,7 +561,197 @@ export function RipDetailView({ ripId, brands }: RipDetailViewProps) {
           ))}
         </div>
       )}
+
+      {/* Auto-Learn Preset al 95% — botón manual; también se dispara auto al
+          terminar cualquier rip via hook en pipeline.ts */}
+      {rip.status === 'analyzed' && <LearnPresetSection ripId={ripId} />}
+
+      {/* M8: chat IA para discutir el análisis del rip y decidir cómo adaptarlo */}
+      {rip.status === 'analyzed' && rip.analysis && (
+        <ClaudeChatPanel
+          contextType="rip-analysis"
+          contextData={{
+            ripId,
+            ripFileName: rip.videoFileName,
+            durationSeconds: rip.analysis.totalDurationSeconds,
+            hookType: rip.analysis.hookType,
+            sceneCount: rip.analysis.scenes.length,
+            editorialLine: rip.analysis.editorialLine,
+            summary: rip.analysis.summary,
+            originalProduct: rip.analysis.product.name,
+            targetBrand: brandId,
+            targetProduct: productId,
+            fidelityModeSelected: fidelityMode,
+          }}
+          title="Discutí cómo adaptar este ad con Claude"
+          placeholder="Ej: '¿Qué preset me conviene para adaptar esto a Vitaly?' o 'El hook funciona para drenaje linfático?'"
+        />
+      )}
     </div>
+  );
+}
+
+// ============================================================
+// LearnPresetSection — botón manual para disparar el loop iterativo
+// ============================================================
+// Permite re-ejecutar `runPresetLearningLoop` sobre el video original del rip
+// con target 95% similitud. Muestra cada iteración con su score y hint.
+
+interface LearnPresetIteration {
+  iteration: number;
+  score: number;
+  details: { palette: number; composition: number; character: number; mood: number };
+  hint: string;
+}
+
+interface LearnPresetResult {
+  ok: boolean;
+  presetId: string;
+  displayName: string;
+  presetFilePath: string;
+  approved: boolean;
+  exhausted: boolean;
+  finalScore: number;
+  iterationsRun: number;
+  iterations: LearnPresetIteration[];
+  elapsedSec: number;
+}
+
+function LearnPresetSection({ ripId }: { ripId: string }) {
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<LearnPresetResult | null>(null);
+  const [error, setError] = useState('');
+  const [targetScore, setTargetScore] = useState(95);
+  const [maxIterations, setMaxIterations] = useState(4);
+
+  async function handleLearn() {
+    setLoading(true);
+    setError('');
+    setResult(null);
+    try {
+      const resp = await fetch(`/api/rip/${ripId}/learn-preset`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ targetScore, maxIterations }),
+      });
+      const data = (await resp.json()) as LearnPresetResult & { error?: string };
+      if (!resp.ok) {
+        setError(data.error ?? `HTTP ${resp.status}`);
+        return;
+      }
+      setResult(data);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <Card className="border-emerald-500/30 bg-emerald-500/5">
+      <CardContent className="pt-5 space-y-3">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold">
+              🎯 Aprender el estilo al {targetScore}% (loop iterativo)
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Genera un preset auto-aprendido desde este video y lo refina iterativamente
+              con validador IA hasta lograr {targetScore}% de similitud visual. El preset queda en
+              <code className="mx-1 rounded bg-background/60 px-1">packages/presets/pending/</code>
+              listo para reutilizar en /create con futuros videos del mismo estilo. NOTA: este loop
+              también se dispara <strong>automáticamente al terminar cualquier rip nuevo</strong> —
+              este botón sirve para re-ejecutar sobre rips viejos o con otro target.
+              ~$0.40-1.20, ~90-240s.
+            </p>
+          </div>
+          <Button
+            onClick={handleLearn}
+            disabled={loading}
+            size="sm"
+            className="shrink-0 bg-emerald-600 hover:bg-emerald-700"
+          >
+            {loading ? 'Loop corriendo…' : '🎯 Aprender preset'}
+          </Button>
+        </div>
+
+        <div className="flex gap-3 text-[11px] text-muted-foreground">
+          <label className="flex items-center gap-1">
+            Target score:
+            <input
+              type="number"
+              min={70}
+              max={98}
+              value={targetScore}
+              onChange={(e) => setTargetScore(parseInt(e.target.value) || 95)}
+              className="w-14 rounded border bg-background px-1 py-0.5"
+              disabled={loading}
+            />
+          </label>
+          <label className="flex items-center gap-1">
+            Max iter:
+            <input
+              type="number"
+              min={1}
+              max={6}
+              value={maxIterations}
+              onChange={(e) => setMaxIterations(parseInt(e.target.value) || 4)}
+              className="w-12 rounded border bg-background px-1 py-0.5"
+              disabled={loading}
+            />
+          </label>
+        </div>
+
+        {error && (
+          <p className="rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">{error}</p>
+        )}
+
+        {result && (
+          <div className="space-y-2 rounded-md bg-background/60 p-3 text-xs">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span
+                className={`rounded px-2 py-0.5 font-semibold uppercase tracking-wide ${result.approved ? 'bg-green-500/20 text-green-700 dark:text-green-300' : 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-300'}`}
+              >
+                {result.approved ? `APROBADO ≥ ${targetScore}%` : 'EXHAUSTED (mejor esfuerzo)'}
+              </span>
+              <span>
+                <strong>Score final:</strong> {result.finalScore}/100
+              </span>
+              <span>
+                <strong>Iters:</strong> {result.iterationsRun}/{maxIterations}
+              </span>
+              <span>
+                <strong>{result.elapsedSec.toFixed(1)}s</strong>
+              </span>
+              <span>
+                <code className="text-[10px]">{result.presetId}</code>
+              </span>
+            </div>
+            <div className="space-y-1">
+              {result.iterations.map((it) => (
+                <div
+                  key={it.iteration}
+                  className="rounded border border-border/50 bg-muted/30 px-2 py-1.5 text-[11px]"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono">iter {it.iteration}</span>
+                    <span className="font-semibold">{it.score}/100</span>
+                    <span className="text-muted-foreground">
+                      palette {it.details.palette} · compos {it.details.composition} · char{' '}
+                      {it.details.character} · mood {it.details.mood}
+                    </span>
+                  </div>
+                  <p className="mt-0.5 italic text-muted-foreground">{it.hint}</p>
+                </div>
+              ))}
+            </div>
+            <p className="text-[10px] text-muted-foreground">
+              Persistido en <code>{result.presetFilePath}</code>. Aprobá en /admin para usar.
+            </p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
+import { ClaudeChatPanel } from '@/components/ClaudeChatPanel';
 
 interface VoiceOption {
   voiceId: string;
@@ -211,6 +212,53 @@ export function CreateForm({ brands, presets }: CreateFormProps) {
       setProductId(productOptions[0]!.id);
     }
   }, [productOptions, productId]);
+
+  async function handleSubmitWithMode(mode: 'auto' | 'collaborative') {
+    if (script.trim().length < 10) {
+      setError('El guión debe tener al menos 10 caracteres.');
+      return;
+    }
+    if (!effectivePreset) {
+      setError(
+        'Combinación inválida de categoría + formato + estilo. Prueba con otra combinación: la matriz no cubre todos los cruces.',
+      );
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const chosenVoice = voiceOptions.find((v) => v.voiceId === voiceOverride);
+      const narratorGenderOverride =
+        chosenVoice && chosenVoice.gender !== 'neutral' ? chosenVoice.gender : null;
+      const payload = JSON.stringify({
+        brandId,
+        presetId: effectivePreset.id,
+        productId: productId || null,
+        script,
+        voiceOverride: voiceOverride === AUTO ? null : voiceOverride,
+        narratorGenderOverride,
+        mode,
+      });
+      const data = await submitViaXhr('/api/generate', payload);
+      if (!data.runId) {
+        setError(data.error ?? 'Error al crear el run');
+        return;
+      }
+      // v3.2 #119: si modo collaborative → redirigir al UI dedicado
+      router.push(
+        mode === 'collaborative' ? `/runs/${data.runId}/build` : `/runs/${data.runId}`,
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Error de red';
+      const isExtensionBlock = /failed to fetch|chrome-extension|network error/i.test(msg);
+      setError(
+        isExtensionBlock
+          ? `Error de red: ${msg}. Prueba deshabilitando extensiones de Chrome (especialmente bloqueadores de ads/trackers) o usar una ventana de incógnito.`
+          : msg,
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -506,11 +554,46 @@ export function CreateForm({ brands, presets }: CreateFormProps) {
             </p>
           </div>
 
+          {/* M8: chat IA para refinar el script antes de disparar el pipeline */}
+          <ClaudeChatPanel
+            contextType="script-refine"
+            contextData={{
+              brandId,
+              presetId: effectivePreset?.id,
+              productId,
+              scriptCurrent: script,
+              wordCount: wordCount(script),
+              estimatedSeconds: estimateSeconds(script),
+              presetMeta: effectivePreset
+                ? {
+                    displayName: effectivePreset.displayName,
+                    estrategia: effectivePreset.estrategia,
+                    visualEngine: effectivePreset.visualEngine,
+                  }
+                : null,
+            }}
+            title="Discutí el guión con Claude antes de generar"
+            placeholder="Ej: 'Revisame el hook — ¿es fuerte en los primeros 3s?' o 'El claim de Vitaly viola FTC?'"
+          />
+
           {error && <p className="text-sm text-destructive">{error}</p>}
 
-          <Button type="submit" disabled={submitting} size="lg" className="w-full">
-            {submitting ? 'Disparando pipeline...' : 'Generar video'}
-          </Button>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <Button type="submit" disabled={submitting} size="lg" className="w-full">
+              {submitting ? 'Disparando pipeline...' : '⚡ Generar video (auto)'}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="lg"
+              disabled={submitting}
+              onClick={() => void handleSubmitWithMode('collaborative')}
+              className="w-full"
+              title="Pipeline pausa entre cada scene. Vos revisás y aprobás scene-por-scene. Tus comentarios alimentan VALIDATOR + cerebro evolutivo."
+            >
+              {submitting ? '...' : '🤝 Hacer video en conjunto'}
+            </Button>
+          </div>
         </form>
       </CardContent>
     </Card>

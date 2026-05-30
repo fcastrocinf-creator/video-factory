@@ -7,6 +7,7 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import { CorrectionPanel } from './CorrectionPanel';
+import { ValidationLog } from './ValidationLog';
 
 interface RunStatus {
   id: string;
@@ -183,6 +184,7 @@ export function RunViewer({ runId }: RunViewerProps) {
             Crear otro
           </Link>
         </div>
+        <ValidationLog runId={runId} />
         <CorrectionPanel runId={runId} />
       </div>
     );
@@ -221,6 +223,8 @@ export function RunViewer({ runId }: RunViewerProps) {
             Volver a crear
           </Link>
         </div>
+        {/* Aún en run failed mostramos las validaciones IA si llegaron a generarse */}
+        <ValidationLog runId={runId} />
       </div>
     );
   }

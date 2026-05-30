@@ -7,3 +7,4 @@ export * from './fal-provider.js';
 export * from './vertex-provider.js';
 export * from './higgsfield-provider.js';
 export * from './openai-provider.js';
+export * from './gemini-image-provider.js';

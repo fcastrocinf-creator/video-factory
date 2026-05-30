@@ -1,0 +1,61 @@
+{
+  "id": "learned-vitaly-video-2-8f7d9dc6",
+  "displayName": "🧠 Aprendido · VIDEO 2",
+  "description": "Estilo aprendido del anuncio \"VIDEO 2\". Hook: pain-agitation. Línea editorial: El anuncio utiliza una narrativa de 'dolor, agitación y solución' con un fuerte componente de autoridad y testimonio. Co...",
+  "category": {
+    "id": "voiceover_impersonal",
+    "displayName": "Voice Over (Pain-Agitation)",
+    "description": "Narración sin personaje, foco en el dolor del problema."
+  },
+  "format": {
+    "id": "b-roll-animated",
+    "displayName": "B-ROLL Animado Ilustrado",
+    "description": "Ilustración con motion — estilo derivado del original."
+  },
+  "style": {
+    "id": "derived",
+    "displayName": "Derivado del original"
+  },
+  "classification": {
+    "formato": "educativo",
+    "hookAngulo": "objeciones",
+    "funnelStage": "tofu",
+    "awareness": "problem_aware"
+  },
+  "estrategia": "multi_escena",
+  "visualEngine": "veo-lite",
+  "visualStyle": {
+    "promptTemplate": "Vintage 1930s-1950s comic book and medical illustration style. Characters are expressive with exaggerated features. The color palette is muted, dominated by sepia, brown, and aged paper tones. Strong line work and cross-hatching for shading. The overall feel is nostalgic, like an old educational film or a classic cartoon. Dominant palette: #DDCDBA, #5C3D2E, #A98A70, #3D2B1F, #E4D5B7, #8B0000. Aesthetic: vintage comic style, medical illustration, storytelling ad, sepia tone, character animation, pain-agitation-solution. Vertical 9:16 composition, single coherent scene, no watermark, no embedded text (text overlays are added in post-production).",
+    "negativePrompt": "low quality, blurry, watermark, extra fingers, malformed limbs, deformed hands, distorted face anatomy, burned-in text, embedded captions, hardcoded subtitles, text overlay in image, English text on Spanish ad, gibberish letters, misspelled words, broken typography, photograph, photo-realistic, real photo, stock photo, dslr",
+    "aspectRatio": "9:16",
+    "referenceImages": []
+  },
+  "subtitles": {
+    "style": "word_level_kinetic",
+    "font": "Inter",
+    "fontSize": 64,
+    "color": "#FFFFFF",
+    "strokeColor": "#000000",
+    "strokeWidth": 4,
+    "highlightColor": "#FFE600",
+    "position": "bottom",
+    "allCaps": false
+  },
+  "defaultDurationSeconds": 167,
+  "scenesPerMinute": 18,
+  "composition": {
+    "kenBurns": {
+      "enabled": false,
+      "zoomStart": 1,
+      "zoomEnd": 1,
+      "panX": 0,
+      "panY": 0
+    },
+    "backgroundMusic": {
+      "enabled": false,
+      "volumeDb": -20
+    }
+  },
+  "createdAt": "2026-05-25T18:04:05.915Z",
+  "updatedAt": "2026-05-25T18:04:05.915Z"
+}

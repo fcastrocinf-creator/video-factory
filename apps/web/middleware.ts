@@ -8,7 +8,17 @@ export function middleware(req: NextRequest) {
     url.pathname = '/';
     return NextResponse.redirect(url);
   }
-  return NextResponse.next();
+  // v3.2 (29-may-2026): en dev forzamos no-cache para que el browser SIEMPRE
+  // pida la versión fresca de la página y JS. Sin esto, después de un cambio
+  // de código, hace falta Ctrl+F5 manual para que el owner vea la UI nueva —
+  // experiencia frustrante. En producción Next.js maneja cache headers solo.
+  const res = NextResponse.next();
+  if (process.env.NODE_ENV !== 'production') {
+    res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+    res.headers.set('Pragma', 'no-cache');
+    res.headers.set('Expires', '0');
+  }
+  return res;
 }
 
 // Protegemos /create/**, /runs/**, /rip/**, /admin/** y /aprendizaje/**.

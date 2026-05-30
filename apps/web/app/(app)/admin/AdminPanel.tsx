@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -120,6 +120,9 @@ export function AdminPanel({ initialPending }: AdminPanelProps) {
           />
         ))}
       </div>
+
+      {/* M7 #5 — Cerebro evolutivo: propuestas de patches automáticos a prompts */}
+      <PromptPatchesSection />
     </div>
   );
 }
@@ -405,4 +408,233 @@ function detectFormatId(displayName: string | null): string | undefined {
     displayName.toLowerCase().includes(f.displayName.toLowerCase()),
   );
   return match?.id;
+}
+
+// ============================================================
+// M7 #5 — Cerebro evolutivo: panel de prompt patches propuestos
+// ============================================================
+// Lista patches que el detector de patrones identificó como sistémicos.
+// Owner puede aprobar (aplica al archivo source) o rechazar.
+
+interface PatchProposal {
+  id: string;
+  createdAt: string;
+  status: 'pending' | 'approved' | 'rejected' | 'applied';
+  pattern: {
+    patternId: string;
+    category: string;
+    affectedBlock: string;
+    occurrenceCount: number;
+    affectedRunIds: string[];
+    description: string;
+    severityScore: number;
+  };
+  targetFilePath: string;
+  patchType: 'addition' | 'modification' | 'reinforcement' | 'removal';
+  oldText: string | null;
+  newText: string;
+  reasoning: string;
+  expectedImprovement: string;
+  confidence: number;
+  proposedByModel: string;
+}
+
+function PromptPatchesSection() {
+  const [patches, setPatches] = useState<PatchProposal[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [detecting, setDetecting] = useState(false);
+  const [error, setError] = useState('');
+  const [detectResult, setDetectResult] = useState<string | null>(null);
+
+  async function loadPatches() {
+    setLoading(true);
+    setError('');
+    try {
+      const r = await fetch('/api/admin/prompt-patches', { cache: 'no-store' });
+      const data = (await r.json()) as { proposals?: PatchProposal[]; error?: string };
+      if (!r.ok) throw new Error(data.error ?? `HTTP ${r.status}`);
+      setPatches(data.proposals ?? []);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function runDetector() {
+    setDetecting(true);
+    setError('');
+    setDetectResult(null);
+    try {
+      const r = await fetch('/api/admin/prompt-patches', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ minOccurrences: 3, maxAgeDays: 30, maxRuns: 50 }),
+      });
+      const data = (await r.json()) as {
+        patternsDetected?: number;
+        proposalsCreated?: number;
+        message?: string;
+        errors?: string[];
+        error?: string;
+      };
+      if (!r.ok) throw new Error(data.error ?? `HTTP ${r.status}`);
+      setDetectResult(
+        `Patrones detectados: ${data.patternsDetected ?? 0} · Patches propuestos: ${data.proposalsCreated ?? 0}. ${data.message ?? ''}${(data.errors ?? []).length > 0 ? '\nErrores: ' + (data.errors ?? []).join('; ') : ''}`,
+      );
+      await loadPatches();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setDetecting(false);
+    }
+  }
+
+  async function decidePatch(patchId: string, action: 'approve' | 'reject') {
+    try {
+      const r = await fetch(`/api/admin/prompt-patches/${patchId}/decide`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ action }),
+      });
+      const data = (await r.json()) as { ok?: boolean; error?: string; reminder?: string };
+      if (!r.ok || !data.ok) {
+        setError(data.error ?? `HTTP ${r.status}`);
+        return;
+      }
+      if (data.reminder) setDetectResult(data.reminder);
+      await loadPatches();
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
+
+  // Cargar al montar (UNA sola vez). Anti-pattern previo: llamar loadPatches()
+  // dentro del render podía causar loops infinitos si setState no se aplicaba
+  // sincrónicamente. useEffect garantiza una sola llamada post-mount.
+  useEffect(() => {
+    void loadPatches();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <Card className="border-purple-500/30 bg-purple-500/5">
+      <CardContent className="space-y-4 pt-5">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold">🧬 Cerebro evolutivo — Prompt patches</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              El sistema escanea logs + post-render-reports buscando errores que se REPITEN en
+              varios runs. Por cada patrón detectado, Claude Sonnet propone un patch al SYSTEM_PROMPT
+              del bloque afectado. Vos aprobás o rechazás. Si aprobás, el patch se aplica al archivo
+              source (NO commit automático). Reiniciá dev server para que tome efecto.
+            </p>
+          </div>
+          <Button
+            onClick={runDetector}
+            disabled={detecting}
+            size="sm"
+            className="shrink-0 bg-purple-600 hover:bg-purple-700"
+          >
+            {detecting ? 'Escaneando…' : '🔍 Escanear patrones'}
+          </Button>
+        </div>
+
+        {error && (
+          <p className="rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">{error}</p>
+        )}
+        {detectResult && (
+          <p className="rounded-md bg-blue-500/10 px-3 py-2 text-xs whitespace-pre-line">
+            {detectResult}
+          </p>
+        )}
+
+        {patches.length === 0 ? (
+          <p className="rounded-md border border-dashed bg-background/30 p-4 text-center text-xs text-muted-foreground">
+            Sin patches propuestos. Apretá "Escanear patrones" para que el sistema busque errores
+            sistémicos en runs recientes y proponga mejoras al código.
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {patches.map((p) => (
+              <div
+                key={p.id}
+                className="rounded-md border border-purple-500/20 bg-background/60 p-3 text-xs space-y-2"
+              >
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <span className="rounded bg-purple-500/20 px-2 py-0.5 font-semibold uppercase tracking-wide text-[10px] text-purple-700 dark:text-purple-300">
+                    {p.pattern.category}
+                  </span>
+                  <span className="text-muted-foreground">→</span>
+                  <code className="rounded bg-muted px-1 text-[10px]">{p.pattern.affectedBlock}</code>
+                  <span className="text-muted-foreground">
+                    {p.pattern.occurrenceCount} runs · severity {p.pattern.severityScore.toFixed(1)}
+                  </span>
+                  <span className="ml-auto">
+                    confidence <strong>{p.confidence}/100</strong>
+                  </span>
+                </div>
+
+                <p className="italic text-muted-foreground">{p.pattern.description}</p>
+
+                <details className="text-[11px]">
+                  <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+                    Ver patch propuesto ({p.patchType}) →
+                    <code className="ml-1 text-[10px]">
+                      {p.targetFilePath.split(/[\\/]/).slice(-3).join('/')}
+                    </code>
+                  </summary>
+                  <div className="mt-2 space-y-2">
+                    <div>
+                      <p className="font-semibold text-muted-foreground">Razonamiento:</p>
+                      <p>{p.reasoning}</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-muted-foreground">Mejora esperada:</p>
+                      <p>{p.expectedImprovement}</p>
+                    </div>
+                    {p.oldText && (
+                      <div>
+                        <p className="font-semibold text-red-600 dark:text-red-400">
+                          − Reemplazar:
+                        </p>
+                        <pre className="overflow-x-auto rounded bg-red-500/10 p-2 text-[10px] whitespace-pre-wrap">
+                          {p.oldText}
+                        </pre>
+                      </div>
+                    )}
+                    <div>
+                      <p className="font-semibold text-green-600 dark:text-green-400">
+                        + Con:
+                      </p>
+                      <pre className="overflow-x-auto rounded bg-green-500/10 p-2 text-[10px] whitespace-pre-wrap">
+                        {p.newText}
+                      </pre>
+                    </div>
+                  </div>
+                </details>
+
+                <div className="flex gap-2 pt-1">
+                  <Button
+                    onClick={() => decidePatch(p.id, 'approve')}
+                    size="sm"
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    ✓ Aprobar y aplicar
+                  </Button>
+                  <Button
+                    onClick={() => decidePatch(p.id, 'reject')}
+                    size="sm"
+                    variant="outline"
+                  >
+                    ✗ Rechazar
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
 }

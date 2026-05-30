@@ -24,7 +24,7 @@ interface RunItem {
   productId: string | null;
   presetId: string;
   formatId: string | null;
-  status: 'pending' | 'running' | 'completed' | 'failed';
+  status: 'pending' | 'running' | 'completed' | 'completed-with-warnings' | 'failed';
   durationSeconds: number | null;
   estimatedCostUsd: number;
   imageCount: number;
@@ -207,6 +207,7 @@ function RunCard({
 }) {
   const statusBadge = {
     completed: 'bg-green-500/10 text-green-700 dark:text-green-400',
+    'completed-with-warnings': 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400',
     running: 'bg-blue-500/10 text-blue-700 dark:text-blue-400',
     failed: 'bg-destructive/10 text-destructive',
     pending: 'bg-muted text-muted-foreground',

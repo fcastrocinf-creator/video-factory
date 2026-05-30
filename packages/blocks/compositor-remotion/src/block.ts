@@ -131,7 +131,14 @@ export class CompositorRemotionBlock implements Block<RenderJob, RenderJob> {
               // Si la escena fue animada con Veo, videoSrc apunta al MP4 dentro
               // del workDir. PlanoEscenas usa OffthreadVideo en lugar de Img.
               videoSrc: s.videoPath ? basename(s.videoPath) : undefined,
-              durationSeconds: s.endTimeSeconds - s.startTimeSeconds,
+              // v3.2 #145: si el owner recortó la escena a mano
+              // (manualDurationSeconds), respetamos ESO. Sino, la ventana
+              // auto-alineada al audio (endTimeSeconds - startTimeSeconds).
+              durationSeconds:
+                typeof (s as { manualDurationSeconds?: number | null }).manualDurationSeconds === 'number' &&
+                (s as { manualDurationSeconds?: number | null }).manualDurationSeconds! > 0
+                  ? (s as { manualDurationSeconds?: number }).manualDurationSeconds!
+                  : s.endTimeSeconds - s.startTimeSeconds,
               // Pasamos las textOverlays para que Remotion las renderice como capas
               // vectoriales sobre la imagen base (resuelve labels gibberish y
               // calendarios rotos que Imagen 4 no puede generar bien).

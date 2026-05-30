@@ -16,7 +16,8 @@
   "dependencies": {
     "@video-factory/contracts": "workspace:*",
     "neverthrow": "^8.1.1",
-    "pino": "^9.5.0"
+    "pino": "^9.5.0",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "typescript": "^5.7.2"

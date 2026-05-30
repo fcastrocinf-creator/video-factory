@@ -15,11 +15,46 @@ export const PresetClassificationSchema = z.object({
 
 export type PresetClassification = z.infer<typeof PresetClassificationSchema>;
 
+// Animation-layer config opcional para presets que generan video (no estáticos).
+// Patrón derivado del workflow del especialista Pixar/Kling: cada prompt de
+// animación garantiza tres capas simultáneas (acción física + interno
+// emocional/anatómico + cámara cinematográfica) para evitar videos estáticos
+// o caóticos. Cuando `enforceThreeLayers` está en true, el scene-animator
+// valida que el prompt termine con la fórmula "Three layers: A + B + camera X".
+export const PresetAnimationLayersSchema = z.object({
+  enforceThreeLayers: z.boolean().default(false),
+  // Pool de movimientos de cámara válidos para auto-completar la 3ª capa.
+  // Ejemplos canónicos: "push", "pull", "orbit", "track", "drift", "intimate push".
+  defaultCameraMoves: z.array(z.string()).default([]),
+});
+
+export type PresetAnimationLayers = z.infer<typeof PresetAnimationLayersSchema>;
+
 export const PresetVisualStyleSchema = z.object({
   promptTemplate: z.string(),
   negativePrompt: z.string(),
   aspectRatio: z.literal('9:16'),
   referenceImages: z.array(z.string()).default([]),
+
+  // OPCIONAL — sticky prefix invariante prependeable a todo prompt de imagen
+  // del preset. Capturado del patrón de plantillas del especialista: cada ad
+  // del mismo estilo arranca con la MISMA línea de descripción visual.
+  // Si está presente, los blocks pueden anteponerlo al promptTemplate por
+  // escena. Si está ausente, el promptTemplate se usa íntegro como hoy.
+  // Aditivo y backward-compatible.
+  styleBoilerplate: z.string().optional(),
+
+  // OPCIONAL — lista de términos que SIEMPRE deben aparecer en el negative
+  // prompt cuando se genera con este preset. Permite al scene-planner sumar
+  // estos términos al negativePrompt base sin duplicarlos manualmente.
+  // Ejemplo (fotorrealista): ["illustration", "watercolor", "cartoon", "3d render"].
+  // Ejemplo (Pixar): ["claymation", "realistic photograph", "vintage cartoon"].
+  forbiddenStyleTerms: z.array(z.string()).optional(),
+
+  // OPCIONAL — config de capas para presets que generan video (B-ROLL animado,
+  // UGC con movimiento, etc). Para presets estáticos (b-roll-static) dejarlo
+  // ausente. Ver `PresetAnimationLayersSchema` arriba.
+  animationLayers: PresetAnimationLayersSchema.optional(),
 });
 
 export type PresetVisualStyle = z.infer<typeof PresetVisualStyleSchema>;
