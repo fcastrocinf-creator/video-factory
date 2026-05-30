@@ -8,6 +8,7 @@ import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import { CorrectionPanel } from './CorrectionPanel';
 import { ValidationLog } from './ValidationLog';
+import { ZapCapSubtitles } from './ZapCapSubtitles';
 
 interface RunStatus {
   id: string;
@@ -200,6 +201,7 @@ export function RunViewer({ runId }: RunViewerProps) {
             Crear otro
           </Link>
         </div>
+        <ZapCapSubtitles runId={runId} />
         <ValidationLog runId={runId} />
         <CorrectionPanel runId={runId} />
       </div>
