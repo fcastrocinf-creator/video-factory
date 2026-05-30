@@ -19,6 +19,7 @@ type ContextType =
   | 'script-refine'
   | 'rip-analysis'
   | 'preset-tuning'
+  | 'architect'
   | 'general';
 
 interface Message {
@@ -47,6 +48,8 @@ const DEFAULT_PLACEHOLDERS: Record<ContextType, string> = {
   'script-refine': 'Ej: "Revisame este hook — ¿es fuerte para los primeros 3s?"',
   'rip-analysis': 'Ej: "Qué preset me recomendás para adaptar este ad?"',
   'preset-tuning': 'Ej: "El preset X genera escenas muy comprimidas, qué ajusto?"',
+  architect:
+    'Ej: "¿Qué ruta necesita el estilo claymation?" o "El UGC me sale con anatomía rara, ¿qué ajusto?"',
   general: 'Pregúntame lo que quieras sobre Video Factory.',
 };
 
