@@ -1,0 +1,68 @@
+{
+  "styleId": "pixar-3d-skincare-transformation",
+  "styleDescription": "Animación 3D Pixar-style con personajes femeninos de rasgos suavizados. Paleta cálida con énfasis en tonos dorados, naranjas y azules. Estética de antes/después con efectos de brillo y energía mágica.",
+  "hookType": "bold-claim",
+  "hookDescription": "Headline impactante en primeros 3 segundos: 'ESTO LE HIZO A TU CARA EN 6 MESES' con flecha descendente, generando curiosidad sobre transformación facial. Acompañado de visualización mágica (aura dorada) en el abdomen del personaje.",
+  "palette": [
+    "#d4a574",
+    "#f4a460",
+    "#ff6b35",
+    "#2c3e50",
+    "#ffd700",
+    "#e8d4c4"
+  ],
+  "character": {
+    "gender": "female",
+    "ageRange": "25-35",
+    "description": "Personaje 3D Pixar con cabello castaño corto, ojos grandes expresivos, piel clara. Viste blazer azul marino profesional. Expresión progresa de confianza a preocupación.",
+    "stateProgression": [
+      "confident",
+      "transformed",
+      "concerned"
+    ]
+  },
+  "productPresentation": {
+    "productVisualDescription": "Producto no mostrado explícitamente en keyframes. Se infiere por contexto: 'CORTISOL' aparece como texto en keyframe 1, sugiriendo suplemento o tratamiento para control de cortisol (hormona del estrés). Presentación es conceptual/mágica, no física.",
+    "usageForm": "oral",
+    "appearsInScenes": [
+      1
+    ]
+  },
+  "scenes": [
+    {
+      "sourceTimeSec": 1.5,
+      "visualDescription": "Personaje femenino 3D en dormitorio moderno, de frente, con manos en abdomen. Aura dorada/naranja brillante emana del centro del cuerpo, con silueta de criatura/energía dentro. Fondo: cama, muebles beige, cuadros decorativos. Iluminación cálida. Headline blanco con borde: 'ESTO LE HIZO A TU CARA EN 6 MESES' con emoji flecha azul.",
+      "characterIfPresent": "Mujer joven, blazer gris, expresión seria/concentrada",
+      "narrativeBeat": "hook",
+      "shotType": "medium-close-up",
+      "mood": "mysterious-magical"
+    },
+    {
+      "sourceTimeSec": 7.5,
+      "visualDescription": "Composición de red social Instagram simulada. Fondo: llamas naranjas/rojas animadas (efecto de fuego intenso). Centro: post de usuario 'Gaby_' mostrando personaje 3D diferente (más joven, sonriente) en jardín floral con vestido estampado. Engagement: 1.245 likes, hashtags #jardinería #flores #verano. Texto superior mantiene headline. Branding: 'CORTISOL' en naranja grande en esquina inferior.",
+      "characterIfPresent": "Personaje femenino diferente (versión 'después'), sonriente, en contexto de bienestar",
+      "narrativeBeat": "social-proof",
+      "shotType": "split-screen-overlay",
+      "mood": "energetic-viral"
+    },
+    {
+      "sourceTimeSec": 13.5,
+      "visualDescription": "Close-up de rostro femenino 3D, ojos cerrados, manos en mejillas. Expresión de preocupación/estrés. Cabello castaño, blazer azul marino. Fondo neutro beige/gris. Iluminación suave, sin efectos mágicos. Composición íntima y vulnerable.",
+      "characterIfPresent": "Mujer joven, expresión de angustia/cansancio",
+      "narrativeBeat": "problem",
+      "shotType": "close-up",
+      "mood": "tense-worried"
+    }
+  ],
+  "suggestedPreset": {
+    "promptTemplate": "Pixar-style 3D animated female character, soft realistic proportions, warm color grading with golden and orange accents, professional lighting, modern interior or social media aesthetic, magical glow effects optional, high-quality render, cinematic composition",
+    "negativePrompt": "photorealistic, live-action, harsh shadows, dark colors, clinical appearance, low quality, blurry, watermark",
+    "aspectRatio": "9:16",
+    "format": "b-roll-animated",
+    "estrategia": "multi_escena",
+    "visualEngine": "veo-standard",
+    "scenesPerMinute": 12,
+    "defaultDurationSeconds": 15
+  },
+  "executiveSummary": "Ad de transformación skincare/wellness con hook de antes-después usando animación 3D Pixar. Estrategia: problema emocional (estrés/preocupación) → solución mágica (cortisol control) → prueba social (testimonio viral). Fuerza: narrativa emocional clara, estética premium, social proof integrado."
+}

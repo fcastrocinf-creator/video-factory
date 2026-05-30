@@ -1,0 +1,65 @@
+{
+  "videoPath": "C:\\Users\\cmktc\\proyectos\\video-factory\\storage\\training\\9af1c2df-1add-4f53-b806-b997e35ffbf6\\source.mp4",
+  "targetScore": 95,
+  "maxIterations": 4,
+  "approved": false,
+  "exhausted": true,
+  "finalScore": 93,
+  "loopAbortedEarly": false,
+  "abortReason": null,
+  "iterations": [
+    {
+      "iteration": 1,
+      "score": 82,
+      "details": {
+        "palette": 60,
+        "composition": 85,
+        "character": 98,
+        "mood": 70
+      },
+      "hint": "Use bright, natural outdoor lighting and a garden setting instead of warm, indoor backlighting.",
+      "promptTemplate": "Pixar-style 3D animated female character, soft realistic proportions, warm color grading with golden and orange accents, professional lighting, modern interior or social media aesthetic, magical glow effects optional, high-quality render, cinematic composition",
+      "testImagePath": "C:\\Users\\cmktc\\proyectos\\video-factory\\storage\\training\\9af1c2df-1add-4f53-b806-b997e35ffbf6\\source.mp4.iterloop-keyframes\\test_iter01.png"
+    },
+    {
+      "iteration": 2,
+      "score": 93,
+      "details": {
+        "palette": 85,
+        "composition": 90,
+        "character": 100,
+        "mood": 95
+      },
+      "hint": "Add warmer, more golden lighting and a slight bloom effect to match the original's hazy, sunny atmosphere.",
+      "promptTemplate": "Pixar-style 3D animated female character, soft realistic proportions, bright natural outdoor lighting in garden setting, fresh green and sky blue palette with warm skin tones, professional cinematic composition, cheerful and vibrant mood, high-quality render. CLEAN background, NO text overlay, NO burned-in text — text rendering is done in post-production.",
+      "testImagePath": "C:\\Users\\cmktc\\proyectos\\video-factory\\storage\\training\\9af1c2df-1add-4f53-b806-b997e35ffbf6\\source.mp4.iterloop-keyframes\\test_iter02.png"
+    },
+    {
+      "iteration": 3,
+      "score": 75,
+      "details": {
+        "palette": 50,
+        "composition": 90,
+        "character": 100,
+        "mood": 60
+      },
+      "hint": "Use bright, even daytime lighting instead of the warm, golden hour backlighting. The original's palette is cooler and more pastel.",
+      "promptTemplate": "Pixar-style 3D animated female character, soft realistic proportions, golden hour outdoor lighting with warm hazy sunlight and subtle bloom effect in lush garden setting, rich warm palette of golden yellows, sage greens, and peachy skin tones, professional cinematic composition, joyful and luminous mood, high-quality render. CLEAN background, NO text overlay, NO burned-in text — text rendering is done in post-production.",
+      "testImagePath": "C:\\Users\\cmktc\\proyectos\\video-factory\\storage\\training\\9af1c2df-1add-4f53-b806-b997e35ffbf6\\source.mp4.iterloop-keyframes\\test_iter03.png"
+    },
+    {
+      "iteration": 4,
+      "score": 88,
+      "details": {
+        "palette": 80,
+        "composition": 85,
+        "character": 95,
+        "mood": 85
+      },
+      "hint": "Add warm, golden-hour lighting and a warmer color palette. The character style should be young adult, not child-like.",
+      "promptTemplate": "Pixar-style 3D animated female character, soft realistic proportions, bright midday natural lighting with even, diffused daylight in lush garden setting, cool pastel palette of soft mint greens, pale lavender, cream, and rosy cheeks, professional cinematic composition, serene and luminous mood, high-quality render. CLEAN background, NO text overlay, NO burned-in text — text rendering is done in post-production.",
+      "testImagePath": "C:\\Users\\cmktc\\proyectos\\video-factory\\storage\\training\\9af1c2df-1add-4f53-b806-b997e35ffbf6\\source.mp4.iterloop-keyframes\\test_iter04.png"
+    }
+  ],
+  "keyframeReferencePath": "C:\\Users\\cmktc\\proyectos\\video-factory\\storage\\training\\9af1c2df-1add-4f53-b806-b997e35ffbf6\\source.mp4.iterloop-keyframes\\keyframe_01.png"
+}

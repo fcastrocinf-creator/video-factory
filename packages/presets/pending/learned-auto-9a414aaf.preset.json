@@ -1,0 +1,72 @@
+{
+  "id": "learned-auto-9a414aaf",
+  "displayName": "🎯 Auto-learned from training 9af1c2df",
+  "description": "Preset auto-aprendido por Claude (haiku-4.5) desde un video. Ad de transformación skincare/wellness con hook de antes-después usando animación 3D Pixar. Estrategia: problema emocional (estrés/preocupación) → solución mágica (cortisol control) → prueba social (testimonio viral). Fuerza: narrativa emocional clara, estética premium, social proof integrado.",
+  "category": {
+    "id": "mujer_protagonista",
+    "displayName": "Mujer protagonista",
+    "description": "La narradora es una mujer que cuenta su propia historia."
+  },
+  "format": {
+    "id": "b-roll-animated",
+    "displayName": "B-ROLL Animado",
+    "description": "Gráficas con movimiento: micro-videos con cámara/objetos en movimiento (Veo/Higgsfield)."
+  },
+  "style": {
+    "id": "pixar-3d-skincare-transformation",
+    "displayName": "Pixar 3d Skincare Transformation"
+  },
+  "classification": {
+    "formato": "educativo",
+    "hookAngulo": "autoridad",
+    "funnelStage": "tofu",
+    "awareness": "problem_aware"
+  },
+  "estrategia": "multi_escena",
+  "visualEngine": "veo-standard",
+  "visualStyle": {
+    "promptTemplate": "Pixar-style 3D animated female character, soft realistic proportions, bright natural outdoor lighting in garden setting, fresh green and sky blue palette with warm skin tones, professional cinematic composition, cheerful and vibrant mood, high-quality render. CLEAN background, NO text overlay, NO burned-in text — text rendering is done in post-production.",
+    "negativePrompt": "photorealistic, live-action, harsh shadows, dark colors, clinical appearance, low quality, blurry, watermark",
+    "aspectRatio": "9:16",
+    "referenceImages": [],
+    "styleBoilerplate": "Pixar-style 3D animated female character, soft realistic proportions, warm color grading with golden and orange accents, professional lighting, modern interior or social media aesthetic, magical glow  Dominant palette: #d4a574, #f4a460, #ff6b35, #2c3e50, #ffd700, #e8d4c4.",
+    "forbiddenStyleTerms": [
+      "photorealistic",
+      "live-action",
+      "harsh shadows",
+      "dark colors",
+      "clinical appearance",
+      "low quality",
+      "blurry",
+      "watermark"
+    ]
+  },
+  "subtitles": {
+    "style": "word_level_kinetic",
+    "font": "Inter",
+    "fontSize": 64,
+    "color": "#FFFFFF",
+    "strokeColor": "#000000",
+    "strokeWidth": 4,
+    "highlightColor": "#d4a574",
+    "position": "bottom",
+    "allCaps": false
+  },
+  "defaultDurationSeconds": 15,
+  "scenesPerMinute": 12,
+  "composition": {
+    "kenBurns": {
+      "enabled": false,
+      "zoomStart": 1,
+      "zoomEnd": 1,
+      "panX": 0,
+      "panY": 0
+    },
+    "backgroundMusic": {
+      "enabled": false,
+      "volumeDb": -20
+    }
+  },
+  "createdAt": "2026-05-30T06:07:14.827Z",
+  "updatedAt": "2026-05-30T06:09:21.550Z"
+}
