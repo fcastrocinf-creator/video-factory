@@ -1313,7 +1313,11 @@ export async function runPipeline(
                   // actualizado.
                   const recommended = holistic.verdict.recommendedRegenerateIndices;
                   const MAX_AUTO_REGEN = 5; // límite defensivo para no explotar latencia
-                  const toRegenerate = recommended.slice(0, MAX_AUTO_REGEN);
+                  // v3.3 (fix-consent): NUNCA auto-regenerar escenas pre-aprobadas por
+                  // el owner (fork). Son inmutables — las excluimos antes de regenerar.
+                  const toRegenerate = recommended
+                    .filter((i) => !preApprovedSceneIndices.has(i))
+                    .slice(0, MAX_AUTO_REGEN);
                   if (toRegenerate.length > 0) {
                     logger.info(
                       {
@@ -1566,11 +1570,21 @@ export async function runPipeline(
           const executor = {
             async executeAction(action: EditorAction): Promise<FinalRenderReport> {
               logger.info({ runId, action }, 'pipeline:editor_action_executing');
+              // v3.3 (fix-consent): el Editor IA NUNCA debe mutar/regenerar una escena
+              // que el owner ya aprobó (pre-aprobada vía fork). Son inmutables.
+              const targetIdx = (action as { sceneIndex?: number }).sceneIndex;
+              if (targetIdx != null && preApprovedSceneIndices.has(targetIdx)) {
+                logger.warn(
+                  { runId, sceneIndex: targetIdx },
+                  'pipeline:editor_skip_preapproved_scene',
+                );
+                return (await buildReport()) ?? initialReport;
+              }
               if (
                 action.type === 'extend-duration' ||
                 action.type === 'trim-duration'
               ) {
-                const scene = sceneTrackWithImages.scenes[action.sceneIndex];
+                const scene = sceneTrackWithImages.scenes.find((s) => s.index === action.sceneIndex);
                 if (scene) {
                   scene.endTimeSeconds = action.newEndTimeSeconds;
                   sceneTrackWithImages.totalDurationSeconds = Math.max(
@@ -1580,7 +1594,7 @@ export async function runPipeline(
                   await rerenderCompositor();
                 }
               } else if (action.type === 'adjust-prompt') {
-                const scene = sceneTrackWithImages.scenes[action.sceneIndex];
+                const scene = sceneTrackWithImages.scenes.find((s) => s.index === action.sceneIndex);
                 if (scene) {
                   scene.imagePrompt = action.newImagePrompt;
                   // No re-genera imagen — guarda el prompt para futuras runs.
@@ -1592,7 +1606,7 @@ export async function runPipeline(
                 // image-gen-multi para re-generar SOLO la escena pedida (sin
                 // re-rendear el resto). Si la scene era animada, NO re-animamos
                 // automáticamente — el editor verá la nueva imagen y decidirá.
-                const scene = sceneTrackWithImages.scenes[action.sceneIndex];
+                const scene = sceneTrackWithImages.scenes.find((s) => s.index === action.sceneIndex);
                 if (scene) {
                   try {
                     const regen = await regenerateSingleScene({
@@ -1602,8 +1616,13 @@ export async function runPipeline(
                       providerChain,
                       reAnimate: false, // animator complejo de pasar acá — TODO
                     });
-                    // Actualizar el scene-track in-place
-                    sceneTrackWithImages.scenes[action.sceneIndex] = regen.updatedScene;
+                    // Actualizar el scene-track por scene.index (no por posición).
+                    sceneTrackWithImages = {
+                      ...sceneTrackWithImages,
+                      scenes: sceneTrackWithImages.scenes.map((s) =>
+                        s.index === action.sceneIndex ? regen.updatedScene : s,
+                      ),
+                    };
                     logger.info(
                       {
                         runId,
