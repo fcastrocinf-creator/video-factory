@@ -165,6 +165,7 @@ export class CompositorRemotionBlock implements Block<RenderJob, RenderJob> {
             subtitleTrack: input.subtitleTrack,
             subtitlesConfig: ctx.preset.subtitles,
             animatedScenes: input.animatedScenes ?? false,
+            kenBurns: input.kenBurns ?? false,
           },
           onProgress,
         });

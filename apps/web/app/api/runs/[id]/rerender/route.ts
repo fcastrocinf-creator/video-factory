@@ -11,7 +11,7 @@ import { rerenderComposition, renderJobExists } from '@/lib/rerender-composition
 
 export const runtime = 'nodejs';
 
-export async function POST(_req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, { params }: { params: { id: string } }) {
   if (!isAuthenticated()) {
     return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
   }
@@ -34,8 +34,17 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
     );
   }
 
+  // Ken Burns opt-in desde el editor (default off si no viene en el body).
+  let kenBurns: boolean | undefined;
+  try {
+    const body = (await req.json()) as { kenBurns?: unknown };
+    if (typeof body?.kenBurns === 'boolean') kenBurns = body.kenBurns;
+  } catch {
+    /* sin body → kenBurns undefined */
+  }
+
   // Lanzamos el re-render en background. La UI puede polear el status del run.
-  void rerenderComposition(params.id).catch((err) => {
+  void rerenderComposition(params.id, { kenBurns }).catch((err) => {
     // eslint-disable-next-line no-console
     console.error('[rerender] uncaught error for run', params.id, err);
   });

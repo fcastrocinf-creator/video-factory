@@ -48,6 +48,9 @@ interface SceneIdea {
   // v3.2 #145: ¿el personaje habla esta línea (lip-sync) o es voice-over/B-roll?
   speaking?: boolean;
   imagePrompt: string;
+  // Cap 3: efecto a SUPERPONER sobre un cuerpo real (overlay/mixeo). Solo cuando
+  // la escena muestra una persona con un efecto glowing encima (ej. flujo linfático).
+  editStep?: { effectPrompt: string; region?: string };
   textOverlays?: Array<{
     kind: 'product-label' | 'day-counter' | 'metric-callout' | 'subtitle-banner';
     text: string;
@@ -270,6 +273,13 @@ EJEMPLOS DE ERRORES REALES QUE DEBÉS EVITAR:
 
 ✅ BIEN: Imagen completamente limpia, texto agregado después por el renderer
 
+REGLA "UN SOLO CUADRO" (anti-collage) — CRÍTICA:
+Cada imagePrompt describe UN SOLO instante en UN SOLO cuadro vertical 9:16. JAMÁS
+varios momentos juntos. Aunque el styleBase liste varias situaciones (espejo,
+cocina, etc.), ELEGÍ UNA sola para esta escena y describí solo esa. Está PROHIBIDO
+generar collage, grilla, multi-panel, split-screen, "character sheet" o "contact
+sheet". Tomá del styleBase el LOOK/estilo, NO la lista de momentos.
+
 REGLA OBLIGATORIA — REPETIR EN CADA ESCENA:
 Al final de CADA imagePrompt, incluí LITERALMENTE esta frase (copia-pega, no parafrasees).
 ⚠️ OJO: es CORTA A PROPÓSITO. Repetir "text / NO text / NO captions / NO Spanish text"
@@ -316,14 +326,21 @@ Devolvé EXCLUSIVAMENTE JSON con este shape, sin texto adicional:
       "text": "<frase EXACTA literal del transcript narrada en esta escena, NUNCA vacía>",
       "shotType": "<close-up|anatomy|action|object|product|comic-panel|talking-head|wide|stock-detail>",
       "speaking": false,
-      "imagePrompt": "<prompt de 30-70 palabras EMPEZANDO con el styleBase literal, después la escena específica>",
+      "imagePrompt": "<prompt de 30-70 palabras: primero el LOOK/estilo del styleBase (NO copies los varios momentos que enumere), después UN solo momento específico de esta escena>",
       "textOverlays": [
         { "kind": "product-label" | "day-counter" | "metric-callout" | "subtitle-banner", "text": "<TEXTO>", "position": "center" | "bottom" | "top" }
-      ]
+      ],
+      "editStep": { "effectPrompt": "<efecto a SUPERPONER sobre el cuerpo, ej. 'glowing amber lymphatic flow'>", "region": "<zona: legs/abdomen/face/arms>" }
     }
   ]
 }
 textOverlays es OPCIONAL — solo cuando aplique uno de los 4 casos.
+
+editStep es OPCIONAL y RARO — inclúyelo SOLO cuando la escena muestra a una persona
+o cuerpo REAL con un efecto visual SUPERPUESTO encima (ej. flujo linfático glowing
+sobre las piernas, energía/calor sobre el cuerpo). El effectPrompt describe SOLO el
+efecto a sumar (la imagen base de la persona se genera normal y luego se le superpone
+el efecto). NO uses editStep para CGI puro, objetos, ni escenas sin persona.
 
 CRÍTICO — REGLA #4: DURACIÓN TOTAL Y COBERTURA DE AUDIO.
 La suma de las duraciones de TODAS las escenas (calculada desde el texto narrado) DEBE coincidir EXACTAMENTE con la duración total del audio del script. NO dejes huecos al final. NO termines el video antes de que termine la narración.
@@ -610,6 +627,13 @@ function distributeTimestamps(ideas: SceneIdea[], totalDuration: number): Scene[
       color: o.color,
       scale: typeof o.scale === 'number' ? o.scale : 1,
     }));
+    // Cap 1/2/3: si el modelo emitió editStep, la escena es overlay-on-body (cuerpo
+    // real + efecto encima); si no, derivamos el tipo del shot/prompt.
+    const componentType = idea.editStep ? 'overlay-on-body' : deriveComponentType(idea);
+    const featuresCharacter =
+      componentType === 'real-ugc-human' ||
+      componentType === 'overlay-on-body' ||
+      idea.speaking === true;
     return {
       index: i,
       text: idea.text,
@@ -618,6 +642,11 @@ function distributeTimestamps(ideas: SceneIdea[], totalDuration: number): Scene[
       imagePrompt: idea.imagePrompt,
       // v3.2 #145: propagar speaking (default false = voice-over/B-roll)
       speaking: idea.speaking === true,
+      // Cap 1/2: ruteo por componente + flag de personaje.
+      componentType,
+      featuresCharacter,
+      // Cap 3: overlay/mixeo (efecto sobre el cuerpo) si el modelo lo pidió.
+      ...(idea.editStep ? { editStep: idea.editStep } : {}),
       ...(textOverlays && textOverlays.length > 0 ? { textOverlays } : {}),
     };
   });
@@ -625,6 +654,44 @@ function distributeTimestamps(ideas: SceneIdea[], totalDuration: number): Scene[
 
 function round3(n: number): number {
   return Math.round(n * 1000) / 1000;
+}
+
+// Cap 1: deriva el tipo de componente visual de una escena a partir del shotType
+// + el imagePrompt. Determinista (sin llamada extra al modelo). Sirve para rutear
+// al mejor provider de imagen y para decidir el anclaje de identidad (cap 2).
+export function deriveComponentType(
+  idea: SceneIdea,
+): 'cgi-macro' | 'real-ugc-human' | 'overlay-on-body' | 'other' {
+  const hay = `${idea.shotType ?? ''} ${idea.imagePrompt}`.toLowerCase();
+  if (
+    /overlay|glowing|glow over|lymphatic flow|highlighted (veins|vessels)|energy lines|x-ray|thermal/.test(
+      hay,
+    )
+  ) {
+    return 'overlay-on-body';
+  }
+  if (
+    /macro|cgi|cross[- ]section|microscop|cellular|\bcell\b|tissue|anatom|diagram|bloodstream|vessel|molecul|\borgan\b/.test(
+      hay,
+    )
+  ) {
+    return 'cgi-macro';
+  }
+  // Persona REAL (no animada). Detectamos términos humanos en inglés Y español,
+  // pero excluimos estilos animados (Pixar/cartoon/3D) — esos van por su style-ref.
+  const animated =
+    /pixar|cartoon|3d render|3d-render|illustration|watercolor|\banimated\b|\bcomic\b|claymation|vector art|anime/.test(
+      hay,
+    );
+  const human =
+    idea.speaking === true ||
+    /talking head|selfie|\bugc\b|testimonial|portrait|to camera|vlog|\bwoman\b|\bman\b|\bperson\b|\bpeople\b|\bface\b|\bgirl\b|\bguy\b|mujer|hombre|persona|gente|rostro|\bcara\b|chica|se[nñ]ora|abuela|protagonista/.test(
+      hay,
+    );
+  if (!animated && human) {
+    return 'real-ugc-human';
+  }
+  return 'other';
 }
 
 /**

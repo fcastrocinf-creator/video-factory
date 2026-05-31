@@ -29,6 +29,11 @@ export const RenderJobSchema = z.object({
   // o voiceover-animated.
   animatedScenes: z.boolean().default(false),
 
+  // Ken Burns OPT-IN: pan/zoom sobre imágenes estáticas SOLO si true. Ausente/
+  // false = imagen fija (sin movimiento). El usuario lo activa desde la edición
+  // del video. Antes el movimiento era automático (microMotion) — eso era el bug.
+  kenBurns: z.boolean().optional(),
+
   outputPath: z.string(),
   resolution: z.tuple([z.literal(1080), z.literal(1920)]),
   fps: z.literal(30),

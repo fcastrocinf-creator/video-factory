@@ -40,6 +40,87 @@ function readPngDimensions(buffer: Buffer): { width: number; height: number } {
   return { width: buffer.readUInt32BE(16), height: buffer.readUInt32BE(20) };
 }
 
+// === Cap 3: paso de EDIT / overlay (mixeo) =================================
+// Construye el prompt del EDIT image-to-image: SUMA un efecto sobre la imagen
+// BASE sin alterar identidad, pose, encuadre ni fondo. Pura (testeable).
+export function buildEditPrompt(effectPrompt: string, region?: string): string {
+  const where = region ? ` over the ${region}` : '';
+  return (
+    'Keep this exact photograph identical — same person, same face, same pose, ' +
+    'same framing, same background, same lighting. ' +
+    `Add ${effectPrompt}${where}, realistically integrated on top of the existing image. ` +
+    'Do NOT change identity, body, pose, composition or background. ' +
+    'Do NOT add any text or captions.'
+  );
+}
+
+// Aplica el EDIT sobre el buffer base con Nano Banana (image-to-image).
+// Best-effort: sin GOOGLE_AI_API_KEY o si el edit falla, devuelve la base intacta
+// (nunca rompe la escena).
+async function applyEditStep(
+  baseBuffer: Buffer,
+  editStep: { effectPrompt: string; region?: string },
+  logger: { warn: (obj: object, msg?: string) => void },
+): Promise<Buffer> {
+  const key = process.env['GOOGLE_AI_API_KEY'];
+  if (!key) return baseBuffer;
+  try {
+    const provider = new GeminiImageProvider({ apiKey: key, name: 'gemini-image-edit' });
+    return await provider.generate({
+      prompt: buildEditPrompt(editStep.effectPrompt, editStep.region),
+      aspectRatio: '9:16',
+      referenceImage: baseBuffer,
+    });
+  } catch (e) {
+    logger.warn({ err: (e as Error).message.slice(0, 150) }, 'image-gen-multi:edit_step_failed');
+    return baseBuffer;
+  }
+}
+
+// === Cap 2: anclaje de identidad (misma persona) ===========================
+// Envuelve el prompt de la escena con la instrucción de IDENTIDAD: la persona
+// recurrente debe ser la MISMA que en la imagen de referencia (anchor). Pura.
+export function buildIdentityPrompt(scenePrompt: string): string {
+  return (
+    scenePrompt +
+    '\n\nCHARACTER IDENTITY: the recurring person in this scene must be the SAME ' +
+    'INDIVIDUAL as in the provided reference image — same face, same facial features, ' +
+    'same age, same hair, same skin tone and build. Keep the identity identical. You ' +
+    'MAY change the pose, framing, action and background as described above. Do NOT ' +
+    'copy any text, captions or UI from the reference image.'
+  );
+}
+
+// Genera la imagen de la escena anclada a la identidad del personaje (image-to-image
+// con Nano Banana). Si no hay key, lanza para que el caller caiga al chain normal.
+async function generateWithIdentityAnchor(scenePrompt: string, anchor: Buffer): Promise<Buffer> {
+  const key = process.env['GOOGLE_AI_API_KEY'];
+  if (!key) throw new Error('identity anchor: sin GOOGLE_AI_API_KEY');
+  const provider = new GeminiImageProvider({ apiKey: key, name: 'gemini-image-identity' });
+  return provider.generate({
+    prompt: buildIdentityPrompt(scenePrompt),
+    aspectRatio: '9:16',
+    referenceImage: anchor,
+  });
+}
+
+// Cap 1: orden de preferencia de providers según el tipo de componente de la
+// escena. Devuelve ÍNDICES al chain original (preserva fallback + exhausted): la
+// primera posición es el provider preferido, el resto queda como respaldo.
+export function preferredProviderOrder(labels: string[], componentType?: string): number[] {
+  const order = labels.map((_, i) => i);
+  const re =
+    componentType === 'cgi-macro' || componentType === 'overlay-on-body'
+      ? /nano-banana|gemini/i
+      : componentType === 'real-ugc-human'
+        ? /higgsfield|flux|dop/i
+        : null;
+  if (!re) return order;
+  const pref = order.filter((i) => re.test(labels[i] ?? ''));
+  const rest = order.filter((i) => !re.test(labels[i] ?? ''));
+  return [...pref, ...rest];
+}
+
 export interface ProviderStep {
   // Provider concreto (GoogleImagenProvider, FalProvider, etc.)
   provider: ImageProvider;
@@ -55,6 +136,9 @@ export interface ProviderStep {
 
 export interface ImageGenMultiBlockOptions {
   client?: ImagenClient;
+  // Cap 2: imagen ancla del personaje. Si está, las escenas con featuresCharacter
+  // se generan ancladas a esta identidad (misma persona en todo el video).
+  characterAnchorImage?: Buffer;
   validator?: SceneValidatorV3;
   concurrency?: number;
   model?: string;
@@ -367,8 +451,9 @@ export class ImageGenMultiBlock implements Block<SceneTrack, SceneTrack> {
 
     // Set compartido entre workers de provider-steps agotados por hoy.
     const exhaustedSteps = new Set<number>(); // indices into providerSteps
-    const pickNextAvailableStep = (): ProviderStep | null => {
-      for (let i = 0; i < providerSteps.length; i++) {
+    const pickNextAvailableStep = (preferOrder?: number[]): ProviderStep | null => {
+      const order = preferOrder ?? providerSteps.map((_, i) => i);
+      for (const i of order) {
         if (!exhaustedSteps.has(i)) return providerSteps[i] ?? null;
       }
       return null;
@@ -395,10 +480,11 @@ export class ImageGenMultiBlock implements Block<SceneTrack, SceneTrack> {
       prompt: string,
       sceneIdx: number,
       attempt: number,
+      preferOrder?: number[],
     ): Promise<Buffer> => {
       let lastErr: unknown = null;
       while (true) {
-        const step = pickNextAvailableStep();
+        const step = pickNextAvailableStep(preferOrder);
         if (!step) {
           throw (
             lastErr ??
@@ -540,7 +626,8 @@ export class ImageGenMultiBlock implements Block<SceneTrack, SceneTrack> {
       sceneIdx: number,
       attempt: number,
       _preferredModel: string | undefined,
-    ) => callProviderWithApiRetry(prompt, sceneIdx, attempt);
+      preferOrder?: number[],
+    ) => callProviderWithApiRetry(prompt, sceneIdx, attempt, preferOrder);
 
     // Genera UNA escena con validación + re-generación si falla.
     // v3.3 (29-may #fix-fork): los archivos se nombran por `scene.index` (NO por la
@@ -549,7 +636,17 @@ export class ImageGenMultiBlock implements Block<SceneTrack, SceneTrack> {
     // scene_00.png y CLOBBEARÍA la scene 0 aprobada. `index` queda solo para el
     // placement en `scenes[]` (que el pipeline fusiona por .index al volver del fork).
     const generateAndValidate = async (scene: Scene, index: number): Promise<void> => {
-      let currentPrompt = scene.imagePrompt;
+      // Anti-collage: reforzamos "un solo cuadro" salvo en layouts composite reales.
+      const singleFrameClause =
+        !scene.compositeLayout || scene.compositeLayout === 'single'
+          ? ' Single uninterrupted vertical 9:16 photo of ONE moment — NOT a collage, grid, multi-panel, split-screen, contact sheet or character sheet.'
+          : '';
+      let currentPrompt = scene.imagePrompt + singleFrameClause;
+      // Cap 1: orden de providers preferido para esta escena según componentType.
+      const componentPreferOrder = preferredProviderOrder(
+        providerSteps.map((s) => s.label ?? ''),
+        scene.componentType,
+      );
       let lastValidation: V3ValidationResult | null = null;
       const refinementLog: string[] = [];
 
@@ -559,7 +656,22 @@ export class ImageGenMultiBlock implements Block<SceneTrack, SceneTrack> {
         const modelToUse = attempt === 0 ? PRIMARY_MODEL : RETRY_MODEL ?? PRIMARY_MODEL;
         let buffer: Buffer;
         try {
-          buffer = await callImagenWithApiRetry(currentPrompt, index, attempt, modelToUse);
+          // Cap 2: en el primer intento, si la escena muestra al personaje y hay
+          // anchor de identidad, generamos anclados a esa imagen (misma persona).
+          // Si falla, caemos al chain normal. Los reintentos usan el chain.
+          if (attempt === 0 && scene.featuresCharacter && this.options.characterAnchorImage) {
+            try {
+              buffer = await generateWithIdentityAnchor(currentPrompt, this.options.characterAnchorImage);
+            } catch (idErr) {
+              ctx.logger.warn(
+                { runId: ctx.runId, scene: index, err: (idErr as Error).message.slice(0, 120) },
+                'image-gen-multi:identity_anchor_failed_falling_back',
+              );
+              buffer = await callImagenWithApiRetry(currentPrompt, index, attempt, modelToUse, componentPreferOrder);
+            }
+          } else {
+            buffer = await callImagenWithApiRetry(currentPrompt, index, attempt, modelToUse, componentPreferOrder);
+          }
         } catch (e) {
           // Manejo especial de NSFW/content-rejection cuando NO hay más providers:
           // suavizamos el prompt automáticamente y reintentamos en el siguiente
@@ -587,7 +699,7 @@ export class ImageGenMultiBlock implements Block<SceneTrack, SceneTrack> {
               'image-gen-multi:nsfw_fallback_safe_placeholder',
             );
             try {
-              buffer = await callImagenWithApiRetry(safePrompt, index, attempt, modelToUse);
+              buffer = await callImagenWithApiRetry(safePrompt, index, attempt, modelToUse, componentPreferOrder);
             } catch (e2) {
               // Si el placeholder ABSTRACT también falla → fail definitivo (algo está roto)
               ctx.logger.error(
@@ -783,7 +895,12 @@ export class ImageGenMultiBlock implements Block<SceneTrack, SceneTrack> {
 
         if (v3PassesGate) {
           const imagePath = join(ctx.workDir, `scene_${scene.index.toString().padStart(2, '0')}.png`);
-          await writeFile(imagePath, buffer);
+          // Cap 3: si la escena define un EDIT (overlay/mixeo), lo aplicamos sobre
+          // la base aceptada antes de persistir. Best-effort (no rompe la escena).
+          const finalBuffer = scene.editStep
+            ? await applyEditStep(buffer, scene.editStep, ctx.logger)
+            : buffer;
+          await writeFile(imagePath, finalBuffer);
           completed++;
           scenes[index] = { ...scene, imagePath };
           ctx.onBlockProgress?.(Math.round((completed / input.scenes.length) * 100));

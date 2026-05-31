@@ -80,8 +80,9 @@ export interface PlanoEscenasProps {
   subtitlesConfig: PresetSubtitles;
   // Si false, los cortes son hard cuts (estilo TikTok/Reels denso). Si true, suave Ken Burns.
   kenBurnsZoomEnd?: number;
-  // Si true, cada escena tiene un micro zoom dinámico (alterna in/out). Mejor para escenas cortas.
-  microMotion?: boolean;
+  // Ken Burns OPT-IN: SOLO cuando true se aplica pan/zoom a las imágenes estáticas.
+  // Default false = imagen fija (sin movimiento). El usuario lo activa en la edición.
+  kenBurns?: boolean;
   // Cuando true, cada escena se renderiza con motion AGRESIVA: zoom amplio +
   // pan dinámico + rotación sutil. Usado por formats 'b-roll-animated' y
   // 'voiceover-animated' para dar sensación de video animado sin pagar Veo
@@ -96,7 +97,7 @@ export const PlanoEscenas: React.FC<PlanoEscenasProps> = ({
   subtitleTrack,
   subtitlesConfig,
   kenBurnsZoomEnd = 1.0,
-  microMotion = true,
+  kenBurns = false,
   animatedScenes = false,
 }) => {
   const frame = useCurrentFrame();
@@ -145,15 +146,13 @@ export const PlanoEscenas: React.FC<PlanoEscenasProps> = ({
                   zoomEnd={
                     animatedScenes
                       ? i % 2 === 0
-                        ? 1.22
-                        : 0.84
-                      : microMotion
-                        ? i % 2 === 0
-                          ? 1.06
-                          : 0.96
-                        : kenBurnsZoomEnd
+                        ? 1.1
+                        : 0.92
+                      : i % 2 === 0
+                        ? 1.06
+                        : 0.96
                   }
-                  microMotion={microMotion || animatedScenes}
+                  kenBurns={kenBurns}
                   animatedScenes={animatedScenes}
                   sceneIndex={i}
                 />
@@ -230,10 +229,10 @@ const SceneFrame: React.FC<{
   videoSrc?: string;
   durationInFrames: number;
   zoomEnd: number;
-  microMotion: boolean;
+  kenBurns: boolean;
   animatedScenes: boolean;
   sceneIndex: number;
-}> = ({ imageSrc, videoSrc, durationInFrames, zoomEnd, microMotion, animatedScenes, sceneIndex }) => {
+}> = ({ imageSrc, videoSrc, durationInFrames, zoomEnd, kenBurns, animatedScenes, sceneIndex }) => {
   const localFrame = useCurrentFrame();
   const t = Math.min(1, Math.max(0, localFrame / Math.max(1, durationInFrames - 1)));
 
@@ -262,24 +261,24 @@ const SceneFrame: React.FC<{
     );
   }
 
-  // Fallback: imagen estática con motion CSS (comportamiento legacy).
-  // Pan amplitud — animatedScenes empuja motion 4x más fuerte que microMotion normal.
+  // Fallback: imagen estática. MOVIMIENTO (Ken Burns) SOLO si se pidió (kenBurns).
+  // Default = HOLD (sin pan/zoom/rotación): el motion automático sobre estáticas se
+  // sentía como "Ken Burns no solicitado". El usuario lo activa desde la edición.
   const panDirection = sceneIndex % 4;
-  const panMax = animatedScenes ? 120 : microMotion ? 30 : 0;
+  const motionOn = kenBurns;
+  const panMax = !motionOn ? 0 : animatedScenes ? 60 : 30;
   let panX = 0;
   let panY = 0;
-  if (microMotion || animatedScenes) {
+  if (motionOn) {
     if (panDirection === 0) panX = panMax * t;
     else if (panDirection === 1) panX = -panMax * t;
     else if (panDirection === 2) panY = panMax * t;
     else panY = -panMax * t;
   }
 
-  const zoom = 1 + (zoomEnd - 1) * t;
+  const zoom = 1 + ((motionOn ? zoomEnd : 1.0) - 1) * t;
 
-  // Para animatedScenes agregamos rotación sutil + leve subida desde 0.96 para
-  // dar sensación de "video cinematográfico" en lugar de pan estático.
-  const rotation = animatedScenes ? (sceneIndex % 2 === 0 ? 0.6 : -0.6) * t : 0;
+  const rotation = motionOn && animatedScenes ? (sceneIndex % 2 === 0 ? 0.6 : -0.6) * t : 0;
 
   // Fade-in suave de 4 frames al inicio. animatedScenes alarga el fade a 6
   // para suavizar transiciones entre clips animados.

@@ -24,6 +24,7 @@
     "@video-factory/block-tts-elevenlabs": "workspace:*",
     "@video-factory/block-tts-openai": "workspace:*",
     "@video-factory/block-video-gen-veo": "workspace:*",
+    "@video-factory/block-word-sync": "workspace:*",
     "@video-factory/contracts": "workspace:*",
     "@video-factory/core": "workspace:*",
     "class-variance-authority": "^0.7.1",

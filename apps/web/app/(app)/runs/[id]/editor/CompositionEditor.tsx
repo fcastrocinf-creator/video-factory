@@ -73,6 +73,9 @@ export function CompositionEditor({ runId }: { runId: string }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [rerendering, setRerendering] = useState(false);
+  // Ken Burns OPT-IN: movimiento (pan/zoom) sobre las imágenes. Default OFF —
+  // las escenas quedan fijas salvo que el usuario lo active acá.
+  const [kenBurns, setKenBurns] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
@@ -334,7 +337,11 @@ export function CompositionEditor({ runId }: { runId: string }) {
     setRerendering(true);
     setError(null);
     try {
-      const resp = await fetch(`/api/runs/${runId}/rerender`, { method: 'POST' });
+      const resp = await fetch(`/api/runs/${runId}/rerender`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kenBurns }),
+      });
       if (!resp.ok) {
         const body = (await resp.json().catch(() => ({}))) as { error?: string };
         throw new Error(body.error ?? `HTTP ${resp.status}`);
@@ -345,7 +352,7 @@ export function CompositionEditor({ runId }: { runId: string }) {
       setError((e as Error).message);
       setRerendering(false);
     }
-  }, [runId, dirty]);
+  }, [runId, dirty, kenBurns]);
 
   if (loading) {
     return <p className="text-sm text-muted-foreground">Cargando composición…</p>;
@@ -502,6 +509,18 @@ export function CompositionEditor({ runId }: { runId: string }) {
                 <Button size="sm" onClick={save} disabled={saving || !dirty}>
                   {saving ? 'Guardando…' : 'Guardar'}
                 </Button>
+                <label
+                  className="flex items-center gap-1 text-[11px] text-muted-foreground cursor-pointer select-none"
+                  title="Aplica movimiento Ken Burns (pan/zoom) a las imágenes estáticas. Por defecto las escenas quedan fijas."
+                >
+                  <input
+                    type="checkbox"
+                    checked={kenBurns}
+                    onChange={(e) => setKenBurns(e.target.checked)}
+                    className="h-3 w-3"
+                  />
+                  Movimiento Ken Burns
+                </label>
                 <Button
                   size="sm"
                   variant="outline"

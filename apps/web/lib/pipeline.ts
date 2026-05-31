@@ -42,6 +42,7 @@ import { refineSceneTrackWithIngredients } from './ingredients-vision-refiner';
 import { getVideoDurationSec } from './frame-extractor';
 import { generateSingleImageWithChain } from './single-image-fallback';
 import { animateScenes } from './scene-animator';
+import { addCaptions, isZapcapConfigured, DEFAULT_TEMPLATE_ID } from './zapcap';
 import { regenerateSingleScene } from './regenerate-single-scene';
 import { runHolisticReview } from './validator-chat-ia-holistic';
 import { fortifyPromptWithAntiPatterns, generateRunReport } from './validator-chat-ia';
@@ -97,6 +98,21 @@ export interface PipelineOverrides {
    *     vía POST /api/runs/[id]/resume. Sequential por diseño (concurrency=1).
    */
   mode?: 'auto' | 'collaborative';
+  /**
+   * Cap 5: fuerza subtítulos ZapCap automáticos al final del run (override del
+   * preset.subtitles.autoZapcap.enabled). Útil para pruebas e2e.
+   */
+  subtitlesZapcap?: boolean | null;
+  /**
+   * Cap 2: fuerza el anchor de identidad del personaje (override del
+   * preset.visualStyle.consistentCharacter). Útil para pruebas e2e.
+   */
+  identityAnchor?: boolean | null;
+  /**
+   * Cap 4: expande las enumeraciones del guion en micro-escenas sincronizadas a
+   * cada palabra (override del preset.subtitles.wordSyncMicroScenes).
+   */
+  wordSync?: boolean | null;
 }
 
 export async function runPipeline(
@@ -559,6 +575,62 @@ export async function runPipeline(
         );
       }
 
+      // ============================================================
+      // Cap 4 — Alineación PERFECTA al narrador (word-level) + micro-escenas
+      // ============================================================
+      // Con timestamps POR PALABRA de ElevenLabs alineamos cada escena a las
+      // palabras EXACTAS que narra. El char-interpolation anterior desfasaba el
+      // visual (una frase corta podía durar más que una larga) — ESO no puede
+      // pasar. Corre SIEMPRE que haya ElevenLabs. Usamos el audio de
+      // /with-timestamps como pista FINAL para que palabras y audio coincidan al
+      // milisegundo. Si el preset lo pide, además expandimos enumeraciones en
+      // micro-escenas. Best-effort: si falla, el plan queda igual.
+      {
+        const evKey = process.env['ELEVENLABS_API_KEY'];
+        const wantMicro = overrides.wordSync ?? preset.subtitles.wordSyncMicroScenes ?? false;
+        if (evKey) {
+          try {
+            const { fetchWordTimings, alignScenesToWords, expandEnumerationScenes } =
+              await import('@video-factory/block-word-sync');
+            const narration = parsedScript.segments.map((s) => s.text).join(' ');
+            const dv = brand.defaultVoice;
+            const wt = await fetchWordTimings({
+              text: narration,
+              voiceId: dv.voiceId,
+              apiKey: evKey,
+              modelId: dv.modelId,
+              voiceSettings: {
+                stability: dv.stability,
+                similarity_boost: dv.similarity,
+                style: dv.style,
+                use_speaker_boost: dv.speakerBoost,
+              },
+            });
+            if (wt.words.length > 0) {
+              // El audio de /with-timestamps pasa a ser la pista FINAL (matchea las
+              // palabras al milisegundo).
+              await writeFile(audioTrack.filePath, wt.audio);
+              const audioEnd = wt.words[wt.words.length - 1]!.end;
+              audioTrack.durationSeconds = audioEnd;
+              // ALINEACIÓN PERFECTA (siempre): cada escena a sus palabras exactas.
+              let scenes = alignScenesToWords(sceneTrack.scenes, wt.words);
+              // Micro-escenas (opt-in): enumeraciones -> un corte por ítem.
+              if (wantMicro) scenes = expandEnumerationScenes(scenes, wt.words);
+              sceneTrack = { ...sceneTrack, scenes, totalDurationSeconds: audioEnd };
+              logger.info(
+                { runId, scenes: scenes.length, audioDur: audioEnd.toFixed(2), micro: wantMicro },
+                'pipeline:word_alignment_applied',
+              );
+            }
+          } catch (e) {
+            logger.warn(
+              { runId, err: (e as Error).message.slice(0, 150) },
+              'pipeline:word_alignment_failed',
+            );
+          }
+        }
+      }
+
       // B.4.4 — FORK PROPAGATION (v3.2 #137, 29-may-2026):
       // Cuando el run es un fork, las scenes pre-aprobadas pasan sin tocar la
       // pausa colaborativa (donde normalmente disparaba la propagación). Eso
@@ -919,11 +991,45 @@ export async function runPipeline(
           'pipeline:route_profile_resolved',
         );
 
+        // Cap 2 — Anchor de identidad del personaje (misma persona en todo el
+        // video). Opt-in (preset.visualStyle.consistentCharacter u override). Si
+        // hay narrador presente + descripción + GOOGLE key, generamos UN anchor.
+        let characterAnchorImage: Buffer | undefined;
+        {
+          const wantIdentity =
+            overrides.identityAnchor ?? preset.visualStyle.consistentCharacter ?? false;
+          const np = sceneTrack.narratorProfile;
+          if (
+            wantIdentity &&
+            np?.narratorPresent &&
+            np.characterCard &&
+            process.env['GOOGLE_AI_API_KEY']
+          ) {
+            try {
+              const { generateCharacterAnchor } = await import('./character-anchor');
+              characterAnchorImage = await generateCharacterAnchor({
+                characterDescription: np.characterCard,
+                ageRange: np.ageRange,
+                styleBase: sceneTrack.styleBase,
+                apiKey: process.env['GOOGLE_AI_API_KEY'],
+              });
+              await writeFile(resolve(workDir, 'character-anchor.png'), characterAnchorImage);
+              logger.info({ runId }, 'pipeline:character_anchor_generated');
+            } catch (e) {
+              logger.warn(
+                { runId, err: (e as Error).message.slice(0, 150) },
+                'pipeline:character_anchor_failed',
+              );
+            }
+          }
+        }
+
         const imageMulti = new ImageGenMultiBlock({
           concurrency: 8,
           minIntervalMs: 3500,
           providerChain,
           referenceImage: presetReferenceImage,
+          characterAnchorImage,
           anatomyMode: routeProfile.validator.anatomyMode,
           validate: true, // siempre
           // M1 (24-may-2026 post Test 5 feedback): subir agresividad del validator
@@ -1914,6 +2020,37 @@ export async function runPipeline(
       };
       const renderResult = await compositorRemotion.run(renderJob, compCtx);
       if (renderResult.isErr()) throw renderResult.error;
+    }
+
+    // ============================================================
+    // Cap 5 — Subtítulos ZapCap automáticos (opt-in, best-effort)
+    // ============================================================
+    // Si el preset (o un override) lo pide y hay API key, quemamos subtítulos
+    // estilo CapCut sobre el render final -> final-subtitled.mp4 (misma ruta que
+    // ya sirve la UI). NUNCA falla el run: si algo sale mal, el video se entrega
+    // sin subtítulos quemados + un advisory para el owner.
+    {
+      const zapcapCfg = preset.subtitles.autoZapcap;
+      const wantZapcap = overrides.subtitlesZapcap ?? zapcapCfg?.enabled ?? false;
+      if (wantZapcap && isZapcapConfigured()) {
+        await updateRun(runId, { currentStep: 'subtitles-zapcap', progress: 99 });
+        try {
+          await addCaptions({
+            videoPath: outputPath,
+            outPath: resolve(workDir, 'final-subtitled.mp4'),
+            templateId: zapcapCfg?.templateId ?? DEFAULT_TEMPLATE_ID,
+            fontUppercase: zapcapCfg?.fontUppercase ?? true,
+            logger,
+          });
+          logger.info({ runId }, 'pipeline:zapcap_subtitles_done');
+        } catch (zapErr) {
+          const msg = `Subtítulos automáticos (ZapCap) fallaron: ${(zapErr as Error).message.slice(0, 150)}. El video se entrega sin subtítulos quemados.`;
+          editorAdvisoryMessage = editorAdvisoryMessage ? `${editorAdvisoryMessage} · ${msg}` : msg;
+          logger.warn({ runId, err: (zapErr as Error).message }, 'pipeline:zapcap_subtitles_failed');
+        }
+      } else if (wantZapcap) {
+        logger.warn({ runId }, 'pipeline:zapcap_requested_but_not_configured');
+      }
     }
 
     const costSummary = costTracker.summary;

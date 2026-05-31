@@ -31,7 +31,10 @@ export function renderJobExists(workDir: string): boolean {
  * correr en background (el caller hace `void rerenderComposition(id)`).
  * Actualiza el status del run mientras procesa.
  */
-export async function rerenderComposition(runId: string): Promise<void> {
+export async function rerenderComposition(
+  runId: string,
+  opts: { kenBurns?: boolean } = {},
+): Promise<void> {
   const logger = createLogger(runId);
   try {
     const result = await db.select().from(runs).where(eq(runs.id, runId)).limit(1);
@@ -55,6 +58,8 @@ export async function rerenderComposition(runId: string): Promise<void> {
     // Inyectar el sceneTrack editado y resetear estado del job.
     renderJob.sceneTrack = sceneTrack;
     renderJob.status = 'pending';
+    // Ken Burns OPT-IN: el usuario lo activa/desactiva desde el editor de composición.
+    if (opts.kenBurns !== undefined) renderJob.kenBurns = opts.kenBurns;
 
     const [brand, preset] = await Promise.all([
       loadBrand(run.brandId),

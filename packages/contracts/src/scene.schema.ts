@@ -183,6 +183,25 @@ export const SceneSchema = z.object({
   // Si está, el compositor usa ESTO en vez de (endTimeSeconds - startTimeSeconds).
   // null/undefined = usar el auto-trim normal.
   manualDurationSeconds: z.number().positive().optional().nullable(),
+  // Cap 3 (mixeo/overlay): si está, tras generar la imagen BASE se corre un EDIT
+  // image-to-image (Nano Banana) que SUMA un efecto sobre la base SIN cambiar
+  // identidad/pose/encuadre (ej. "flujo linfático glowing sobre el abdomen"). El
+  // scene-planner lo setea para escenas componentType='overlay-on-body'.
+  editStep: z
+    .object({
+      effectPrompt: z.string(),
+      region: z.string().optional(),
+    })
+    .optional(),
+  // Cap 1 (ruteo por componente): tipo de componente visual, usado para rutear
+  // al mejor provider de imagen. Lo deriva el scene-planner del shotType/prompt.
+  componentType: z
+    .enum(['cgi-macro', 'real-ugc-human', 'overlay-on-body', 'other'])
+    .default('other')
+    .optional(),
+  // Cap 2 (identidad): ¿esta escena muestra al personaje recurrente? Si sí, se
+  // ancla su identidad (misma persona) vía referencia image-to-image.
+  featuresCharacter: z.boolean().default(false).optional(),
 });
 
 export type Scene = z.infer<typeof SceneSchema>;

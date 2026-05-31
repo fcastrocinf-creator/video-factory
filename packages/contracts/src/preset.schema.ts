@@ -55,6 +55,11 @@ export const PresetVisualStyleSchema = z.object({
   // UGC con movimiento, etc). Para presets estáticos (b-roll-static) dejarlo
   // ausente. Ver `PresetAnimationLayersSchema` arriba.
   animationLayers: PresetAnimationLayersSchema.optional(),
+
+  // Cap 2 (identidad): si true, el pipeline genera UN anchor del personaje y las
+  // escenas que lo muestran se anclan a esa identidad (misma persona en todo el
+  // video). Opt-in: ausente/false = comportamiento anterior intacto.
+  consistentCharacter: z.boolean().optional(),
 });
 
 export type PresetVisualStyle = z.infer<typeof PresetVisualStyleSchema>;
@@ -69,6 +74,20 @@ export const PresetSubtitlesSchema = z.object({
   highlightColor: z.string().default('#FFE600'),
   position: z.enum(['top', 'center', 'bottom']),
   allCaps: z.boolean().default(true),
+  // OPCIONAL — subtítulos automáticos estilo CapCut (ZapCap) al final del run.
+  // Opt-in (default desactivado): en el plan free ZapCap pone marca de agua y
+  // consume créditos. Con enabled=true, el pipeline quema subtítulos sobre el
+  // render final sin intervención manual.
+  autoZapcap: z
+    .object({
+      enabled: z.boolean().default(false),
+      templateId: z.string().default('decf5309-2094-4257-a646-cabe1f1ba89a'),
+      fontUppercase: z.boolean().default(true),
+    })
+    .optional(),
+  // Cap 4 (micro-escenas): si true, las enumeraciones del guion se parten en
+  // micro-escenas sincronizadas a cada palabra. Opt-in.
+  wordSyncMicroScenes: z.boolean().optional(),
 });
 
 export type PresetSubtitles = z.infer<typeof PresetSubtitlesSchema>;

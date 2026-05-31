@@ -1,0 +1,67 @@
+{
+  "id": "lodo_e2e_test",
+  "displayName": "LODO · Prueba e2e (capacidades cableadas)",
+  "description": "Preset de prueba: UGC mujer real con identidad consistente, micro-escenas sincronizadas a la narración y subtítulos automáticos. Valida que el host produce todo solo.",
+  "category": {
+    "id": "mujer_protagonista",
+    "displayName": "Mujer protagonista (Storytelling)",
+    "description": "La narradora es una mujer que cuenta su propia historia en primera persona."
+  },
+  "format": {
+    "id": "ugc-broll",
+    "displayName": "UGC B-ROLL",
+    "description": "Cámara amateur (handheld/phone) sin testimoniante hablando."
+  },
+  "style": {
+    "id": "ugc_lifestyle",
+    "displayName": "UGC Lifestyle Amateur"
+  },
+  "classification": {
+    "formato": "ugc",
+    "hookAngulo": "testimonio",
+    "funnelStage": "tofu",
+    "awareness": "problem_aware"
+  },
+  "estrategia": "multi_escena",
+  "visualEngine": "imagen4",
+  "visualStyle": {
+    "promptTemplate": "Amateur phone-camera footage, vertical 9:16, natural home lighting, candid Reels B-roll look — not posed talking-head. A mediterranean woman around 45 years old, casual sage-green athletic outfit, healthy and approachable. Slight phone-camera grain, natural color, authentic — not advertising polish.",
+    "negativePrompt": "studio lighting, professional gear, talking head, commercial polish, animated, cartoon, 3D, Pixar style",
+    "aspectRatio": "9:16",
+    "referenceImages": [],
+    "consistentCharacter": true
+  },
+  "subtitles": {
+    "style": "minimal_elegant",
+    "font": "Inter",
+    "fontSize": 56,
+    "color": "#FFFFFF",
+    "strokeColor": "#000000",
+    "strokeWidth": 3,
+    "highlightColor": "#FFE600",
+    "position": "bottom",
+    "allCaps": true,
+    "autoZapcap": {
+      "enabled": true,
+      "fontUppercase": true
+    },
+    "wordSyncMicroScenes": true
+  },
+  "defaultDurationSeconds": 20,
+  "scenesPerMinute": 22,
+  "composition": {
+    "kenBurns": {
+      "enabled": true,
+      "zoomStart": 1.0,
+      "zoomEnd": 1.05,
+      "panX": 0,
+      "panY": 0
+    },
+    "backgroundMusic": {
+      "enabled": false,
+      "volumeDb": -20
+    }
+  },
+  "createdAt": "2026-05-30T00:00:00Z",
+  "updatedAt": "2026-05-30T00:00:00Z"
+}

@@ -6,6 +6,76 @@
 
 ---
 
+## 🏁 VERSIÓN 3 — 30-05-2026 (5 capacidades cableadas al pipeline + e2e)
+
+> El gran avance: convertir en **lógica del host** (no scripts manuales) las
+> capacidades que antes hacía Claude a mano. Todas **opt-in** (un run normal
+> queda byte-idéntico) y con **tests + FULL typecheck verde**.
+
+**Capacidades cableadas al pipeline real:**
+1. **Subtítulos ZapCap automáticos** (cap 5) — `pipeline.ts` tras el render: si
+   `preset.subtitles.autoZapcap.enabled` (u override `subtitlesZapcap`) → quema
+   subtítulos → `final-subtitled.mp4`. Best-effort.
+2. **Edit/overlay (mixeo)** (cap 3) — `image-gen-multi`: si `scene.editStep`, tras
+   la imagen base corre un EDIT Nano Banana (glow sobre el cuerpo). `buildEditPrompt`
+   testeado. **PENDIENTE:** que el scene-planner EMITA `editStep` solo (hoy no lo hace).
+3. **Ruteo por componente** (cap 1) — `scene-planner` deriva `componentType`
+   (`deriveComponentType`, detecta ES+EN, excluye animados) + `image-gen-multi`
+   `preferredProviderOrder` (reordena el chain por escena, preserva fallback).
+4. **Identidad-anchor** (cap 2) — `pipeline.ts` genera 1 anchor del personaje
+   (`character-anchor.ts`) si `consistentCharacter`; las escenas con
+   `featuresCharacter` se generan ancladas a esa identidad. **PENDIENTE:** validator
+   identity-pass (solo se cableó la generación).
+5. **Micro-escenas word-synced** (cap 4) — block nuevo `@video-factory/block-word-sync`
+   (`fetchWordTimings` + `planMicroScenes` + `expandEnumerationScenes`, 13 tests).
+   `pipeline.ts` expande enumeraciones ("cara, abdomen y piernas") en micro-escenas
+   con cortes por palabra. Opt-in `wordSyncMicroScenes`.
+
+**Tests nuevos:** word-sync 13, image-gen-multi 10 (edit/identity/provider-order),
+scene-planner 6 (component-type, infra creada). `pnpm -r typecheck` = verde.
+
+**Prueba e2e (run `7c77b0ac`, preset `lodo_e2e_test`):** el host produjo **solo** un
+video completo + subtítulos (`final-subtitled.mp4`) — sin un script de Claude.
+Disparó cap 4 (micro-escenas), cap 2 (anchor generado) y cap 5 (auto-ZapCap).
+**Cazó un bug** (componentType solo-inglés) → arreglado + test de regresión en español.
+**Issues honestos del run:** animación 0/8 (quota Kling agotada — cuenta, no código);
+artefactos de imagen que el validator SÍ detectó (manos/pies/reflejos); identidad no
+aplicada en ESE run (usó la derivación pre-fix). Server nuevo corriendo en `:3001`.
+
+**UPDATE (re-run `8bbee165`, con fixes):** ✅ **collage ELIMINADO** (regla "un solo
+cuadro" en `scene-planner` systemInstruction + `singleFrameClause` en `image-gen-multi`
++ styleBase limpio). ✅ cap 1 componentType correcto (4 ugc + 3 cgi, ya no todo "other"
+— fix del regex español en `deriveComponentType` + test de regresión). ✅ cap 2 identidad
+APLICADA (~85%, pelo varía = límite Nano Banana). ✅ cap 4 micro-escenas. ✅ cap 5
+auto-ZapCap (`subtitles-zapcap`). ✅ cap 3: planner ya **emite `editStep`** (autónomo),
+pero no dispara si el guion no pide overlay (situacional).
+
+**Ken Burns OPT-IN (fix):** el movimiento pan/zoom sobre imágenes estáticas ya NO es
+automático (era `microMotion=true` por default en `PlanoEscenas` + el formato animado
+forzándolo cuando la animación fallaba). Ahora **default = imagen FIJA**; el usuario lo
+activa con el toggle **"Movimiento Ken Burns"** en el editor de composición. Flujo:
+`CompositionEditor` (checkbox) → `POST /rerender {kenBurns}` → `rerenderComposition(id,{kenBurns})`
+→ `RenderJob.kenBurns` → `PlanoEscenas`/`SceneFrame` (gate del pan/zoom). Validado: re-render
+del run `8bbee165` quedó estático (frames de una misma escena idénticos).
+
+**Alineación PERFECTA al narrador (fix crítico):** la alineación vieja
+(`alignScenesToAudioTiming`, char-interpolation sobre segmentos TTS) desfasaba el visual
+— una frase corta podía durar MÁS que una larga. Nuevo: `alignScenesToWords(scenes, words)`
+en `@video-factory/block-word-sync` (4 tests) ancla cada escena a sus PALABRAS exactas
+(timestamps ElevenLabs). Cableado en `pipeline.ts` (bloque cap-4): corre SIEMPRE que haya
+ElevenLabs (ya no opt-in), reemplaza el audio por el de `/with-timestamps` (palabras y
+audio coinciden), re-alinea, y si el preset lo pide expande micro-escenas. También parchea
+`audioTrack.durationSeconds`. Validado: re-alineé el run `8bbee165` → s3 corta 4.4s→1.8s,
+s4 larga 2.4s→3.0s (antes al revés). **Optimización pendiente:** que el TTS original use
+`/with-timestamps` para no hacer 2 llamadas (hoy genera audio 2x).
+
+**Pendientes V3:** (a) validar cap 3 en vivo con un guion que pida overlay; (b) lock de
+identidad >85% (prompt más fuerte o avatar dedicado Higgsfield); (c) validator
+identity-pass (cap 2); (d) **recargar quota Kling** (o habilitar Veo/Vertex video) para
+animación — hoy 0/8 anima por quota de cuenta, no por código.
+
+---
+
 ## 🏁 VERSIÓN 2 — 30-05-2026 (checkpoint, tag `v2-2026-05-30`)
 
 > El gran avance de esta sesión: **codificar la RUTA para igualar un estilo de ad
