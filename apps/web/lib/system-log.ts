@@ -13,7 +13,10 @@ import { existsSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 
 export const SYSTEM_LOG_PATH = (() => {
-  // Buscar la raíz del repo (donde está storage/)
+  // Storage unificado: VF_STORAGE_DIR (next.config) = <root>/storage para todos.
+  const unified = process.env['VF_STORAGE_DIR'];
+  if (unified) return resolve(unified, 'system-log.jsonl');
+  // Fallback (scripts sin next.config): buscar la raíz del repo.
   const candidates = [
     resolve(process.cwd(), 'storage', 'system-log.jsonl'),
     resolve(process.cwd(), '..', '..', 'storage', 'system-log.jsonl'),

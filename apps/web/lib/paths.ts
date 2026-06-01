@@ -11,7 +11,9 @@ export const PRESETS_DIR = resolve(REPO_ROOT, 'packages', 'presets');
 // el admin los apruebe en /admin. Una vez aprobados se mueven al PRESETS_DIR
 // y aparecen como opciones en /create.
 export const PENDING_PRESETS_DIR = resolve(PRESETS_DIR, 'pending');
-export const STORAGE_DIR = resolve(REPO_ROOT, 'storage');
+// Respeta VF_STORAGE_DIR (lo setea next.config) para que TODO el storage —memoria
+// de aprendizaje incluida— viva en un solo lugar y no se parta por process.cwd().
+export const STORAGE_DIR = process.env['VF_STORAGE_DIR'] ?? resolve(REPO_ROOT, 'storage');
 export const RUNS_DIR = resolve(STORAGE_DIR, 'runs');
 export const RIPS_DIR = resolve(STORAGE_DIR, 'rips');
 export const TRAINING_DIR = resolve(STORAGE_DIR, 'training');

@@ -40,7 +40,10 @@ export interface PresetJudgmentEntry {
 }
 
 function defaultJudgmentMemoryPath(): string {
-  return resolve(process.cwd(), 'storage', 'preset-memory', 'judgments.jsonl');
+  // Storage unificado: VF_STORAGE_DIR (lo setea next.config) = <root>/storage para
+  // TODOS los módulos. Fallback para scripts (corren desde la raíz): cwd/storage.
+  const root = process.env['VF_STORAGE_DIR'] ?? resolve(process.cwd(), 'storage');
+  return resolve(root, 'preset-memory', 'judgments.jsonl');
 }
 
 /**

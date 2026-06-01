@@ -122,7 +122,12 @@ export type PromptPatchProposal = z.infer<typeof PromptPatchProposalSchema>;
 // ============================================================
 
 function patchesProposalsPath(): string {
-  return resolve(process.cwd(), 'storage', 'prompt-patches', 'proposals.jsonl');
+  // Storage unificado (VF_STORAGE_DIR = <root>/storage); fallback cwd para scripts.
+  return resolve(
+    process.env['VF_STORAGE_DIR'] ?? resolve(process.cwd(), 'storage'),
+    'prompt-patches',
+    'proposals.jsonl',
+  );
 }
 
 export async function recordProposedPatch(
@@ -207,7 +212,10 @@ interface SystemEventLite {
 }
 
 async function readRecentEvents(maxAgeDays: number = 30): Promise<SystemEventLite[]> {
-  const path = resolve(process.cwd(), 'storage', 'system-log.jsonl');
+  const path = resolve(
+    process.env['VF_STORAGE_DIR'] ?? resolve(process.cwd(), 'storage'),
+    'system-log.jsonl',
+  );
   if (!existsSync(path)) return [];
   let raw: string;
   try {

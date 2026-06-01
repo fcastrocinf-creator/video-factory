@@ -44,6 +44,11 @@ if (existsSync(rootEnvPath)) {
   console.log(`  ${loadedKeys.join(', ')}`);
 }
 
+// Storage UNIFICADO: toda la memoria/aprendizaje vive en <root>/storage. Antes
+// algunos módulos usaban process.cwd() y la memoria se partía entre
+// apps/web/storage y la raíz (split-brain). Esta var es la fuente de verdad.
+process.env.VF_STORAGE_DIR = resolve(__dirname, '..', '..', 'storage');
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
