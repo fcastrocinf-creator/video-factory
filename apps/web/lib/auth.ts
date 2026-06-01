@@ -27,3 +27,16 @@ export function clearAuthCookie(): void {
 export function isAuthenticated(): boolean {
   return cookies().get(AUTH_COOKIE)?.value === AUTH_COOKIE_VALUE;
 }
+
+/**
+ * True si esta instalación es la del OWNER (propietario). Se controla con la
+ * variable de entorno VF_ROLE=owner en el .env. En el modelo local-first, las
+ * instalaciones de empleados NO la setean (default = usuario) → no ven /admin.
+ *
+ * NOTA: oculta el admin a usuarios de confianza; NO es seguridad blindada
+ * (ellos tienen el código y podrían cambiar su propio flag). La seguridad dura
+ * requeriría el modelo de servidor central con cuentas reales.
+ */
+export function isOwner(): boolean {
+  return process.env['VF_ROLE'] === 'owner';
+}

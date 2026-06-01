@@ -606,30 +606,37 @@ expone valores de keys, no hay riesgo de exposición de credenciales.
   marcada como sin uso activo; `ANTHROPIC_API_KEY` con comentario más completo
 - [x] Cross-links desde `HANDOFF.md` y `CLAUDE.md` hacia este documento
 
-### 7.3 Pendiente (próximas tandas)
+### 7.3 Tanda "receptor central + roles" (recién hecho)
 
-- [ ] Receptor central de eventos (endpoint del servidor que recibe el POST de
-  `sync.ts`)
-- [ ] Wizard de onboarding guiado que escriba las keys en `.env` de forma
-  interactiva (interfaz paso a paso para empleados no técnicos)
-- [ ] Trigger automático de sync (cron o hook post-run)
-- [ ] Dashboard del responsable para visualizar eventos del Cerebro de múltiples
-  instalaciones
-- [ ] Corrección del bug de middleware en `/brands` (ruta pública por error,
-  bug pre-existente fuera del scope actual)
+- [x] **Rol owner** (`VF_ROLE=owner`): `/admin` y su link en el menú solo se ven en la
+  instalación del owner; las de empleados (sin la variable) NO ven admin pero igual
+  sincronizan. (`lib/auth.isOwner`, `(app)/layout.tsx`, `Sidebar.tsx`, `admin/page.tsx`)
+- [x] **Receptor central**: `POST /api/sync/ingest` (auth por `VF_SYNC_INGEST_KEY`) +
+  `lib/kb/central-store.ts` (almacena los eventos por instalación en `storage/kb/central/`)
+- [x] **Trigger de sync**: el pipeline llama `syncPendingEventos()` al completar un run
+  (fire-and-forget; opt-in/no-op sin `VF_LEARNING_SYNC_URL`)
+- [x] **Dashboard de costo-eficiencia** (owner): `GET /api/admin/central` + sección
+  "📊 Costo por usuario" en `/admin` — gasto por instalación, ordenado por costo/video
+
+### 7.4 Pendiente (próximas tandas)
+
+- [ ] Wizard de onboarding guiado que escriba las keys en `.env` de forma interactiva
+- [ ] Costo EXACTO (telemetría per-proveedor) — hoy es un ESTIMADO que subcuenta los
+  clips de video
+- [ ] Deploy del receptor a una URL alcanzable (para que empleados reales sincronicen;
+  hoy funciona en local / misma red). El receptor debería además deduplicar por `id`
+- [ ] Corrección del bug de middleware en `/brands` (ruta pública por error, pre-existente)
 
 ---
 
 ## 8. Próximos pasos inmediatos
 
-1. **Construir el receptor central** — el endpoint que recibe el POST de
-   `sync.ts`. Sin él, la sync queda en standby (best-effort, reintentos locales).
-2. **Conectar el trigger de sync** — agregar un hook post-run o un cron job que
-   llame a `syncPendingEventos()` después de cada generación, o en intervalos
-   regulares.
-3. **Wizard de keys** — crear una interfaz paso a paso en `/onboarding` que
-   guíe al empleado para configurar las keys sin editar archivos de texto
-   manualmente.
+1. **Deploy del receptor** a una URL alcanzable, para que empleados reales puedan
+   sincronizar (hoy el receptor ya funciona en local / misma red).
+2. **Hacer EXACTO el costo** (telemetría per-proveedor) — hoy el dashboard usa un
+   ESTIMADO que subcuenta los clips de video.
+3. **Wizard de keys** — interfaz paso a paso en `/onboarding` para configurar las
+   keys sin editar archivos de texto manualmente.
 4. **Actualizar este documento** cada vez que se agregue una key nueva al código
    o cambie el estado de un ítem en la sección 7.
 

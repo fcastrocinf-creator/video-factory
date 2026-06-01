@@ -2175,6 +2175,15 @@ export async function runPipeline(
       summary: `Run ${runId.slice(0, 8)} completed · brand=${brandId} preset=${presetId} cost=$${costSummary.totalUsd.toFixed(2)}`,
     });
 
+    // Buzón de aprendizaje (OPT-IN): si VF_LEARNING_SYNC_URL está configurada,
+    // empuja los eventos nuevos del KB al receptor central. No-op total si no lo
+    // está. Best-effort, fire-and-forget: nunca afecta el resultado del run.
+    void import('./kb/sync')
+      .then((m) => m.syncPendingEventos())
+      .catch(() => {
+        /* best-effort */
+      });
+
     // v3.2 #113: cerebro evolutivo — convertir owner comments cross-run en
     // preset patches propuestos. Si N+ comments en runs distintos hablan de la
     // misma categoría, persistir como propuesta pending en /admin. NO se aplica

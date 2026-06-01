@@ -1,10 +1,14 @@
+import { redirect } from 'next/navigation';
 import { listPendingPresets } from '@/lib/admin-presets-store';
 import { AdminPanel } from './AdminPanel';
 import { PageHeader, PageHint } from '@/components/PageHint';
+import { isOwner } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminPage() {
+  // Solo el owner (VF_ROLE=owner) ve el panel admin. Un usuario va a sus videos.
+  if (!isOwner()) redirect('/runs');
   const pending = await listPendingPresets();
   return (
     <div className="space-y-6">

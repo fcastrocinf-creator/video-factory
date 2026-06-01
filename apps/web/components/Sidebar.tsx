@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 
 const GROUPS: Array<{
   label: string;
-  items: Array<{ href: string; icon: string; name: string; sub?: string }>;
+  items: Array<{ href: string; icon: string; name: string; sub?: string; ownerOnly?: boolean }>;
 }> = [
   {
     label: 'Principal',
@@ -25,13 +25,18 @@ const GROUPS: Array<{
   },
   {
     label: 'Sistema',
-    items: [{ href: '/admin', icon: '⚙️', name: 'Admin' }],
+    items: [{ href: '/admin', icon: '⚙️', name: 'Admin', ownerOnly: true }],
   },
 ];
 
-export function Sidebar() {
+export function Sidebar({ isOwner = false }: { isOwner?: boolean }) {
   const path = usePathname() ?? '';
   const [createOpen, setCreateOpen] = useState(false);
+  // Oculta los items marcados ownerOnly (ej. Admin) salvo que seas el owner.
+  const groups = GROUPS.map((g) => ({
+    ...g,
+    items: g.items.filter((it) => !it.ownerOnly || isOwner),
+  })).filter((g) => g.items.length > 0);
 
   return (
     <>
@@ -55,7 +60,7 @@ export function Sidebar() {
           ＋ Crear video
         </button>
 
-        {GROUPS.map((g) => (
+        {groups.map((g) => (
           <div key={g.label}>
             <div className="text-[10.5px] tracking-[0.09em] uppercase text-[#6b7385] px-2.5 pt-3.5 pb-1.5 font-bold">
               {g.label}

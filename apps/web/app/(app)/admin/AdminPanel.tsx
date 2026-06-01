@@ -94,6 +94,7 @@ export function AdminPanel({ initialPending }: AdminPanelProps) {
         {/* Base de Conocimiento (Fase 1) — visible aunque no haya presets pendientes */}
         <KnowledgeBaseSection />
         <KnowledgeAuditSection />
+        <CentralCostSection />
       </div>
     );
   }
@@ -135,6 +136,9 @@ export function AdminPanel({ initialPending }: AdminPanelProps) {
 
       {/* Auditoría profunda (Fase 2): los especialistas que revisan a fondo on-demand */}
       <KnowledgeAuditSection />
+
+      {/* Receptor central: costo-eficiencia por instalación (owner) */}
+      <CentralCostSection />
     </div>
   );
 }
@@ -890,6 +894,119 @@ function KnowledgeAuditSection() {
                 )}
               </div>
             ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Receptor central: costo-eficiencia por instalación (Feature 2, owner) ────
+
+interface InstallCostView {
+  instalacion: string;
+  videos: number;
+  gastoTotalUsd: number;
+  costoPromedioUsd: number;
+  ultimoTs: string | null;
+}
+
+function CentralCostSection() {
+  const [stats, setStats] = useState<InstallCostView[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  async function load() {
+    setLoading(true);
+    setError('');
+    try {
+      const r = await fetch('/api/admin/central', { cache: 'no-store' });
+      const data = (await r.json()) as { stats?: InstallCostView[]; error?: string };
+      if (!r.ok) throw new Error(data.error ?? `HTTP ${r.status}`);
+      setStats(data.stats ?? []);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const fmtUsd = (n: number) => `$${n.toFixed(3)}`;
+
+  return (
+    <Card className="border-cyan-500/30 bg-cyan-500/5">
+      <CardContent className="space-y-4 pt-5">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold">📊 Costo por usuario (cross-instalación)</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Gasto agregado por instalación (empleado), de lo que cada una sincroniza al buzón
+              central. Ordenado por <strong>costo-eficiencia</strong> (menor costo por video
+              primero). El costo es un <strong>estimado</strong> del pipeline — sirve para
+              comparar, no como cifra exacta al centavo.
+            </p>
+          </div>
+          <Button
+            onClick={() => void load()}
+            disabled={loading}
+            size="sm"
+            variant="outline"
+            className="shrink-0"
+          >
+            {loading ? 'Cargando…' : 'Actualizar'}
+          </Button>
+        </div>
+
+        {error && (
+          <p className="rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">{error}</p>
+        )}
+
+        {stats.length === 0 ? (
+          <p className="rounded-md border border-dashed bg-background/30 p-4 text-center text-xs text-muted-foreground">
+            {loading
+              ? 'Cargando…'
+              : 'Sin datos todavía. Aparecerán cuando una instalación con la sincronización activada (VF_LEARNING_SYNC_URL) envíe sus eventos a este receptor (VF_SYNC_INGEST_KEY).'}
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="text-left text-muted-foreground">
+                  <th className="py-1.5 pr-3 font-medium">Instalación</th>
+                  <th className="py-1.5 pr-3 font-medium text-right">Videos</th>
+                  <th className="py-1.5 pr-3 font-medium text-right">Gasto total</th>
+                  <th className="py-1.5 pr-3 font-medium text-right">Costo / video</th>
+                  <th className="py-1.5 font-medium text-right">Último</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stats.map((s, i) => (
+                  <tr key={s.instalacion} className="border-t border-cyan-500/10">
+                    <td className="py-1.5 pr-3">
+                      {i === 0 && (
+                        <span className="mr-1" title="Más costo-eficiente">
+                          🏆
+                        </span>
+                      )}
+                      <code className="rounded bg-muted px-1 text-[10px]">{s.instalacion}</code>
+                    </td>
+                    <td className="py-1.5 pr-3 text-right">{s.videos}</td>
+                    <td className="py-1.5 pr-3 text-right">{fmtUsd(s.gastoTotalUsd)}</td>
+                    <td className="py-1.5 pr-3 text-right font-semibold">
+                      {fmtUsd(s.costoPromedioUsd)}
+                    </td>
+                    <td className="py-1.5 text-right text-[10px] text-muted-foreground">
+                      {s.ultimoTs ? s.ultimoTs.slice(0, 10) : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </CardContent>
