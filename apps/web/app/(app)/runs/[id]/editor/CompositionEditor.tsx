@@ -74,7 +74,7 @@ export function CompositionEditor({ runId }: { runId: string }) {
   const [saving, setSaving] = useState(false);
   const [rerendering, setRerendering] = useState(false);
   // Ken Burns OPT-IN: movimiento (pan/zoom) sobre las imágenes. Default OFF —
-  // las escenas quedan fijas salvo que el usuario lo active acá.
+  // las escenas quedan fijas salvo que el usuario lo active aquí.
   const [kenBurns, setKenBurns] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -668,7 +668,7 @@ export function CompositionEditor({ runId }: { runId: string }) {
                   : null,
               dirty,
             }}
-            title="Discutí cambios con Claude"
+            title="Discute cambios con Claude"
             placeholder="Ej: '¿Cómo cambio el prompt de scene 5 para que el producto se vea?' o 'El layout actual sobrecarga la imagen?'"
           />
         </div>

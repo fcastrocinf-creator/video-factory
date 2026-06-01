@@ -22,7 +22,7 @@ export default async function AdminPage() {
     <div className="space-y-6">
       <PageHeader title="Admin" subtitle="Aprueba estilos aprendidos y revisa el sistema" />
       <PageHint emoji="⚙️">
-        <b className="text-foreground">El panel de control.</b> Acá revisas y apruebas los estilos que la IA
+        <b className="text-foreground">El panel de control.</b> Aquí revisas y apruebas los estilos que la IA
         aprendió de tus videos: aprueba para que aparezcan al <a href="/create" className="underline">crear</a>,
         o rechaza para descartarlos. También vive aquí el “cerebro evolutivo” que propone mejoras.
       </PageHint>

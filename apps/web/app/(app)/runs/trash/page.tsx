@@ -23,7 +23,7 @@ export default async function TrashPage() {
         }
       />
       <PageHint emoji="🗑️">
-        Acá están los videos que eliminaste. Puedes <b className="text-foreground">restaurarlos</b> o borrarlos
+        Aquí están los videos que eliminaste. Puedes <b className="text-foreground">restaurarlos</b> o borrarlos
         definitivamente. Pasados 30 días se eliminan solos.
       </PageHint>
 

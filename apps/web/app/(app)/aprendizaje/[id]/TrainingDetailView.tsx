@@ -135,7 +135,7 @@ export function TrainingDetailView({ trainingId }: { trainingId: string }) {
             overallScore: data.trajectory?.overallScore,
             generalIdeas: data.generalIdeas,
           }}
-          title="Discutí el aprendizaje con Claude"
+          title="Discute el aprendizaje con Claude"
           placeholder="Ej: '¿El preset captura bien el estilo?' o 'Cómo lo mejoro para que se vea más cinematográfico?'"
         />
       )}

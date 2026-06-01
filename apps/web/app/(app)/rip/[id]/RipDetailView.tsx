@@ -376,7 +376,7 @@ export function RipDetailView({ ripId, brands }: RipDetailViewProps) {
           <div className="rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-xs">
             <p className="font-medium">🧠 Estilo automático activado</p>
             <p className="text-muted-foreground mt-0.5">
-              No elegís un preset. El sistema aprende el estilo del video original
+              No eliges un preset. El sistema aprende el estilo del video original
               (paleta, narrador, hook, ritmo de escenas) y lo guarda como una opción
               nueva en <code className="rounded bg-muted px-1">/create</code> para
               reutilizarlo en futuros videos sin volver a analizar.
@@ -583,7 +583,7 @@ export function RipDetailView({ ripId, brands }: RipDetailViewProps) {
             targetProduct: productId,
             fidelityModeSelected: fidelityMode,
           }}
-          title="Discutí cómo adaptar este ad con Claude"
+          title="Discute cómo adaptar este ad con Claude"
           placeholder="Ej: '¿Qué preset me conviene para adaptar esto a Vitaly?' o 'El hook funciona para drenaje linfático?'"
         />
       )}

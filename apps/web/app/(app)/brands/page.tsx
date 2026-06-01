@@ -22,7 +22,7 @@ export default async function BrandsPage() {
         }
       />
       <PageHint emoji="🏷️">
-        <b className="text-foreground">El ADN de cada marca.</b> Acá guardas logo, productos, paleta de
+        <b className="text-foreground">El ADN de cada marca.</b> Aquí guardas logo, productos, paleta de
         colores y reglas. La IA los recuerda automáticamente cada vez que generas un video para esa marca.
       </PageHint>
 

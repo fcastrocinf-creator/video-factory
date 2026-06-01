@@ -32,7 +32,7 @@ export interface ClaudeChatPanelProps {
   contextType: ContextType;
   /** Data estructurada que el chat IA debe conocer del contexto */
   contextData?: Record<string, unknown>;
-  /** Label visible. Default: "Discutí con Claude" */
+  /** Label visible. Default: "Discute con Claude" */
   title?: string;
   /** Placeholder del input. Default por contextType */
   placeholder?: string;
@@ -43,10 +43,10 @@ export interface ClaudeChatPanelProps {
 }
 
 const DEFAULT_PLACEHOLDERS: Record<ContextType, string> = {
-  sugerencia: 'Ej: "Tengo idea de agregar X — ¿ya existe? ¿qué opinás?"',
+  sugerencia: 'Ej: "Tengo idea de agregar X — ¿ya existe? ¿qué opinas?"',
   'scene-edit': 'Ej: "Cómo cambio el prompt de esta escena para que el producto se vea mejor?"',
-  'script-refine': 'Ej: "Revisame este hook — ¿es fuerte para los primeros 3s?"',
-  'rip-analysis': 'Ej: "Qué preset me recomendás para adaptar este ad?"',
+  'script-refine': 'Ej: "Revísame este hook — ¿es fuerte para los primeros 3s?"',
+  'rip-analysis': 'Ej: "Qué preset me recomiendas para adaptar este ad?"',
   'preset-tuning': 'Ej: "El preset X genera escenas muy comprimidas, qué ajusto?"',
   architect:
     'Ej: "¿Qué ruta necesita el estilo claymation?" o "El UGC me sale con anatomía rara, ¿qué ajusto?"',
@@ -56,7 +56,7 @@ const DEFAULT_PLACEHOLDERS: Record<ContextType, string> = {
 export function ClaudeChatPanel({
   contextType,
   contextData,
-  title = 'Discutí con Claude',
+  title = 'Discute con Claude',
   placeholder,
   defaultOpen = false,
   onReply,

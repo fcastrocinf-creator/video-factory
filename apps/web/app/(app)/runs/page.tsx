@@ -61,7 +61,7 @@ export default async function RunsPage({
         }
       />
       <PageHint emoji="📁">
-        <b className="text-foreground">Tu biblioteca.</b> Acá ves todos los videos generados y su estado.
+        <b className="text-foreground">Tu biblioteca.</b> Aquí ves todos los videos generados y su estado.
         Entra a uno para <b className="text-foreground">verlo, editarlo</b> (cortes, micro-escenas, animación)
         o descargarlo. La papelera guarda los borrados 30 días.
       </PageHint>
