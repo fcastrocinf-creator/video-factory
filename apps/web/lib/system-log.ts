@@ -11,6 +11,7 @@
 import { appendFile, mkdir, readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
+import { recordEvent, type RecordInput, type KbSubsistema } from './kb/record';
 
 export const SYSTEM_LOG_PATH = (() => {
   // Storage unificado: VF_STORAGE_DIR (next.config) = <root>/storage para todos.
@@ -53,6 +54,72 @@ export interface SystemEvent {
   summary?: string;
 }
 
+// Base de Conocimiento (Fase 0): mapea un SystemEvent al esquema `Evento` y lo
+// rutea a recordEvent. Devuelve null para los kinds que YA tienen un emisor
+// dedicado mejor tipado en la KB (evita duplicados): el chat va por chat-log
+// (tipo `chat`) y las sugerencias por /api/sugerencias (tipo `sugerencia`).
+function systemEventToKb(event: SystemEvent): RecordInput | null {
+  if (event.kind === 'chat-discuss-message') return null;
+  if (event.kind === 'suggestion-posted') return null;
+
+  const d = event.data ?? {};
+  const asStr = (v: unknown): string | undefined => (typeof v === 'string' ? v : undefined);
+  const asNum = (v: unknown): number | undefined =>
+    typeof v === 'number' && Number.isFinite(v) ? v : undefined;
+
+  let subsistema: KbSubsistema = 'otro';
+  let vault: 'dev' | 'producto' = 'producto';
+  let severidad: RecordInput['severidad'] = 'info';
+  switch (event.kind) {
+    case 'run-started':
+    case 'run-completed':
+    case 'scene-regenerated':
+      subsistema = 'pipeline';
+      break;
+    case 'run-failed':
+      subsistema = 'pipeline';
+      severidad = 'high';
+      break;
+    case 'preset-created':
+    case 'preset-approved':
+    case 'auto-learn-invoked':
+    case 'video-understood':
+      subsistema = 'aprendizaje';
+      break;
+    case 'editor-ia-action':
+    case 'editor-ia-verdict':
+      subsistema = 'validator';
+      break;
+    case 'config-changed':
+      subsistema = 'otro';
+      vault = 'dev'; // cambios de prompts/config = código
+      break;
+    default:
+      subsistema = 'otro';
+      break;
+  }
+
+  const json = JSON.stringify(d).slice(0, 800);
+  return {
+    vault,
+    subsistema,
+    tipo: 'run-evento',
+    entidad: {
+      brandId: asStr(d['brandId']),
+      presetId: asStr(d['presetId']),
+      runId: asStr(d['runId']),
+      sceneIndex: asNum(d['sceneIndex']),
+    },
+    severidad,
+    titulo: (event.summary ?? event.kind).slice(0, 120),
+    contenido: event.summary
+      ? `${event.summary}\n\n\`\`\`json\n${json}\n\`\`\``
+      : `\`\`\`json\n${json}\n\`\`\``,
+    fuente: `system-log:${event.kind}`,
+    tags: [event.kind],
+  };
+}
+
 /**
  * Registra un evento al system log. NUNCA throw — si el log falla, NO
  * debe bloquear el flujo principal.
@@ -72,6 +139,9 @@ export async function logSystemEvent(
       ...event,
     };
     await appendFile(SYSTEM_LOG_PATH, JSON.stringify(fullEvent) + '\n', 'utf-8');
+    // Base de Conocimiento (Fase 0): reflejar el evento como nodo `Evento`.
+    const kb = systemEventToKb(fullEvent);
+    if (kb) void recordEvent(kb);
   } catch {
     // Silent fail — no queremos que un error de log rompa el pipeline.
     // El próximo evento que SÍ logre persistir capturará el contexto.

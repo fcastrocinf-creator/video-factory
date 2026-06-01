@@ -19,6 +19,7 @@ import { join, resolve } from 'node:path';
 import { z } from 'zod';
 import { STORAGE_DIR } from './paths';
 import { VALIDATOR_STORAGE_ABS } from './validator-chat-ia';
+import { recordEvent } from './kb/record';
 
 // ─── Schema de intervenciones ──────────────────────────────────────────────
 
@@ -186,6 +187,33 @@ export async function recordIntervention(
       await mkdir(resolve(memPath, '..'), { recursive: true });
       await appendFile(memPath, JSON.stringify(intervention) + '\n', 'utf-8');
     }
+  });
+
+  // Base de Conocimiento (Fase 0): reflejar la intervención del owner como Evento
+  // (vault producto, tipo feedback). El feedback del owner es la señal más valiosa
+  // del grafo. Fire-and-forget — nunca afecta el flujo del co-pilot.
+  void recordEvent({
+    vault: 'producto',
+    subsistema: 'validator',
+    tipo: 'feedback',
+    entidad: {
+      runId: intervention.runId,
+      sceneIndex: intervention.sceneIndex ?? undefined,
+      brandId: intervention.context?.brandId ?? undefined,
+      presetId: intervention.context?.presetId ?? undefined,
+    },
+    severidad: intervention.type === 'reject' ? 'medium' : 'info',
+    titulo:
+      `Feedback del owner (${intervention.type}` +
+      `${intervention.category ? `/${intervention.category}` : ''})` +
+      `${intervention.sceneIndex !== null ? ` · escena ${intervention.sceneIndex}` : ''}`,
+    contenido:
+      (intervention.comment ?? `(sin comentario · ${intervention.type})`) +
+      (intervention.newImagePrompt
+        ? `\n\n**Nuevo image prompt:** ${intervention.newImagePrompt.slice(0, 400)}`
+        : ''),
+    fuente: `owner:feedback:${intervention.type}`,
+    tags: ['feedback', intervention.type, intervention.category ?? 'general'],
   });
 
   return intervention;

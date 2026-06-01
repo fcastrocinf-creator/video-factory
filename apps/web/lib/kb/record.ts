@@ -9,9 +9,9 @@ import { randomUUID } from 'node:crypto';
 import { execSync } from 'node:child_process';
 import { STORAGE_DIR } from '../paths';
 
-const KB_DIR = resolve(STORAGE_DIR, 'kb');
-const EVENTOS_DIR = resolve(KB_DIR, 'eventos');
-const INDICE_DIR = resolve(KB_DIR, 'indice');
+export const KB_DIR = resolve(STORAGE_DIR, 'kb');
+export const EVENTOS_DIR = resolve(KB_DIR, 'eventos');
+export const INDICE_DIR = resolve(KB_DIR, 'indice');
 
 export type KbSubsistema =
   | 'pipeline' | 'validator' | 'chat' | 'aprendizaje' | 'compositor'

@@ -2230,8 +2230,8 @@ export async function runPipeline(
     // (referenceVideoPath), también registramos 'used-for-rip' para tracking de
     // adopción. Best-effort.
     try {
-      const { recordPresetJudgment } = await import('@video-factory/core');
-      void recordPresetJudgment({
+      const { recordPresetJudgmentKb } = await import('./kb/emitters');
+      void recordPresetJudgmentKb({
         presetId,
         kind: 'run-success',
         weight: 1.0,
@@ -2244,7 +2244,7 @@ export async function runPipeline(
         },
       });
       if (overrides.referenceVideoPath) {
-        void recordPresetJudgment({
+        void recordPresetJudgmentKb({
           presetId,
           kind: 'used-for-rip',
           weight: 1.0,
@@ -2336,8 +2336,8 @@ export async function runPipeline(
     });
     // Feedback loop (M7 #3): registrar 'run-failed' por este preset. Weight 1.0.
     try {
-      const { recordPresetJudgment } = await import('@video-factory/core');
-      void recordPresetJudgment({
+      const { recordPresetJudgmentKb } = await import('./kb/emitters');
+      void recordPresetJudgmentKb({
         presetId,
         kind: 'run-failed',
         weight: 1.0,

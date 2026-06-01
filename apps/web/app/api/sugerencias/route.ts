@@ -15,6 +15,7 @@ import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { SUGERENCIAS_DIR } from '../../../lib/paths';
 import { logSystemEvent } from '@/lib/system-log';
+import { recordEvent } from '@/lib/kb/record';
 import { isAuthenticated } from '@/lib/auth';
 
 const SugerenciaCreateSchema = z.object({
@@ -97,6 +98,21 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       author: parsed.data.author,
     },
     summary: `Sugerencia posteada (${parsed.data.category}): "${parsed.data.title.slice(0, 80)}"`,
+  });
+
+  // Base de Conocimiento (Fase 0): la sugerencia entra como Evento (vault producto).
+  void recordEvent({
+    vault: 'producto',
+    subsistema: 'ux',
+    tipo: 'sugerencia',
+    entidad: {},
+    severidad: parsed.data.category === 'bug' ? 'medium' : 'info',
+    titulo: `Sugerencia (${parsed.data.category}): ${parsed.data.title.slice(0, 80)}`,
+    contenido:
+      `**${parsed.data.title}**\n\n${parsed.data.description}` +
+      (parsed.data.contextPath ? `\n\n_Contexto:_ ${parsed.data.contextPath}` : ''),
+    fuente: 'user:sugerencias',
+    tags: ['sugerencia', parsed.data.category],
   });
 
   return NextResponse.json(

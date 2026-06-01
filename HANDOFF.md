@@ -49,11 +49,20 @@
 - **Fix:** `next.config.mjs` setea `process.env.VF_STORAGE_DIR = <root>/storage`. `preset-judgment-memory`, `prompt-evolution`, `system-log`, `paths.ts` lo respetan (fallback cwd para scripts).
 - **Datos migrados** (COPIADOS, originales intactos): `preset-memory` (9 juicios) + `prompt-patches` (4 parches) → `storage/`. **Se activa al próximo reinicio del dev server.**
 
-### 7. Base de Conocimiento — Fase 0 (commit 66b983a) ← el proyecto en curso
+### 7. Base de Conocimiento — Fase 0 ✅ COMPLETA (recolección + ruteo de emisores)
 - Spec completa: **`CONOCIMIENTO.md`** (léela). Es el "Cerebro Obsidian": todo registrado+ubicable, agentes especialistas + IA superior on-demand, evoluciona con el uso, **solo la recolección es automática**, nada se auto-aplica.
-- **Hecho:** `lib/kb/record.ts` (`recordEvent` + esquema `KbEvento` + índice `storage/kb/indice/`). 1er emisor cableado (chat → Evento, `vault:producto`). Verificado en vivo (con `codeVersion`=git hash para frescura).
-- **SIGUIENTE (Fase 0):** rutear el resto de emisores → `recordEvent`: `system-log` (run-evento), `preset-judgment-memory` (juicio-preset), `/api/sugerencias` (sugerencia), `owner-feedback` (feedback), pipeline run-success/failed.
-- **Después:** Fase 1 (`query()`/`buildContextFor()` + vista /admin) → Fase 2 (deepAudit: especialistas+IA superior) → Fase 3 (curación/evolución + Capa 5 "IA que propone/anticipa").
+- **Cimiento:** `lib/kb/record.ts` (`recordEvent` + esquema `KbEvento` + índice `storage/kb/indice/por-entidad.json`). `codeVersion`=git short hash para frescura.
+- **Los 6 emisores cableados a `recordEvent` (todos best-effort, nunca rompen el flujo):**
+  1. **chat** — `chat-log.ts` → tipo `chat` (sesión previa).
+  2. **system-log** — `logSystemEvent` rutea genérico → tipo `run-evento` (`systemEventToKb` mapea `kind`→subsistema/vault/severidad + extrae `entidad` de `data`). **Cubre también "pipeline run-success/failed"** porque el pipeline ya emite run-completed/run-failed por logSystemEvent CON métricas (costUsd, imageCount, durationSeconds) — no se duplicó hook.
+  3. **juicio-preset** — wrapper nuevo `lib/kb/emitters.ts` (`recordPresetJudgmentKb`) envuelve a `recordPresetJudgment` (vive en packages/core, no puede importar apps/web) → tipo `juicio-preset`. **4 call sites migrados:** pipeline run-success/used-for-rip/run-failed + `/api/admin/presets/[id]/approve`.
+  4. **sugerencia** — `/api/sugerencias` → tipo `sugerencia` (vault producto, subsistema ux).
+  5. **feedback** — `owner-feedback.recordIntervention` → tipo `feedback` (la señal más valiosa; entidad runId/sceneIndex/brand/preset).
+- **Anti-duplicados (clave):** `systemEventToKb` SALTA `chat-discuss-message` (lo cubre chat-log como `chat`) y `suggestion-posted` (lo cubre /api/sugerencias como `sugerencia`). Así cada acción real = 1 evento bien tipado.
+- **Verificado a fondo:** `pnpm -r typecheck` monorepo VERDE (19/19). Prueba en vivo: POST /api/sugerencias → 1 evento `sugerencia` y 0 duplicados (skip OK); script tsx → system-log genérico escribe `run-evento` con entidad extraída + skip de chat confirmado. **Toda la data de prueba fue limpiada** (KB quedó con los 3 eventos de chat reales). Sin commit aún (pedir al owner).
+- **Fase 1 ✅ COMPLETA (consulta + vista):** `lib/kb/query.ts` → `query(filtros)` (vault/subsistema/tipo/entidad/tag/estado/desde/hasta/limit, orden ts desc, lectura dirigida por subsistema) + `kbStats()` (agregados) + `buildContextFor(scope, maxChars=4000)` (digest CHICO pre-digerido + truncado = el ahorro). Endpoint `GET /api/admin/kb` (auth) y sección visible **"🧠 Base de Conocimiento"** en `/admin` (`AdminPanel.tsx`, siempre visible aunque no haya presets pendientes). `record.ts` ahora exporta `EVENTOS_DIR`. `buildContextFor` queda listo para que lo consuma `deepAudit` (Fase 2); NO se inyecta al Copilot (muralla de datos). Notas `.md` Obsidian: pospuestas (opcional, bajo valor hoy).
+  - **Verificado:** typecheck monorepo VERDE; `GET /api/admin/kb` en vivo (stats + 3 eventos chat, orden correcto); script tsx de `query()`/`buildContextFor()` (filtros, limit, orden, truncado) — todo OK, KB intacta (read-only). Sin commit aún (pedir al owner).
+- **SIGUIENTE → Fase 2:** `deepAudit(scope?)` ON-DEMAND — orquestador (IA superior) elige especialistas por subsistema cambiado (vía codeVersion/git diff) → cada especialista recibe `buildContextFor` + código con mandato adversarial → hallazgos `tipo:hallazgo-auditoria` → verificador adversarial refuta high/critical → síntesis + fixes propuestos (NUNCA auto-aplica). Persistir en `storage/kb/hallazgos/findings.jsonl`. Después Fase 3 (curación/evolución + Capa 5 "IA que propone/anticipa").
 
 ### ⚠️ Pendientes / decisiones honestas (de las auditorías adversariales)
 - **Mixeo cross-usuario NO existe** — es prematuro (hoy ~22 datos de 1 usuario). El cerebro evolutivo M7 SÍ existe y agrega ENTRE runs (no entre usuarios). La KB es el prerequisito.

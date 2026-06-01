@@ -75,20 +75,25 @@ export function AdminPanel({ initialPending }: AdminPanelProps) {
 
   if (pending.length === 0) {
     return (
-      <Card>
-        <CardContent className="pt-6 text-center space-y-3">
-          <div className="text-5xl">🧠</div>
-          <p className="text-sm font-medium">Sin presets pendientes de aprobación</p>
-          <p className="text-xs text-muted-foreground max-w-md mx-auto">
-            Cuando alguien suba un video en <a href="/rip" className="underline">/rip</a>{' '}
-            y dispare un ripeo, el sistema construirá un preset aprendido (estilo,
-            categoría, formato, paleta) y aparecerá aquí para tu revisión.
-          </p>
-          <Button onClick={refresh} variant="outline" size="sm" disabled={isRefreshing}>
-            {isRefreshing ? 'Refrescando…' : 'Refrescar'}
-          </Button>
-        </CardContent>
-      </Card>
+      <div className="space-y-4">
+        <Card>
+          <CardContent className="pt-6 text-center space-y-3">
+            <div className="text-5xl">🧠</div>
+            <p className="text-sm font-medium">Sin presets pendientes de aprobación</p>
+            <p className="text-xs text-muted-foreground max-w-md mx-auto">
+              Cuando alguien suba un video en <a href="/rip" className="underline">/rip</a>{' '}
+              y dispare un ripeo, el sistema construirá un preset aprendido (estilo,
+              categoría, formato, paleta) y aparecerá aquí para tu revisión.
+            </p>
+            <Button onClick={refresh} variant="outline" size="sm" disabled={isRefreshing}>
+              {isRefreshing ? 'Refrescando…' : 'Refrescar'}
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Base de Conocimiento (Fase 1) — visible aunque no haya presets pendientes */}
+        <KnowledgeBaseSection />
+      </div>
     );
   }
 
@@ -123,6 +128,9 @@ export function AdminPanel({ initialPending }: AdminPanelProps) {
 
       {/* M7 #5 — Cerebro evolutivo: propuestas de patches automáticos a prompts */}
       <PromptPatchesSection />
+
+      {/* Base de Conocimiento (Fase 1): vista de todo lo que el sistema registra */}
+      <KnowledgeBaseSection />
     </div>
   );
 }
@@ -437,6 +445,235 @@ interface PatchProposal {
   expectedImprovement: string;
   confidence: number;
   proposedByModel: string;
+}
+
+// ─── Base de Conocimiento (Fase 1): vista de lo que el sistema registra ───────
+
+interface KbEventoView {
+  id: string;
+  ts: string;
+  codeVersion?: string;
+  vault: string;
+  subsistema: string;
+  tipo: string;
+  severidad?: string;
+  estado?: string;
+  titulo: string;
+  fuente: string;
+  entidad?: {
+    brandId?: string;
+    presetId?: string;
+    runId?: string;
+    sceneIndex?: number;
+    userId?: string;
+  };
+  tags?: string[];
+}
+
+interface KbStatsView {
+  total: number;
+  porVault: Record<string, number>;
+  porSubsistema: Record<string, number>;
+  porTipo: Record<string, number>;
+  ultimoTs: string | null;
+  codeVersion: string | null;
+}
+
+function fmtTs(ts: string): string {
+  return ts.length >= 16 ? ts.slice(0, 16).replace('T', ' ') : ts;
+}
+
+function entidadResumen(en?: KbEventoView['entidad']): string {
+  if (!en) return '';
+  const parts: string[] = [];
+  if (en.runId) parts.push(`run:${en.runId.slice(0, 8)}`);
+  if (en.presetId) parts.push(`preset:${en.presetId}`);
+  if (en.brandId) parts.push(`brand:${en.brandId}`);
+  if (typeof en.sceneIndex === 'number') parts.push(`escena:${en.sceneIndex}`);
+  return parts.join(' · ');
+}
+
+function severityClass(sev?: string): string {
+  if (sev === 'critical') return 'bg-red-500/20 text-red-700 dark:text-red-300';
+  if (sev === 'high') return 'bg-orange-500/20 text-orange-700 dark:text-orange-300';
+  if (sev === 'medium') return 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-300';
+  return 'bg-muted text-muted-foreground';
+}
+
+function KnowledgeBaseSection() {
+  const [stats, setStats] = useState<KbStatsView | null>(null);
+  const [eventos, setEventos] = useState<KbEventoView[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [tipoFilter, setTipoFilter] = useState<string>('');
+
+  async function load(tipo: string = tipoFilter) {
+    setLoading(true);
+    setError('');
+    try {
+      const qs = new URLSearchParams({ limit: '50' });
+      if (tipo) qs.set('tipo', tipo);
+      const r = await fetch(`/api/admin/kb?${qs.toString()}`, { cache: 'no-store' });
+      const data = (await r.json()) as {
+        stats?: KbStatsView;
+        eventos?: KbEventoView[];
+        error?: string;
+      };
+      if (!r.ok) throw new Error(data.error ?? `HTTP ${r.status}`);
+      setStats(data.stats ?? null);
+      setEventos(data.eventos ?? []);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Cargar al montar (una sola vez). Mismo patrón que PromptPatchesSection.
+  useEffect(() => {
+    void load('');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function applyTipo(tipo: string) {
+    const next = tipo === tipoFilter ? '' : tipo;
+    setTipoFilter(next);
+    void load(next);
+  }
+
+  const tiposOrdenados = stats
+    ? Object.entries(stats.porTipo).sort((a, b) => b[1] - a[1])
+    : [];
+
+  return (
+    <Card className="border-emerald-500/30 bg-emerald-500/5">
+      <CardContent className="space-y-4 pt-5">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold">🧠 Base de Conocimiento</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Aquí queda <strong>registrado y ubicable</strong> todo lo que pasa en la herramienta:
+              chats, runs, juicios de presets, sugerencias y tu feedback. La recolección es
+              automática y <strong>nada se aplica solo</strong>. Es la base para que los auditores
+              profundos (próxima fase) revisen con contexto real.
+            </p>
+          </div>
+          <Button
+            onClick={() => void load()}
+            disabled={loading}
+            size="sm"
+            variant="outline"
+            className="shrink-0"
+          >
+            {loading ? 'Cargando…' : 'Actualizar'}
+          </Button>
+        </div>
+
+        {error && (
+          <p className="rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">{error}</p>
+        )}
+
+        {stats && (
+          <div className="space-y-2 text-xs">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+              <span>
+                Total: <strong>{stats.total}</strong> eventos
+              </span>
+              {stats.ultimoTs && <span className="text-muted-foreground">último: {fmtTs(stats.ultimoTs)}</span>}
+              {stats.codeVersion && (
+                <span className="text-muted-foreground">
+                  versión: <code className="rounded bg-muted px-1 text-[10px]">{stats.codeVersion}</code>
+                </span>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {Object.entries(stats.porVault).map(([k, v]) => (
+                <span key={k} className="rounded bg-emerald-500/15 px-2 py-0.5 text-[10px]">
+                  vault {k}: <strong>{v}</strong>
+                </span>
+              ))}
+              {Object.entries(stats.porSubsistema)
+                .sort((a, b) => b[1] - a[1])
+                .map(([k, v]) => (
+                  <span key={k} className="rounded bg-muted px-2 py-0.5 text-[10px]">
+                    {k}: {v}
+                  </span>
+                ))}
+            </div>
+          </div>
+        )}
+
+        {tiposOrdenados.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[10px] text-muted-foreground">Filtrar por tipo:</span>
+            {tiposOrdenados.map(([tipo, count]) => (
+              <button
+                key={tipo}
+                onClick={() => applyTipo(tipo)}
+                className={`rounded px-2 py-0.5 text-[10px] transition-colors ${
+                  tipoFilter === tipo
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-background/60 text-muted-foreground hover:bg-muted'
+                }`}
+              >
+                {tipo} ({count})
+              </button>
+            ))}
+            {tipoFilter && (
+              <button
+                onClick={() => applyTipo(tipoFilter)}
+                className="rounded px-2 py-0.5 text-[10px] text-muted-foreground underline hover:text-foreground"
+              >
+                limpiar
+              </button>
+            )}
+          </div>
+        )}
+
+        {eventos.length === 0 ? (
+          <p className="rounded-md border border-dashed bg-background/30 p-4 text-center text-xs text-muted-foreground">
+            {loading
+              ? 'Cargando eventos…'
+              : tipoFilter
+                ? `Sin eventos del tipo "${tipoFilter}".`
+                : 'Sin eventos todavía. A medida que uses la herramienta (chats, videos, sugerencias, feedback) se irán registrando aquí.'}
+          </p>
+        ) : (
+          <div className="max-h-96 space-y-1.5 overflow-y-auto pr-1">
+            {eventos.map((ev) => {
+              const ent = entidadResumen(ev.entidad);
+              return (
+                <div
+                  key={ev.id}
+                  className="rounded-md border border-emerald-500/15 bg-background/60 p-2 text-xs"
+                >
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span className="text-muted-foreground text-[10px]">{fmtTs(ev.ts)}</span>
+                    <code className="rounded bg-muted px-1 text-[10px]">
+                      {ev.subsistema}/{ev.tipo}
+                    </code>
+                    {ev.severidad && ev.severidad !== 'info' && (
+                      <span className={`rounded px-1.5 py-0.5 text-[10px] ${severityClass(ev.severidad)}`}>
+                        {ev.severidad}
+                      </span>
+                    )}
+                    {ev.estado && (
+                      <span className="rounded bg-blue-500/15 px-1.5 py-0.5 text-[10px] text-blue-700 dark:text-blue-300">
+                        {ev.estado}
+                      </span>
+                    )}
+                    <span className="ml-auto text-[10px] text-muted-foreground">{ev.fuente}</span>
+                  </div>
+                  <p className="mt-1">{ev.titulo}</p>
+                  {ent && <p className="mt-0.5 text-[10px] text-muted-foreground">{ent}</p>}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
 }
 
 function PromptPatchesSection() {

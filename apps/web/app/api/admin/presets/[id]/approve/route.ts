@@ -8,7 +8,7 @@
 import { NextResponse } from 'next/server';
 import { isAuthenticated } from '@/lib/auth';
 import { approvePendingPreset } from '@/lib/admin-presets-store';
-import { recordPresetJudgment } from '@video-factory/core';
+import { recordPresetJudgmentKb } from '@/lib/kb/emitters';
 import { logSystemEvent } from '@/lib/system-log';
 
 export const runtime = 'nodejs';
@@ -21,7 +21,7 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
     const approved = await approvePendingPreset(params.id);
     // Registrar juicio (best-effort) + log al system event log
     // Weight 1.5: aprobación humana tiene mayor peso que un run-success automático
-    void recordPresetJudgment({
+    void recordPresetJudgmentKb({
       presetId: params.id,
       kind: 'approved',
       weight: 1.5,
