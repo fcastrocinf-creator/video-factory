@@ -29,13 +29,13 @@ const GROUPS: Array<{
   },
 ];
 
-export function Sidebar({ isOwner = false }: { isOwner?: boolean }) {
+export function Sidebar({ isAdmin = false }: { isAdmin?: boolean }) {
   const path = usePathname() ?? '';
   const [createOpen, setCreateOpen] = useState(false);
   // Oculta los items marcados ownerOnly (ej. Admin) salvo que seas el owner.
   const groups = GROUPS.map((g) => ({
     ...g,
-    items: g.items.filter((it) => !it.ownerOnly || isOwner),
+    items: g.items.filter((it) => !it.ownerOnly || isAdmin),
   })).filter((g) => g.items.length > 0);
 
   return (

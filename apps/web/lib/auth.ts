@@ -28,15 +28,42 @@ export function isAuthenticated(): boolean {
   return cookies().get(AUTH_COOKIE)?.value === AUTH_COOKIE_VALUE;
 }
 
-/**
- * True si esta instalación es la del OWNER (propietario). Se controla con la
- * variable de entorno VF_ROLE=owner en el .env. En el modelo local-first, las
- * instalaciones de empleados NO la setean (default = usuario) → no ven /admin.
- *
- * NOTA: oculta el admin a usuarios de confianza; NO es seguridad blindada
- * (ellos tienen el código y podrían cambiar su propio flag). La seguridad dura
- * requeriría el modelo de servidor central con cuentas reales.
- */
-export function isOwner(): boolean {
-  return process.env['VF_ROLE'] === 'owner';
+// ─── Acceso al ADMIN: clave separada (ADMIN_PASSWORD) ────────────────────────
+// El admin NO se abre solo con estar logueado a la app: requiere una SEGUNDA
+// clave (ADMIN_PASSWORD), distinta de APP_PASSWORD. Así, aunque un empleado
+// entre a la app, no entra al admin sin esa clave. Es un gate real (credencial),
+// no un flag de config. Protege la página /admin Y todos los endpoints /api/admin.
+
+export const ADMIN_COOKIE = 'admin_auth';
+export const ADMIN_COOKIE_VALUE = 'valid';
+
+/** True si hay una ADMIN_PASSWORD configurada (no vacía) en el entorno. */
+export function isAdminConfigured(): boolean {
+  const p = process.env['ADMIN_PASSWORD'];
+  return typeof p === 'string' && p.length > 0;
+}
+
+/** Compara la clave enviada contra ADMIN_PASSWORD. false si no está configurada. */
+export function checkAdminPassword(submitted: string): boolean {
+  const expected = process.env['ADMIN_PASSWORD'];
+  if (!expected) return false;
+  return submitted === expected;
+}
+
+export function setAdminCookie(): void {
+  cookies().set(ADMIN_COOKIE, ADMIN_COOKIE_VALUE, {
+    httpOnly: true,
+    sameSite: 'strict',
+    path: '/',
+    maxAge: 60 * 60 * 8, // 8 horas — el acceso admin caduca antes que el de la app
+  });
+}
+
+export function clearAdminCookie(): void {
+  cookies().delete(ADMIN_COOKIE);
+}
+
+/** True si el usuario ya pasó el gate de admin (cookie admin_auth válida). */
+export function isAdmin(): boolean {
+  return cookies().get(ADMIN_COOKIE)?.value === ADMIN_COOKIE_VALUE;
 }

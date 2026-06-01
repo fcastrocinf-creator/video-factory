@@ -4,7 +4,7 @@
 // ESTIMADO del pipeline (no exacto al centavo) — sirve para comparar.
 
 import { NextResponse } from 'next/server';
-import { isAuthenticated, isOwner } from '@/lib/auth';
+import { isAuthenticated, isAdmin } from '@/lib/auth';
 import { centralCostStats } from '@/lib/kb/central-store';
 
 export const runtime = 'nodejs';
@@ -14,8 +14,8 @@ export async function GET(): Promise<NextResponse> {
   if (!isAuthenticated()) {
     return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
   }
-  if (!isOwner()) {
-    return NextResponse.json({ error: 'Solo el owner puede ver esto' }, { status: 403 });
+  if (!isAdmin()) {
+    return NextResponse.json({ error: 'Requiere acceso de admin' }, { status: 403 });
   }
   const stats = await centralCostStats();
   return NextResponse.json({ stats });

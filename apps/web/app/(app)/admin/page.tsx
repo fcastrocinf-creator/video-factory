@@ -1,14 +1,22 @@
-import { redirect } from 'next/navigation';
 import { listPendingPresets } from '@/lib/admin-presets-store';
 import { AdminPanel } from './AdminPanel';
+import { AdminLogin } from './AdminLogin';
 import { PageHeader, PageHint } from '@/components/PageHint';
-import { isOwner } from '@/lib/auth';
+import { isAdmin, isAdminConfigured } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminPage() {
-  // Solo el owner (VF_ROLE=owner) ve el panel admin. Un usuario va a sus videos.
-  if (!isOwner()) redirect('/runs');
+  // Gate de admin: requiere la clave ADMIN_PASSWORD (cookie admin_auth). Si no
+  // estás autenticado como admin, mostramos el login en vez del panel.
+  if (!isAdmin()) {
+    return (
+      <div className="space-y-6">
+        <PageHeader title="Admin" subtitle="Acceso restringido — solo administradores" />
+        <AdminLogin configured={isAdminConfigured()} />
+      </div>
+    );
+  }
   const pending = await listPendingPresets();
   return (
     <div className="space-y-6">

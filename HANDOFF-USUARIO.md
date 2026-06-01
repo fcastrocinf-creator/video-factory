@@ -608,9 +608,11 @@ expone valores de keys, no hay riesgo de exposición de credenciales.
 
 ### 7.3 Tanda "receptor central + roles" (recién hecho)
 
-- [x] **Rol owner** (`VF_ROLE=owner`): `/admin` y su link en el menú solo se ven en la
-  instalación del owner; las de empleados (sin la variable) NO ven admin pero igual
-  sincronizan. (`lib/auth.isOwner`, `(app)/layout.tsx`, `Sidebar.tsx`, `admin/page.tsx`)
+- [x] **Clave de admin** (`ADMIN_PASSWORD`): para entrar a `/admin` hace falta una clave
+  SEPARADA de la de la app. Sin ella, la página muestra el login y los endpoints
+  `/api/admin/*` responden 401 (gate central en `middleware.ts`). El link "Admin" del menú
+  se oculta sin la cookie. (`lib/auth` isAdmin/checkAdminPassword/setAdminCookie,
+  `/api/admin/login`, `AdminLogin.tsx`, `(app)/layout.tsx`, `Sidebar.tsx`, `admin/page.tsx`)
 - [x] **Receptor central**: `POST /api/sync/ingest` (auth por `VF_SYNC_INGEST_KEY`) +
   `lib/kb/central-store.ts` (almacena los eventos por instalación en `storage/kb/central/`)
 - [x] **Trigger de sync**: el pipeline llama `syncPendingEventos()` al completar un run
