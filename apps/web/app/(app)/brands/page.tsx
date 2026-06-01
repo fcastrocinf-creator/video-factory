@@ -3,6 +3,7 @@ import { loadAllBrands } from '@/lib/brand-preset-loader';
 import { Card, CardContent } from '@/components/ui/card';
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { PageHeader, PageHint } from '@/components/PageHint';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,21 +12,19 @@ export default async function BrandsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Marcas</h1>
-          <p className="text-sm text-muted-foreground">
-            Cada marca tiene sus <strong>ingredients</strong>: logo, productos, paleta de
-            colores y reglas. La IA los recuerda automáticamente al generar videos.
-          </p>
-        </div>
-        <Link
-          href="/brands/new"
-          className={cn(buttonVariants({ variant: 'default' }))}
-        >
-          + Crear marca
-        </Link>
-      </div>
+      <PageHeader
+        title="Marcas"
+        subtitle="Logo, productos, colores y reglas de cada marca"
+        actions={
+          <Link href="/brands/new" className={cn(buttonVariants({ variant: 'default' }))}>
+            ＋ Crear marca
+          </Link>
+        }
+      />
+      <PageHint emoji="🏷️">
+        <b className="text-foreground">El ADN de cada marca.</b> Acá guardas logo, productos, paleta de
+        colores y reglas. La IA los recuerda automáticamente cada vez que generas un video para esa marca.
+      </PageHint>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {brands.map((brand) => {

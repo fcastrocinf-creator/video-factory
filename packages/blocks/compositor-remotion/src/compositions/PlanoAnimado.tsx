@@ -71,7 +71,7 @@ export const PlanoAnimado: React.FC<PlanoAnimadoProps> = ({
         })}
       </Series>
 
-      <Audio src={staticFile(audioSrc)} />
+      {audioSrc ? <Audio src={staticFile(audioSrc)} /> : null}
 
       {activeLine && (
         <div

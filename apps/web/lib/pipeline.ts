@@ -30,7 +30,7 @@ import {
 } from '@video-factory/block-post-render-judge';
 import { db, runs } from './db';
 import { loadBrand, loadPreset } from './brand-preset-loader';
-import { outputPathFor, workDirFor } from './paths';
+import { outputPathFor, workDirFor, previewPlanPath } from './paths';
 import { CostTracker } from './cost-tracker';
 import {
   checkTtsCache,
@@ -113,6 +113,16 @@ export interface PipelineOverrides {
    * cada palabra (override del preset.subtitles.wordSyncMicroScenes).
    */
   wordSync?: boolean | null;
+  /** Parte 2 (a la carta): activa el movimiento Ken Burns en la generación inicial. */
+  kenBurns?: boolean | null;
+  /** Parte 2 (a la carta): NO anima las escenas (quedan estáticas), aunque el formato sea animado. */
+  disableAnimation?: boolean | null;
+  /** Parte 2 (a la carta): genera el video SIN voz. Salta el TTS y usa una pista muda de duración estimada del guion. */
+  skipVoice?: boolean | null;
+  /** Parte 3: índices de escena que el usuario eligió convertir en micro-escenas. null/undefined = todas las enumeraciones (legacy). */
+  microSceneIndices?: number[] | null;
+  /** Parte 3: id del preview cuyo plan de escenas se reusa (índices estables). Si el archivo no existe, cae al planner normal. */
+  reusePlanId?: string | null;
 }
 
 export async function runPipeline(
@@ -222,7 +232,31 @@ export async function runPipeline(
     const elevenlabsHit = await checkTtsCache(elevenlabsCacheKey);
 
     let audioResult: Awaited<ReturnType<typeof ttsElevenLabs.run>>;
-    if (elevenlabsHit) {
+    if (overrides.skipVoice) {
+      // VIDEO SIN VOZ (a la carta): no llamamos a TTS. Construimos una pista muda
+      // con duración estimada del guion (~15 char/s ES) para que el timing de las
+      // escenas y el render funcionen igual. filePath vacío → el compositor omite
+      // el <Audio>, así el video sale mudo.
+      await updateRun(runId, { currentStep: 'sin-voz', progress: 18 });
+      const estCharsNoVoice = parsedScript.segments.map((s) => s.text).join(' ').length;
+      const silentDuration = Math.max(3, estCharsNoVoice / 15);
+      audioResult = {
+        isOk: () => true,
+        isErr: () => false,
+        value: {
+          filePath: '',
+          durationSeconds: silentDuration,
+          sampleRate: 44100,
+          channels: 1,
+          format: 'mp3',
+          segments: parsedScript.segments.map((s, i, arr) => ({
+            text: s.text,
+            startTimeSeconds: (i * silentDuration) / arr.length,
+            endTimeSeconds: ((i + 1) * silentDuration) / arr.length,
+          })),
+        },
+      } as Awaited<ReturnType<typeof ttsElevenLabs.run>>;
+    } else if (elevenlabsHit) {
       logger.info({ runId, cachedPath: elevenlabsHit }, 'pipeline:tts_cache_hit');
       const audioPath = resolve(workDir, 'audio.mp3');
       await copyFromCache(elevenlabsHit, audioPath);
@@ -260,9 +294,17 @@ export async function runPipeline(
       if (audioResult.isErr()) {
         const errCode = audioResult.error.code;
         const isQuotaOrAuth = /API_(401|402|429)/i.test(errCode) || /quota|unauthorized|payment/i.test(audioResult.error.message);
-        if (isQuotaOrAuth) {
+        // Resiliencia (v3.x): SIEMPRE intentamos el fallback a OpenAI TTS ante
+        // CUALQUIER fallo de ElevenLabs, no solo quota/auth. Antes, un 500 /
+        // timeout / corte de red tumbaba todo el run aunque OpenAI pudiera cubrirlo.
+        if (audioResult.isErr()) {
           logger.warn(
-            { runId, primaryError: audioResult.error.message, primaryCode: errCode },
+            {
+              runId,
+              primaryError: audioResult.error.message,
+              primaryCode: errCode,
+              reason: isQuotaOrAuth ? 'quota_or_auth' : 'other_error',
+            },
             'pipeline:tts_elevenlabs_failed_falling_back_to_openai',
           );
           await updateRun(runId, { currentStep: 'tts-openai-fallback' });
@@ -370,7 +412,7 @@ export async function runPipeline(
       preset.format?.id === 'b-roll-animated' || preset.format?.id === 'voiceover-animated';
     // El flujo legacy (plano_fijo) usa Veo solo cuando NO es multi-escena (1 imagen + animación).
     // Para multi-escena con animación, cada escena se anima en el compositor con motion fuerte.
-    const usesVeo = wantsAnimation && !usesMultiEscena;
+    const usesVeo = wantsAnimation && !usesMultiEscena && overrides.disableAnimation !== true;
 
     // v3.2 #105: hoisted al scope del pipeline entero para que el closing
     // updateRun pueda leer el advisory generado en cualquier rama.
@@ -432,7 +474,31 @@ export async function runPipeline(
       }
 
       let sceneTrack: SceneTrack;
-      if (isForkedRun) {
+      if (overrides.reusePlanId) {
+        // Parte 3: reusar EXACTAMENTE el plan que el usuario vio en el preview,
+        // para que los índices de micro-escenas elegidos correspondan a estas
+        // escenas. Si el archivo no está (expiró/borrado), caemos al planner.
+        try {
+          const planRaw = await readFile(previewPlanPath(overrides.reusePlanId), 'utf-8');
+          sceneTrack = JSON.parse(planRaw) as SceneTrack;
+          await updateRun(runId, { currentStep: 'scene-plan-reused', progress: 42 });
+          logger.info(
+            { runId, reusePlanId: overrides.reusePlanId, scenes: sceneTrack.scenes.length },
+            'pipeline:reusing_preview_plan',
+          );
+        } catch (reuseErr) {
+          logger.warn(
+            { runId, err: (reuseErr as Error).message },
+            'pipeline:preview_plan_unusable_falling_back_to_planner',
+          );
+          const planner = new ScenePlannerBlock({
+            ownerPreferences: ownerPreferencesForPlanner || undefined,
+          });
+          const planResult = await planner.run({ parsedScript, subtitleTrack }, ctx);
+          if (planResult.isErr()) throw planResult.error;
+          sceneTrack = planResult.value;
+        }
+      } else if (isForkedRun) {
         try {
           const forkMetaRaw = await readFile(forkMetaPath, 'utf-8');
           const forkMeta = JSON.parse(forkMetaRaw) as {
@@ -588,7 +654,9 @@ export async function runPipeline(
       {
         const evKey = process.env['ELEVENLABS_API_KEY'];
         const wantMicro = overrides.wordSync ?? preset.subtitles.wordSyncMicroScenes ?? false;
-        if (evKey) {
+        // Sin voz: NO llamamos a ElevenLabs (re-generaría audio con voz). El plan
+        // ya quedó alineado a la duración estimada por alignScenesToAudioTiming.
+        if (evKey && !overrides.skipVoice) {
           try {
             const { fetchWordTimings, alignScenesToWords, expandEnumerationScenes } =
               await import('@video-factory/block-word-sync');
@@ -615,7 +683,10 @@ export async function runPipeline(
               // ALINEACIÓN PERFECTA (siempre): cada escena a sus palabras exactas.
               let scenes = alignScenesToWords(sceneTrack.scenes, wt.words);
               // Micro-escenas (opt-in): enumeraciones -> un corte por ítem.
-              if (wantMicro) scenes = expandEnumerationScenes(scenes, wt.words);
+              // No expandir micro-escenas en runs forkeados: re-indexaría las
+              // escenas y rompería preApprovedSceneIndices (escenas inmutables).
+              if (wantMicro && !isForkedRun)
+                scenes = expandEnumerationScenes(scenes, wt.words, {}, overrides.microSceneIndices ?? null);
               sceneTrack = { ...sceneTrack, scenes, totalDurationSeconds: audioEnd };
               logger.info(
                 { runId, scenes: scenes.length, audioDur: audioEnd.toFixed(2), micro: wantMicro },
@@ -1167,7 +1238,8 @@ export async function runPipeline(
           'pipeline:illustrated_style_using_ken_burns_not_ai_video',
         );
       }
-      const disableRealAnimation = process.env['DISABLE_REAL_ANIMATION'] === '1';
+      const disableRealAnimation =
+        process.env['DISABLE_REAL_ANIMATION'] === '1' || overrides.disableAnimation === true;
       if (isAnimatedFormat && !disableRealAnimation) {
         const veoApiKey = process.env['GOOGLE_AI_API_KEY'];
         if (veoApiKey) {
@@ -1212,7 +1284,10 @@ export async function runPipeline(
               // Kling para B-ROLL animado (primary cuando preferHiggsfield=false)
               klingAccessKey,
               klingSecretKey,
-              klingModel: 'kling-v2-6',
+              // v3.3 (owner, 31-may): Kling v3 da mejor movimiento UGC/humano (menos
+              // warping en cara/manos) — validado en versus. Para animados/B-roll
+              // dejamos v2-6 (estilo Pixar/comic/acuarela, sin re-validar v3 aún).
+              klingModel: preferHiggsfield ? 'kling-v3' : 'kling-v2-6',
               klingMode: 'std',
               klingDuration: '5',
               // Higgsfield para UGC/realistas (primary cuando preferHiggsfield=true)
@@ -1628,6 +1703,7 @@ export async function runPipeline(
         imagePath: sceneTrackWithImages.scenes[0]?.imagePath ?? '',
         sceneTrack: sceneTrackWithImages,
         animatedScenes: isAnimatedFormat,
+        kenBurns: overrides.kenBurns ?? false,
         outputPath,
         resolution: [1080, 1920],
         fps: 30,
@@ -1693,6 +1769,7 @@ export async function runPipeline(
               imagePrompt: s.imagePrompt,
             })),
             audioPath: audioTrack.filePath,
+            audioDurationSec: audioTrack.durationSeconds,
             finalVideoPath: outputPath,
             subtitleSegments,
             brandContext: {

@@ -19,6 +19,15 @@ const GenerateRequestSchema = z.object({
   // v3.2 #115: modo colaborativo "Hacer video en conjunto" — pipeline pausa
   // entre cada scene esperando aprobación del owner.
   mode: z.enum(['auto', 'collaborative']).optional().default('auto'),
+  // Parte 2 (a la carta): interruptores de cara al usuario. Default = comportamiento actual.
+  voice: z.boolean().optional(),
+  subtitles: z.boolean().optional(),
+  animation: z.boolean().optional(),
+  kenBurns: z.boolean().optional(),
+  // Parte 3: escenas elegidas para micro-escenas (índices). Si viene, activa micro-escenas.
+  microSceneIndices: z.array(z.number().int().nonnegative()).optional(),
+  // Parte 3: id del preview cuyo plan se reusa (para que los índices correspondan).
+  previewId: z.string().optional(),
 });
 
 export async function POST(req: Request) {
@@ -38,8 +47,21 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: parsed.error.message }, { status: 400 });
   }
 
-  const { brandId, presetId, productId, script, voiceOverride, narratorGenderOverride, mode } =
-    parsed.data;
+  const {
+    brandId,
+    presetId,
+    productId,
+    script,
+    voiceOverride,
+    narratorGenderOverride,
+    mode,
+    voice,
+    subtitles,
+    animation,
+    kenBurns,
+    microSceneIndices,
+    previewId,
+  } = parsed.data;
   const runId = randomUUID();
   const workDir = workDirFor(runId);
 
@@ -61,6 +83,17 @@ export async function POST(req: Request) {
     narratorGenderOverride: narratorGenderOverride ?? null,
     productId: productId ?? null,
     mode,
+    // Parte 2 (a la carta): mapeo de interruptores → overrides del pipeline.
+    skipVoice: voice === false,
+    // Si el flag no viene (payload viejo/scripts), dejamos undefined para respetar
+    // el default del preset (autoZapcap). Solo forzamos cuando el usuario lo eligió.
+    subtitlesZapcap: subtitles === undefined ? undefined : subtitles && voice !== false,
+    disableAnimation: animation === false,
+    kenBurns: kenBurns === true,
+    // Parte 3: micro-escenas seleccionables. Si hay selección, activamos wordSync.
+    microSceneIndices: microSceneIndices ?? null,
+    wordSync: microSceneIndices && microSceneIndices.length > 0 ? true : undefined,
+    reusePlanId: previewId ?? null,
   }).catch((err) => {
     // eslint-disable-next-line no-console
     console.error('[pipeline] uncaught error for run', runId, err);

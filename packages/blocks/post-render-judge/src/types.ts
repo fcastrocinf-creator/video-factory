@@ -79,6 +79,8 @@ export interface FinalRenderInput {
     imagePrompt?: string;
   }>;
   audioPath?: string;
+  /** Duración REAL del audio (la conoce el caller vía TTS/ffprobe). Si se pasa, M5 la usa en vez de estimar por tamaño de archivo. */
+  audioDurationSec?: number;
   finalVideoPath?: string;
   // Si se pasa, se valida subtitle quality con Claude (lenguaje, gibberish, ortografía).
   subtitleSegments?: Array<{ text: string; startSec: number; endSec: number }>;

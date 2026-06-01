@@ -41,4 +41,16 @@ describe('expandEnumerationScenes (cap 4)', () => {
     ];
     expect(expandEnumerationScenes(plain, LODO_WORDS.slice(0, 6))).toEqual(plain);
   });
+
+  it('selección por índice: solo expande las escenas elegidas (Parte 3)', () => {
+    // La enumeración está en la escena índice 1.
+    const notChosen = expandEnumerationScenes(baseScenes, LODO_WORDS, {}, [0]);
+    expect(notChosen).toHaveLength(2); // no se expande nada
+    const chosen = expandEnumerationScenes(baseScenes, LODO_WORDS, {}, [1]);
+    expect(chosen).toHaveLength(4); // se expande la elegida
+  });
+
+  it('selección vacía: no expande ninguna enumeración', () => {
+    expect(expandEnumerationScenes(baseScenes, LODO_WORDS, {}, [])).toHaveLength(2);
+  });
 });

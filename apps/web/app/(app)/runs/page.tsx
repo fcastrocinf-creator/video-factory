@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { RepositoryView } from './RepositoryView';
+import { PageHeader, PageHint } from '@/components/PageHint';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,23 +46,25 @@ export default async function RunsPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Repositorio de videos</h1>
-          <p className="text-sm text-muted-foreground">
-            Todos los videos generados. Agrupá por marca y producto. La papelera
-            guarda los borrados 30 días antes del purge definitivo.
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Link href="/runs/trash" className={cn(buttonVariants({ variant: 'outline' }))}>
-            Papelera
-          </Link>
-          <Link href="/create" className={cn(buttonVariants({ variant: 'default' }))}>
-            + Crear video
-          </Link>
-        </div>
-      </div>
+      <PageHeader
+        title="Mis videos"
+        subtitle="Tu biblioteca de videos generados"
+        actions={
+          <>
+            <Link href="/runs/trash" className={cn(buttonVariants({ variant: 'outline' }))}>
+              Papelera
+            </Link>
+            <Link href="/create" className={cn(buttonVariants({ variant: 'default' }))}>
+              ＋ Crear video
+            </Link>
+          </>
+        }
+      />
+      <PageHint emoji="📁">
+        <b className="text-foreground">Tu biblioteca.</b> Acá ves todos los videos generados y su estado.
+        Entra a uno para <b className="text-foreground">verlo, editarlo</b> (cortes, micro-escenas, animación)
+        o descargarlo. La papelera guarda los borrados 30 días.
+      </PageHint>
 
       <RepositoryView
         brands={brands.map((b) => ({

@@ -52,7 +52,7 @@ export const PlanoFijo: React.FC<PlanoFijoProps> = ({
           transformOrigin: 'center center',
         }}
       />
-      <Audio src={staticFile(audioSrc)} />
+      {audioSrc ? <Audio src={staticFile(audioSrc)} /> : null}
 
       {activeLine && (
         <div

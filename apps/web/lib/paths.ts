@@ -19,9 +19,19 @@ export const TRAINING_DIR = resolve(STORAGE_DIR, 'training');
 // Persistidas como JSON por archivo. NUNCA se aplican automáticamente —
 // el owner las revisa cuando quiere.
 export const SUGERENCIAS_DIR = resolve(STORAGE_DIR, 'sugerencias');
+// Planes de escenas de los previews (Parte 3). Pequeños JSON que la generación
+// reusa para que los índices de micro-escenas elegidos sean estables.
+export const PREVIEWS_DIR = resolve(STORAGE_DIR, 'previews');
+// Conversaciones del Copilot POR USUARIO (historial propio + base multi-usuario).
+// Estructura: storage/conversations/<userId>/<conversationId>.json
+export const CONVERSATIONS_DIR = resolve(STORAGE_DIR, 'conversations');
 
 export function workDirFor(runId: string): string {
   return resolve(RUNS_DIR, runId);
+}
+
+export function previewPlanPath(previewId: string): string {
+  return resolve(PREVIEWS_DIR, `${previewId}.json`);
 }
 
 export function outputPathFor(runId: string): string {

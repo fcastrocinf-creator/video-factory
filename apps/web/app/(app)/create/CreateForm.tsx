@@ -153,6 +153,31 @@ export function CreateForm({ brands, presets }: CreateFormProps) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
+  // Parte 2 (a la carta): interruptores del video. Defaults = comportamiento actual.
+  const [optVoice, setOptVoice] = useState(true);
+  const [optSubtitles, setOptSubtitles] = useState(false);
+  const [subtitlesTouched, setSubtitlesTouched] = useState(false);
+  const [optAnimation, setOptAnimation] = useState(true);
+  const [optKenBurns, setOptKenBurns] = useState(false);
+
+  // Parte 3: previsualizar escenas + elegir cuáles parte en micro-escenas.
+  const [previewScenes, setPreviewScenes] = useState<
+    Array<{ index: number; text: string; componentType: string; isEnumeration: boolean }> | null
+  >(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState('');
+  const [microIndices, setMicroIndices] = useState<number[]>([]);
+  const [previewId, setPreviewId] = useState<string | null>(null);
+
+  // Si cambia el guion, el preset o la marca, el preview anterior deja de ser
+  // válido (sus escenas/índices ya no corresponden). Lo limpiamos.
+  useEffect(() => {
+    setPreviewScenes(null);
+    setPreviewId(null);
+    setMicroIndices([]);
+    setPreviewError('');
+  }, [script, effectivePreset?.id, brandId]);
+
   // Prefill desde /rip → "Usar este script en /create": leemos sessionStorage
   // una sola vez al montar y limpiamos la key para que no persista entre refreshes.
   // El payload es JSON: { script, brandId, presetId, productId }. Tambien aceptamos
@@ -191,6 +216,28 @@ export function CreateForm({ brands, presets }: CreateFormProps) {
           if (p.categoryId) setCategoryId(p.categoryId);
           if (p.formatId) setFormatId(p.formatId);
           if (p.styleId) setStyleId(p.styleId);
+        }
+      }
+      // Brief guiado del Copilot: aplicar las opciones a la carta si vinieron.
+      const rawOpts = sessionStorage.getItem('prefill-options');
+      if (rawOpts) {
+        sessionStorage.removeItem('prefill-options');
+        try {
+          const o = JSON.parse(rawOpts) as {
+            voice?: boolean;
+            subtitles?: boolean;
+            animation?: boolean;
+            kenBurns?: boolean;
+          };
+          if (typeof o.voice === 'boolean') setOptVoice(o.voice);
+          if (typeof o.subtitles === 'boolean') {
+            setOptSubtitles(o.subtitles);
+            setSubtitlesTouched(true);
+          }
+          if (typeof o.animation === 'boolean') setOptAnimation(o.animation);
+          if (typeof o.kenBurns === 'boolean') setOptKenBurns(o.kenBurns);
+        } catch {
+          // opciones malformadas: ignorar.
         }
       }
     } catch {
@@ -237,6 +284,12 @@ export function CreateForm({ brands, presets }: CreateFormProps) {
         voiceOverride: voiceOverride === AUTO ? null : voiceOverride,
         narratorGenderOverride,
         mode,
+        voice: optVoice,
+        subtitles: subtitlesTouched ? optSubtitles && optVoice : undefined,
+        animation: optAnimation,
+        kenBurns: optKenBurns,
+        microSceneIndices: previewScenes ? microIndices : undefined,
+        previewId: previewScenes ? previewId : undefined,
       });
       const data = await submitViaXhr('/api/generate', payload);
       if (!data.runId) {
@@ -288,6 +341,12 @@ export function CreateForm({ brands, presets }: CreateFormProps) {
         script,
         voiceOverride: voiceOverride === AUTO ? null : voiceOverride,
         narratorGenderOverride,
+        voice: optVoice,
+        subtitles: subtitlesTouched ? optSubtitles && optVoice : undefined,
+        animation: optAnimation,
+        kenBurns: optKenBurns,
+        microSceneIndices: previewScenes ? microIndices : undefined,
+        previewId: previewScenes ? previewId : undefined,
       });
 
       // Usamos XMLHttpRequest como fallback a fetch porque algunas extensiones de
@@ -312,6 +371,43 @@ export function CreateForm({ brands, presets }: CreateFormProps) {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  async function handlePreview() {
+    if (!effectivePreset || script.trim().length < 10) {
+      setPreviewError('Elige el estilo y escribe el guión (mínimo 10 caracteres).');
+      return;
+    }
+    setPreviewLoading(true);
+    setPreviewError('');
+    try {
+      const resp = await fetch('/api/plan-preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ brandId, presetId: effectivePreset.id, script }),
+      });
+      const data = (await resp.json().catch(() => ({}))) as {
+        previewId?: string;
+        scenes?: Array<{ index: number; text: string; componentType: string; isEnumeration: boolean }>;
+        error?: string;
+      };
+      if (!resp.ok || !data.scenes) {
+        setPreviewError(data.error ?? `Error ${resp.status}`);
+        setPreviewScenes(null);
+        return;
+      }
+      setPreviewScenes(data.scenes);
+      setPreviewId(data.previewId ?? null);
+      setMicroIndices([]);
+    } catch (err) {
+      setPreviewError(err instanceof Error ? err.message : 'Error de red');
+    } finally {
+      setPreviewLoading(false);
+    }
+  }
+
+  function toggleMicro(index: number) {
+    setMicroIndices((cur) => (cur.includes(index) ? cur.filter((i) => i !== index) : [...cur, index]));
   }
 
   return (
@@ -572,9 +668,89 @@ export function CreateForm({ brands, presets }: CreateFormProps) {
                   }
                 : null,
             }}
-            title="Discutí el guión con Claude antes de generar"
-            placeholder="Ej: 'Revisame el hook — ¿es fuerte en los primeros 3s?' o 'El claim de Vitaly viola FTC?'"
+            title="Discute el guion con Claude antes de generar"
+            placeholder="Ej: '¿El hook es fuerte en los primeros 3 segundos?' o '¿El claim de Vitaly cumple con la FTC?'"
           />
+
+          {/* Parte 2: opciones "a la carta" del video */}
+          <div className="space-y-2">
+            <Label>Opciones del video</Label>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <OptionToggle label="Voz" desc="Narración hablada" checked={optVoice} onChange={setOptVoice} />
+              <OptionToggle
+                label="Subtítulos"
+                desc={optVoice ? 'Texto sobre el video' : 'Requiere voz'}
+                checked={optSubtitles && optVoice}
+                onChange={(v) => {
+                  setOptSubtitles(v);
+                  setSubtitlesTouched(true);
+                }}
+                disabled={!optVoice}
+              />
+              <OptionToggle
+                label="Animación"
+                desc="Escenas en movimiento (si el estilo lo permite)"
+                checked={optAnimation}
+                onChange={setOptAnimation}
+              />
+              <OptionToggle
+                label="Movimiento Ken Burns"
+                desc="Zoom/paneo suave en estáticas"
+                checked={optKenBurns}
+                onChange={setOptKenBurns}
+              />
+            </div>
+            {!optVoice && (
+              <p className="text-[11px] text-muted-foreground">
+                Sin voz, el video sale mudo y los subtítulos no aplican.
+              </p>
+            )}
+          </div>
+
+          {/* Parte 3: previsualizar escenas + elegir micro-escenas */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label>Escenas (opcional)</Label>
+              <button
+                type="button"
+                onClick={() => void handlePreview()}
+                disabled={previewLoading}
+                className="rounded-md border border-input px-3 py-1.5 text-xs transition-colors hover:bg-muted/40 disabled:opacity-50"
+              >
+                {previewLoading ? 'Calculando…' : '👁 Previsualizar escenas'}
+              </button>
+            </div>
+            {previewError && <p className="text-[11px] text-destructive">{previewError}</p>}
+            {previewScenes && (
+              <div className="space-y-1.5 rounded-lg border border-input p-3">
+                <p className="text-[11px] text-muted-foreground">
+                  {previewScenes.length} escenas propuestas. Marca cuáles partir en{' '}
+                  <b className="text-foreground">micro-escenas</b> (planos cortos por cada ítem de una lista).
+                  Solo se ofrece en escenas que enumeran cosas.
+                </p>
+                {previewScenes.map((s) => (
+                  <div
+                    key={s.index}
+                    className="flex items-start gap-2 rounded-md bg-muted/30 p-2 text-xs"
+                  >
+                    <span className="mt-0.5 font-mono text-[10px] text-muted-foreground">{s.index + 1}</span>
+                    <span className="flex-1">{s.text}</span>
+                    {s.isEnumeration ? (
+                      <label className="flex shrink-0 items-center gap-1 text-[11px]">
+                        <input
+                          type="checkbox"
+                          checked={microIndices.includes(s.index)}
+                          onChange={() => toggleMicro(s.index)}
+                          className="h-3.5 w-3.5 accent-[#7c6cff]"
+                        />
+                        micro
+                      </label>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           {error && <p className="text-sm text-destructive">{error}</p>}
 
@@ -589,7 +765,7 @@ export function CreateForm({ brands, presets }: CreateFormProps) {
               disabled={submitting}
               onClick={() => void handleSubmitWithMode('collaborative')}
               className="w-full"
-              title="Pipeline pausa entre cada scene. Vos revisás y aprobás scene-por-scene. Tus comentarios alimentan VALIDATOR + cerebro evolutivo."
+              title="El pipeline pausa entre cada escena. Tú revisas y apruebas escena por escena. Tus comentarios alimentan el VALIDATOR y el cerebro evolutivo."
             >
               {submitting ? '...' : '🤝 Hacer video en conjunto'}
             </Button>
@@ -597,6 +773,44 @@ export function CreateForm({ brands, presets }: CreateFormProps) {
         </form>
       </CardContent>
     </Card>
+  );
+}
+
+function OptionToggle({
+  label,
+  desc,
+  checked,
+  onChange,
+  disabled,
+}: {
+  label: string;
+  desc: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <label
+      className={
+        'flex items-center gap-2.5 rounded-lg border p-2.5 transition-colors ' +
+        (disabled
+          ? 'cursor-not-allowed border-input opacity-40'
+          : 'cursor-pointer ' +
+            (checked ? 'border-primary bg-primary/5' : 'border-input hover:bg-muted/40'))
+      }
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.checked)}
+        className="h-4 w-4 accent-[#7c6cff]"
+      />
+      <span className="leading-tight">
+        <span className="block text-sm font-medium">{label}</span>
+        <span className="block text-[11px] text-muted-foreground">{desc}</span>
+      </span>
+    </label>
   );
 }
 

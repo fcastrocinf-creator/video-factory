@@ -1,5 +1,6 @@
 import { loadAllBrands, loadAllPresets } from '@/lib/brand-preset-loader';
 import { CreateForm } from './CreateForm';
+import { PageHeader, PageHint } from '@/components/PageHint';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,12 +9,12 @@ export default async function CreatePage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Crear video</h1>
-        <p className="text-sm text-muted-foreground">
-          Elige marca, preset y pega el guión. El render se inicia al hacer clic en Generar.
-        </p>
-      </div>
+      <PageHeader title="Crear video" subtitle="Marca, preset y guión → Generar" />
+      <PageHint emoji="✨">
+        <b className="text-foreground">Empieza un video desde cero.</b> Elige la marca y el estilo (preset),
+        pega el guión y dale a Generar — la herramienta arma escenas, voz y subtítulos. ¿Copiar un anuncio
+        que ya funciona? Usa <b className="text-foreground">Ripear</b>.
+      </PageHint>
       <CreateForm
         brands={brands.map((b) => ({
           id: b.id,

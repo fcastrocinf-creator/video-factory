@@ -7,7 +7,7 @@
 //   1) Upload image: POST /files/generate-upload-url → {upload_url, public_url}
 //      PUT image bytes a upload_url
 //   2) Submit job: POST /v1/image2video/dop body:
-//      { model: 'dop-turbo'|'dop-lite'|'dop-standard',
+//      { model: 'dop-turbo'|'dop-lite'|'dop-preview',
 //        prompt, input_images: [{type:'image_url', image_url: public_url}] }
 //   3) Poll: GET /requests/{request_id}/status hasta status=completed|failed|nsfw
 //
@@ -15,14 +15,15 @@
 // previa de este cliente asumía `image-to-video/soul/standard` que retornaba 404.
 // DoP (Director of Photography) es el motor correcto para image-to-video en Higgsfield.
 //
-// Variantes DoP (según SDK helpers.ts):
+// Variantes DoP (VALIDADAS contra la API, may-2026):
 //   - dop-lite      → velocidad básica, calidad básica (más barato)
 //   - dop-turbo     → 2x speed + priority queue (recomendado UGC)
-//   - dop-standard  → highest quality + priority queue
+//   - dop-preview   → modelo nuevo en preview
+//   ⚠️ NO existe 'dop-standard' — la API responde 422 (enum inválido).
 
 const BASE_URL = 'https://platform.higgsfield.ai';
 
-export type HiggsfieldVideoModel = 'dop-lite' | 'dop-turbo' | 'dop-standard';
+export type HiggsfieldVideoModel = 'dop-lite' | 'dop-preview' | 'dop-turbo';
 
 type V2RequestStatus = 'queued' | 'in_progress' | 'completed' | 'failed' | 'nsfw';
 

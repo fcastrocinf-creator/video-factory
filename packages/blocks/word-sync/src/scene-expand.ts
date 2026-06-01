@@ -32,9 +32,13 @@ export function expandEnumerationScenes<T extends TimedScene>(
   scenes: T[],
   words: WordTiming[],
   opts: DetectOptions = {},
+  // Selección del usuario (Parte 3): si se da, SOLO se expanden las escenas cuyo
+  // índice esté en la lista. null/undefined = expandir todas (comportamiento previo).
+  allowedSceneIndices?: number[] | null,
 ): T[] {
   const micros = planMicroScenes(words, opts);
   if (micros.length === 0) return scenes;
+  const allow = allowedSceneIndices == null ? null : new Set(allowedSceneIndices);
 
   // Agrupar micro-escenas por enumeración.
   const groups = new Map<number, MicroScene[]>();
@@ -54,6 +58,8 @@ export function expandEnumerationScenes<T extends TimedScene>(
     );
     if (idx < 0) continue;
     const parent = result[idx]!;
+    // Selección del usuario: si hay lista y esta escena no fue elegida, la dejamos intacta.
+    if (allow && !allow.has(parent.index)) continue;
     const replacement: T[] = [];
 
     // Cabeza opcional: lo que la escena dice ANTES de la enumeración (si dura algo).

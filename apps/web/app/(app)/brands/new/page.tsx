@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { CreateBrandForm } from './CreateBrandForm';
+import { PageHeader, PageHint } from '@/components/PageHint';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,17 +10,12 @@ export default function NewBrandPage() {
       <Link href="/brands" className="text-xs text-muted-foreground hover:text-foreground">
         ← Marcas
       </Link>
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Crear marca nueva</h1>
-        <p className="text-sm text-muted-foreground">
-          Completa los campos. Una vez creada, la marca aparece automáticamente en{' '}
-          <code className="rounded bg-muted px-1">/create</code>,{' '}
-          <code className="rounded bg-muted px-1">/rip</code> y{' '}
-          <code className="rounded bg-muted px-1">/aprendizaje</code>. Después puedes
-          subir logo, packshots y configurar paleta de colores desde{' '}
-          <em>Editar ingredients</em>.
-        </p>
-      </div>
+      <PageHeader title="Crear marca nueva" subtitle="Lo básico ahora; logo y colores se agregan después" />
+      <PageHint emoji="🏷️">
+        Completa los campos y la marca aparecerá automáticamente al <b className="text-foreground">crear</b>,{' '}
+        <b className="text-foreground">ripear</b> y en <b className="text-foreground">aprendizaje</b>. Luego
+        subes logo, packshots y la paleta de colores desde <em>Editar ingredients</em>.
+      </PageHint>
       <CreateBrandForm />
     </div>
   );

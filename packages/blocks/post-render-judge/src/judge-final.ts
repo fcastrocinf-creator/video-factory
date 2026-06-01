@@ -80,10 +80,14 @@ export async function judgeFinalRender(
       : 0;
 
   let audioDurationSec = 0;
-  if (input.audioPath && existsSync(input.audioPath)) {
-    // Approximation: bitrate 128kbps típico ElevenLabs MP3 → size/16000 = ~seconds
-    // No es exacto pero suficiente para detect gaps grandes (>1.5s).
-    // M5 v2: usar ffprobe para precisión.
+  if (typeof input.audioDurationSec === 'number' && input.audioDurationSec > 0) {
+    // M5 v2 (fix 1-jun-2026): el caller (pipeline) ya conoce la duración REAL del
+    // audio (TTS / ffprobe bundled). La usamos en vez de estimar por tamaño de
+    // archivo, que daba falsos "duration-mismatch" críticos con MP3 VBR o bitrate
+    // distinto de 128kbps.
+    audioDurationSec = input.audioDurationSec;
+  } else if (input.audioPath && existsSync(input.audioPath)) {
+    // Fallback (sin duración real disponible): aproximación cruda por tamaño.
     const audioStat = await stat(input.audioPath);
     audioDurationSec = audioStat.size / 16000; // approx para 128kbps
   }

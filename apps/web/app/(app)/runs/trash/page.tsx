@@ -4,6 +4,7 @@ import { buttonVariants } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { TrashView } from './TrashView';
+import { PageHeader, PageHint } from '@/components/PageHint';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,18 +13,19 @@ export default async function TrashPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Papelera</h1>
-          <p className="text-sm text-muted-foreground">
-            Videos eliminados. Se purgan permanentemente a los 30 días. Puedes
-            restaurarlos o eliminarlos definitivamente desde aquí.
-          </p>
-        </div>
-        <Link href="/runs" className={cn(buttonVariants({ variant: 'outline' }))}>
-          ← Volver al repositorio
-        </Link>
-      </div>
+      <PageHeader
+        title="Papelera"
+        subtitle="Videos eliminados — se purgan a los 30 días"
+        actions={
+          <Link href="/runs" className={cn(buttonVariants({ variant: 'outline' }))}>
+            ← Volver
+          </Link>
+        }
+      />
+      <PageHint emoji="🗑️">
+        Acá están los videos que eliminaste. Puedes <b className="text-foreground">restaurarlos</b> o borrarlos
+        definitivamente. Pasados 30 días se eliminan solos.
+      </PageHint>
 
       {trashed.length === 0 ? (
         <Card>

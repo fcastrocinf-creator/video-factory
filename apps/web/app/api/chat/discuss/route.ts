@@ -12,10 +12,18 @@ import {
   discussWithClaude,
   ChatDiscussRequestSchema,
 } from '@/lib/claude-chat-discuss';
+import { isAuthenticated } from '@/lib/auth';
+import { appendChatLog } from '@/lib/chat-log';
 
 export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
+  // Seguridad: este endpoint llama a Anthropic y (según contextType) inyecta
+  // contexto interno del proyecto. NO debe ser público — exige sesión válida.
+  if (!isAuthenticated()) {
+    return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+  }
+
   let body: unknown;
   try {
     body = await req.json();
@@ -40,6 +48,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   try {
     const result = await discussWithClaude(parsed.data);
+    // Registro local del turno de chat (para mejorar la app — consentido por el owner).
+    const lastUser = parsed.data.conversation[parsed.data.conversation.length - 1];
+    const page =
+      typeof parsed.data.contextData?.['currentPage'] === 'string'
+        ? (parsed.data.contextData['currentPage'] as string)
+        : undefined;
+    void appendChatLog({
+      contextType: parsed.data.contextType,
+      userMessage: lastUser?.content ?? '',
+      reply: result.reply,
+      page,
+    });
     return NextResponse.json(result);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

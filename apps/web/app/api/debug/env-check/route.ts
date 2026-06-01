@@ -7,19 +7,22 @@
 // Devuelve solo presence/length, NUNCA valores.
 
 import { NextResponse } from 'next/server';
+import { isAuthenticated } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 
-function presence(key: string): { present: boolean; length: number; prefix: string } {
+function presence(key: string): { present: boolean; length: number } {
   const v = process.env[key];
   return {
     present: !!v && v.length > 0,
     length: v?.length ?? 0,
-    prefix: v ? `${v.slice(0, 8)}...` : '',
   };
 }
 
 export async function GET(): Promise<NextResponse> {
+  if (!isAuthenticated()) {
+    return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+  }
   return NextResponse.json({
     ok: true,
     process_pid: process.pid,

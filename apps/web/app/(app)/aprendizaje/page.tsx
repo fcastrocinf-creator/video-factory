@@ -2,6 +2,7 @@ import { desc } from 'drizzle-orm';
 import { db, trainingVideos } from '@/lib/db';
 import { TrainingRepository } from './TrainingRepository';
 import { TrainingUploader } from './TrainingUploader';
+import { PageHeader, PageHint } from '@/components/PageHint';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,18 +25,13 @@ export default async function AprendizajePage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Aprendizaje</h1>
-        <p className="text-sm text-muted-foreground max-w-3xl">
-          Sube videos que quieres que la IA replique al 99% de fidelidad visual.
-          Cada video queda en este repositorio. Cuando haces clic en{' '}
-          <strong>&quot;Aprender formato&quot;</strong>, el sistema extrae keyframes
-          del original, genera variaciones con el provider chain, las compara con
-          Gemini Vision e itera hasta lograr similitud alta. El estilo destilado
-          aparece en <a href="/admin" className="underline">/admin</a> para aprobar
-          y después está disponible en <a href="/create" className="underline">/create</a>.
-        </p>
-      </div>
+      <PageHeader title="Aprendizaje" subtitle="Enseña a la IA a replicar un estilo de video" />
+      <PageHint emoji="🎓">
+        <b className="text-foreground">Enséñale un estilo nuevo.</b> Sube un video que quieras que la IA
+        aprenda a replicar. El sistema saca los fotogramas clave, prueba variaciones y compara hasta lograr
+        un estilo fiel. Al terminar lo apruebas en <a href="/admin" className="underline">Admin</a> y queda
+        disponible al <a href="/create" className="underline">crear videos</a>.
+      </PageHint>
 
       <TrainingUploader />
 

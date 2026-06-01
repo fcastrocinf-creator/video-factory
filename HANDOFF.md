@@ -2,6 +2,7 @@
 
 > Documento de traspaso entre conversaciones de Claude Code.
 > Para continuar: abre un chat nuevo en este proyecto y di **"lee HANDOFF.md y seguimos"**.
+> 💡 Backlog de ideas futuras (para barrer e implementar): **`IDEAS.md`**.
 > Última actualización: 2026-05-30 (Versión 2).
 
 ---

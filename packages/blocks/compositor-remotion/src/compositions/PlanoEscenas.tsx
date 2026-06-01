@@ -165,7 +165,7 @@ export const PlanoEscenas: React.FC<PlanoEscenasProps> = ({
         })}
       </Series>
 
-      <Audio src={staticFile(audioSrc)} />
+      {audioSrc ? <Audio src={staticFile(audioSrc)} /> : null}
 
       {activeLine && (
         <div

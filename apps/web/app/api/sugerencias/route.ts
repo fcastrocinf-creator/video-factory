@@ -15,6 +15,7 @@ import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { SUGERENCIAS_DIR } from '../../../lib/paths';
 import { logSystemEvent } from '@/lib/system-log';
+import { isAuthenticated } from '@/lib/auth';
 
 const SugerenciaCreateSchema = z.object({
   title: z.string().min(3).max(200),
@@ -36,6 +37,9 @@ interface SugerenciaRecord extends SugerenciaCreate {
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
+  if (!isAuthenticated()) {
+    return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+  }
   let body: unknown;
   try {
     body = await req.json();

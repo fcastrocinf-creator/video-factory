@@ -46,3 +46,7 @@ docs/sources/videos_referencia/*.mp4
 docs/sources/investigacion/*.docx
 docs/sources/briefs/*.docx
 !docs/sources/**/README.md
+
+# Scratch / temporales de prueba (no versionar)
+.tmp*
+*.tmp.json
