@@ -118,6 +118,15 @@ Pipeline **estructurado** (más confiable y barato que "chat libre entre agentes
 - **Curación:** un hallazgo sube de `confianza` cuando se **repite** o lo confirma el owner;
   baja si fue falso-positivo. Solo lo de alta confianza entra al contexto "casi perfecto".
 
+## 7.5 Capa 5 — IA que propone / anticipa (on-demand)
+Sobre la base **curada**, la IA superior no solo audita: **propone ideas** y **anticipa**.
+- **Sugerir ideas sola:** detecta patrones en la KB ("se repite X → conviene Y", "los usuarios
+  piden Z") y los cruza con `IDEAS.md` y los hallazgos abiertos.
+- **Anticipar el próximo paso:** mirando el historial reciente + el backlog + los temas
+  recurrentes → "lo lógico ahora sería…".
+- **Honestidad:** es anticipación basada en datos, NO adivinación. Calidad ∝ curación.
+- Corre **on-demand** y **propone** — nunca ejecuta sola.
+
 ## 8. Ahorro (costos) — explícito
 - Recolección = **cero IA**.
 - `deepAudit` = **solo on-demand**, **scoped** (subsistema cambiado), **cacheado** (salta código sin cambios).
