@@ -3,7 +3,75 @@
 > Documento de traspaso entre conversaciones de Claude Code.
 > Para continuar: abre un chat nuevo en este proyecto y di **"lee HANDOFF.md y seguimos"**.
 > 💡 Backlog de ideas futuras (para barrer e implementar): **`IDEAS.md`**.
-> Última actualización: 2026-05-30 (Versión 2).
+> Última actualización: 2026-06-01 (Versión 4).
+
+---
+
+## 🚀 VERSIÓN 4 — 01-06-2026 (UX rework + Copilot guiado + a la carta + seguridad + Base de Conocimiento)
+
+> Sesión muy larga. TODO verificado (typecheck monorepo verde + 77 tests + pruebas en vivo).
+> **Commits locales (sin push), puntos de retorno:** `6b7f954` (V3) → `1c3ec8d` (UX+Copilot+a la carta+seguridad) → `4a2c0c0` (storage unify + M5 + spec Cerebro) → `66b983a` (KB Fase 0).
+> Para retomar: **chat nuevo** → "lee HANDOFF.md + CONOCIMIENTO.md y seguimos".
+
+### 1. UX re-work (commit 1c3ec8d)
+- **Tema oscuro** forzado: `app/globals.css` (paleta `.dark`) + `app/layout.tsx` (`className="dark"`).
+- **`components/Sidebar.tsx`** (nuevo): nav agrupada (Mis videos/Marcas/Asistente IA/Aprendizaje/Admin) + botón **"＋ Crear video"** que abre un **modal** (Desde cero → `/create`, Ripear → `/rip`). Cierra con Escape.
+- **`components/PageHint.tsx`** (nuevo): `PageHeader` + `PageHint` (cartelito "para qué sirve"). Aplicado a TODAS las páginas de `(app)/`.
+- **Asistente IA** = `(app)/sugerencias/page.tsx` reescrito como **3 modos/tabs** (Ideas / Aprender estilo / Técnico). `/arquitecto` → `redirect('/sugerencias')`.
+- `(app)/layout.tsx` monta `<Sidebar/>` + `<CopilotWidget/>`.
+
+### 2. Copilot flotante (commit 1c3ec8d, refinado en 66b983a)
+`components/CopilotWidget.tsx` + `lib/claude-chat-discuss.ts` (contextType **'copilot'**).
+- **Muralla de datos:** al copilot NO se le inyecta `getSystemContextForPrompt()` (proveedores/claves). SÍ se le inyecta un **catálogo de cara al usuario** (`buildCopilotCatalog`: marcas + presets con ids reales) para armar briefs.
+- **Brief guiado:** el copilot emite un bloque oculto `[[BRIEF]]{script,brandId,presetId,voice,subtitles,animation,kenBurns}[[/BRIEF]]` → botón **"✅ Crear este video"** → escribe `sessionStorage` (`prefill-script` + `prefill-options`) → `window.location.assign('/create')` → `CreateForm` lo prellena (incl. los toggles).
+- **Sugerencias a admin:** bloque `[[SUGERENCIA]]{titulo,descripcion,categoria}[[/SUGERENCIA]]` → auto-guarda a `/api/sugerencias`. Se ofrece también cuando la herramienta NO puede hacer algo.
+- **Historial POR USUARIO:** `/api/copilot/conversations` (GET lista/single, POST guarda) por `userId` (localStorage `vf-user-id`). `convIdRef` (id de cliente) evita duplicados. UI: "Ver conversaciones pasadas" + "Nueva".
+- **Estilo:** `renderRich` (negrita `**`), emojis, **compostura** (no suplica al ser molestado), **saneador de voseo** `toNeutralSpanish` (`VOSEO_MAP` — SOLO formas inequívocas; NO rompe "salí/sentí/SOS"), nudge 30s, chips (1º = "🎬 Quiero hacer un video"), regla NO-roles ("usuario/administrador"), extrae lo relevante de chats pegados.
+- **Registro de chats:** `lib/chat-log.ts` → `storage/chat-logs/chats.jsonl` **+** (Fase 0 KB) `recordEvent`.
+
+### 3. Opciones "a la carta" en Crear (commit 1c3ec8d)
+`CreateForm.tsx` → `/api/generate` → `pipeline.ts` overrides:
+- Toggles **Voz / Subtítulos / Animación / Ken Burns** → `skipVoice` / `subtitlesZapcap` / `disableAnimation` / `kenBurns`.
+- **Sin voz** = pista muda (`audioTrack.filePath=''`, duración estimada) + `<Audio>` **condicional** en las 3 composiciones del compositor. NO se cae.
+- Subtítulos backward-compat: `undefined` respeta el preset (no lo pisa).
+
+### 4. Micro-escenas SELECCIONABLES + preview (commit 1c3ec8d)
+- `expandEnumerationScenes(scenes, words, {}, allowedSceneIndices)` — null=todas, []=ninguna, [i]=esas. +2 tests.
+- **Preview:** `/api/plan-preview` corre solo script-processor+scene-planner (barato), devuelve `{previewId, scenes}` y **persiste el plan** en `storage/previews/`. La generación lo **reusa** (`overrides.reusePlanId`) → índices estables. Guard fork (`wantMicro && !isForkedRun`).
+
+### 5. Seguridad + resiliencia (commit 1c3ec8d + 4a2c0c0)
+- **Auth** agregado a `/api/chat/discuss`, `/api/sugerencias`, `/api/debug/env-check` (+ quitado el leak del prefijo de API keys). El middleware NO cubre `/api/*`; cada ruta se auto-chequea.
+- **TTS fallback ElevenLabs→OpenAI ante CUALQUIER error** (antes solo cuota/auth) — `pipeline.ts` ~292.
+- **M5** (`post-render-judge/judge-final.ts`) usa la **duración REAL** del audio (`audioDurationSec` que pasa el pipeline) en vez de estimar por tamaño.
+
+### 6. Storage UNIFICADO (commit 4a2c0c0) — ⚠️ activa al reiniciar dev
+- **Problema (era):** la memoria de aprendizaje se partía entre `apps/web/storage/` (runtime, vía `process.cwd()`) y `storage/` raíz (paths.ts). "Split-brain".
+- **Fix:** `next.config.mjs` setea `process.env.VF_STORAGE_DIR = <root>/storage`. `preset-judgment-memory`, `prompt-evolution`, `system-log`, `paths.ts` lo respetan (fallback cwd para scripts).
+- **Datos migrados** (COPIADOS, originales intactos): `preset-memory` (9 juicios) + `prompt-patches` (4 parches) → `storage/`. **Se activa al próximo reinicio del dev server.**
+
+### 7. Base de Conocimiento — Fase 0 (commit 66b983a) ← el proyecto en curso
+- Spec completa: **`CONOCIMIENTO.md`** (léela). Es el "Cerebro Obsidian": todo registrado+ubicable, agentes especialistas + IA superior on-demand, evoluciona con el uso, **solo la recolección es automática**, nada se auto-aplica.
+- **Hecho:** `lib/kb/record.ts` (`recordEvent` + esquema `KbEvento` + índice `storage/kb/indice/`). 1er emisor cableado (chat → Evento, `vault:producto`). Verificado en vivo (con `codeVersion`=git hash para frescura).
+- **SIGUIENTE (Fase 0):** rutear el resto de emisores → `recordEvent`: `system-log` (run-evento), `preset-judgment-memory` (juicio-preset), `/api/sugerencias` (sugerencia), `owner-feedback` (feedback), pipeline run-success/failed.
+- **Después:** Fase 1 (`query()`/`buildContextFor()` + vista /admin) → Fase 2 (deepAudit: especialistas+IA superior) → Fase 3 (curación/evolución + Capa 5 "IA que propone/anticipa").
+
+### ⚠️ Pendientes / decisiones honestas (de las auditorías adversariales)
+- **Mixeo cross-usuario NO existe** — es prematuro (hoy ~22 datos de 1 usuario). El cerebro evolutivo M7 SÍ existe y agrega ENTRE runs (no entre usuarios). La KB es el prerequisito.
+- **`lib/validator-chat-ia-preflight.ts` = CÓDIGO MUERTO** (validador proactivo construido, sin cablear). Decidir: cablear o borrar.
+- **Gap de categorías del validator:** `asset-mismatch`/`style-drift` están en el prompt pero NO en el enum Zod (`validator-chat-ia.ts` ~206) → caen a 'other' y se saltan el strict-guard. Cirugía + verificar con generación real.
+- **Un verdict "wrong" del validator NO bloquea la escena** (es advisory; el escape-hatch entrega el video igual). Decisión de producto.
+- **NO se corrió una generación REAL** con el código nuevo (toggles/skipVoice/plan-reuse/brief): typecheck+tests+lógica OK, pero falta una corrida pagada para confirmar e2e.
+- Lint cosmético (`no-unescaped-entities`) — solo importa para build de producción.
+- **Video clorofila** (con el socio): parado. Necesita el script de Slack + una referencia visual del estilo "cartoon visceral".
+
+### 🔁 Verificación rápida
+- `pnpm -r typecheck` = verde. Tests: word-sync 19, image-gen-multi 10, scene-planner 6, compositor 21, image-gen-imagen 21 (**77**).
+- Dev en `localhost:3000`, cookie `app_auth=valid`. Hay 2+ `next dev`: NO levantar otro (chocan en `.next` → 500). Un solo server.
+
+### 📏 Reglas (recordar)
+- **Español neutro SIEMPRE, JAMÁS voseo** (regla #1 del owner). Verificar cada texto.
+- **NUNCA `git push`** sin pedido explícito. Commits locales OK. `storage/` y `.tmp*` gitignored.
+- Nada destructivo ni se auto-aplica al código sin consentimiento.
 
 ---
 
