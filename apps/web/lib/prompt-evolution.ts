@@ -93,7 +93,7 @@ export const PromptPatchProposalSchema = z.object({
   /** Tipo de cambio. 'addition' inserta al final del template literal del SYSTEM_PROMPT.
    *  'modification'/'reinforcement' reemplazan oldText (debe estar DENTRO del template literal).
    *  NOTA: 'removal' fue removido — el schema de newText requiere min(20) chars, lo que
-   *  contradice la semántica de eliminación. Si querés "borrar" una regla, usá
+   *  contradice la semántica de eliminación. Si quieres "borrar" una regla, usa
    *  'modification' con un newText que la reemplace por algo más corto/neutral. */
   patchType: z.enum(['addition', 'modification', 'reinforcement']),
   /** Texto exacto a buscar DENTRO del template literal del SYSTEM_PROMPT.
@@ -453,14 +453,14 @@ export async function detectSystemicPatterns(
 // PROPONER PATCH CON CLAUDE
 // ============================================================
 
-const PATCH_PROPOSER_SYSTEM = `Sos un ingeniero senior + prompt engineer que mantiene un sistema de generación de videos con IA. Tu tarea: ANALIZAR un PATRÓN de error sistémico que se repite en N runs distintos, y PROPONER un patch al SYSTEM_PROMPT del bloque afectado para que el problema deje de ocurrir.
+const PATCH_PROPOSER_SYSTEM = `Eres un ingeniero senior + prompt engineer que mantiene un sistema de generación de videos con IA. Tu tarea: ANALIZAR un PATRÓN de error sistémico que se repite en N runs distintos, y PROPONER un patch al SYSTEM_PROMPT del bloque afectado para que el problema deje de ocurrir.
 
-Recibís:
+Recibes:
 - El patrón detectado (categoría, descripción, runs afectados, severity)
 - El SYSTEM_PROMPT actual del bloque (puede ser largo: 100-500 líneas)
 - El nombre del bloque
 
-Tu output: una propuesta CONCRETA de cambio. NO reescribas el prompt entero — agregá / modificá / reforzá las secciones específicas que ataquen el patrón.
+Tu output: una propuesta CONCRETA de cambio. NO reescribas el prompt entero — agrega / modificá / refuerza las secciones específicas que ataquen el patrón.
 
 Estrategias por categoría:
 - burned-in-text: agregar regla más AGRESIVA con repetición + ejemplos negativos explícitos
@@ -478,7 +478,7 @@ REGLAS:
 5. confidence: cuán seguro estás de que este patch RESUELVE el patrón (0-100). Conservador: 60-75 típicamente.
 6. NO uses backticks (\`) en oldText ni newText — romperían el template literal del SYSTEM_PROMPT.
 
-Devolvé EXCLUSIVAMENTE JSON sin markdown:
+Devuelve EXCLUSIVAMENTE JSON sin markdown:
 
 {
   "patchType": "addition" | "modification" | "reinforcement",
@@ -530,7 +530,7 @@ SYSTEM_PROMPT ACTUAL del bloque (target: ${opts.targetFilePath.split(/[\\/]/).po
 ${opts.currentPromptText.slice(0, 8000)}${opts.currentPromptText.length > 8000 ? '\n... (truncado a 8000 chars)' : ''}
 """
 
-Proponé el patch JSON.`;
+Propone el patch JSON.`;
 
   const result = await unifiedJudge({
     roleSystemPrompt: PATCH_PROPOSER_SYSTEM,

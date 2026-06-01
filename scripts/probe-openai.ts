@@ -6,8 +6,8 @@ async function main() {
   const apiKey = process.env['OPENAI_API_KEY'];
   if (!apiKey || apiKey === 'sk_pendiente') {
     console.error('[probe] OPENAI_API_KEY no seteada o placeholder.');
-    console.error('  1. Generá una key en https://platform.openai.com/api-keys');
-    console.error('  2. Agregá ~$10 USD de crédito en https://platform.openai.com/account/billing');
+    console.error('  1. Genera una key en https://platform.openai.com/api-keys');
+    console.error('  2. Agrega ~$10 USD de crédito en https://platform.openai.com/account/billing');
     console.error('  3. Reemplazá OPENAI_API_KEY=sk_pendiente en .env por la key real');
     process.exit(1);
   }

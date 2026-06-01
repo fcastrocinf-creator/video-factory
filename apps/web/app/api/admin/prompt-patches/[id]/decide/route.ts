@@ -54,7 +54,7 @@ export async function POST(req: NextRequest, { params }: RouteParams): Promise<N
       ok: true,
       action: 'approve-applied',
       updatedFilePath: result.updatedFilePath,
-      reminder: 'Reiniciá el dev server para que el cambio surta efecto. Considerá commitear el patch.',
+      reminder: 'Reinicia el dev server para que el cambio surta efecto. Considerá commitear el patch.',
     });
   }
 

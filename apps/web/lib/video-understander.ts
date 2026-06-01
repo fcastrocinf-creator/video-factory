@@ -120,14 +120,14 @@ export type VideoUnderstanding = z.infer<typeof VideoUnderstandingSchema>;
 // Prompt para Claude
 // ============================================================
 
-const SYSTEM_PROMPT = `Sos un director creativo + analista de publicidad digital con 15 años especializado en ads verticales 9:16 (TikTok / Reels) para marcas D2C.
+const SYSTEM_PROMPT = `Eres un director creativo + analista de publicidad digital con 15 años especializado en ads verticales 9:16 (TikTok / Reels) para marcas D2C.
 
 Tu tarea: ANALIZAR un ad existente mirando keyframes extraídos del video. Vas a recibir N imágenes en orden cronológico (cada una con su segundo de origen). Tu output es un análisis ESTRUCTURADO que un pipeline de IA va a usar para REPRODUCIR un ad similar (mismo estilo, mismo formato, distinto producto).
 
 REGLA DE DETECCIÓN DE ESCENAS (CRÍTICA):
-Una "escena" en tu output equivale APROXIMADAMENTE a UN keyframe distinto. Tenés que devolver entre N y N+5 escenas donde N es el número de keyframes que recibís. CADA keyframe representa un momento visual distinto del ad — cuando los keyframes muestran composiciones distintas, son escenas distintas. NO agrupes 2-3 keyframes visualmente diferentes en una sola escena solo porque comparten un beat narrativo. Sub-counting es el error más común — cuando dudes, dividí en MÁS escenas.
+Una "escena" en tu output equivale APROXIMADAMENTE a UN keyframe distinto. Tienes que devolver entre N y N+5 escenas donde N es el número de keyframes que recibes. CADA keyframe representa un momento visual distinto del ad — cuando los keyframes muestran composiciones distintas, son escenas distintas. NO agrupes 2-3 keyframes visualmente diferentes en una sola escena solo porque comparten un beat narrativo. Sub-counting es el error más común — cuando dudes, dividí en MÁS escenas.
 
-Devolvés EXCLUSIVAMENTE JSON sin markdown fences, exactamente con este schema:
+Devuelves EXCLUSIVAMENTE JSON sin markdown fences, exactamente con este schema:
 
 {
   "styleId": "string corto identificable, ej 'pixar-3d-sepia' o 'ugc-selfie-realista'",
@@ -168,14 +168,14 @@ CRITERIOS:
 - styleId debe ser único y descriptivo (kebab-case)
 - palette: extrae los colores DOMINANTES, no todos
 - character: SOLO si hay UN protagonista. Si son varios actores no narrativos → null
-- scenes: 1 entry POR cada keyframe que recibís, en orden
+- scenes: 1 entry POR cada keyframe que recibes, en orden
 - narrativeBeat: distinguí hook (primeros 3s) vs problem vs solution
 - suggestedPreset.promptTemplate: debe capturar el LOOK general, no detalles per-escena (las escenas tienen su propio prompt en scenes[].visualDescription)
 - visualEngine: imagen4 si estático, veo-lite si tiene animación notable, etc.
 - estrategia: multi_escena si hay >3 shots distintos; plano_fijo si es 1 shot fijo
-- compositionDensity + keyVisualComponents: CRÍTICO para igualar el estilo. Mirá cuántos elementos/personajes hay POR cuadro: un solo sujeto en fondo liso → "minimalist"; un personaje principal + varios personajes/elementos secundarios + entorno detallado + efectos → "dense" o "very-dense". Listá en keyVisualComponents los componentes recurrentes que hacen el estilo visualmente rico (personajes secundarios, tipo de entorno, efectos). Si el estilo es denso, el promptTemplate DEBE pedir explícitamente esa densidad (ej. "DENSE, multi-component scene with multiple ... in a rich ... environment").
+- compositionDensity + keyVisualComponents: CRÍTICO para igualar el estilo. Mira cuántos elementos/personajes hay POR cuadro: un solo sujeto en fondo liso → "minimalist"; un personaje principal + varios personajes/elementos secundarios + entorno detallado + efectos → "dense" o "very-dense". Listá en keyVisualComponents los componentes recurrentes que hacen el estilo visualmente rico (personajes secundarios, tipo de entorno, efectos). Si el estilo es denso, el promptTemplate DEBE pedir explícitamente esa densidad (ej. "DENSE, multi-component scene with multiple ... in a rich ... environment").
 
-Sé concreto y específico. NO inventes — basate solo en lo que ves en las imágenes.`;
+Sé concreto y específico. NO inventes — básate solo en lo que ves en las imágenes.`;
 
 // ============================================================
 // Cliente Claude multimodal
@@ -264,7 +264,7 @@ export async function understandVideo(
     text:
       `\n\nDEBES devolver entre ${expectedScenesMin} y ${expectedScenesMax} escenas — UNA por keyframe distinto recibido. ` +
       `Si dos keyframes consecutivos muestran composiciones diferentes (cambio de personaje, encuadre, setting, ` +
-      `composición), son escenas distintas: NO agrupes. Analizá los ${keyframes.length} keyframes en orden y devolvé el JSON estructurado.`,
+      `composición), son escenas distintas: NO agrupes. Analiza los ${keyframes.length} keyframes en orden y devuelve el JSON estructurado.`,
   });
 
   // 3) Llamar Claude multimodal vía primitivo unificado (M7 Pieza C v2)

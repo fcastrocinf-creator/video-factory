@@ -16,7 +16,7 @@ Devuelve EXCLUSIVAMENTE JSON con este shape exacto:
   "narratorPresent": true | false,
   "gender": "male" | "female" | "neutral",
   "ageRange": "20-30" | "30-40" | "40-55" | "55-70" | etc,
-  "characterCard": "<35-60 palabras describiendo VISUALMENTE al narrador para que un ilustrador lo dibuje siempre igual: edad aproximada, género, etnia/origen, peinado y color de pelo, vestimenta característica, ambiente típico donde aparece, expresión/actitud. SI narratorPresent=false, devolvé string vacío.>"
+  "characterCard": "<35-60 palabras describiendo VISUALMENTE al narrador para que un ilustrador lo dibuje siempre igual: edad aproximada, género, etnia/origen, peinado y color de pelo, vestimenta característica, ambiente típico donde aparece, expresión/actitud. SI narratorPresent=false, devuelve string vacío.>"
 }
 
 REGLAS:

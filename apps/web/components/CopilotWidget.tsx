@@ -323,7 +323,7 @@ export function CopilotWidget() {
     <>
       {/* Nudge "¿te ayudo?" — aparece una vez si no abriste el Copilot */}
       {!open && showNudge && (
-        <div className="fixed bottom-20 right-5 z-50 flex max-w-[240px] items-center gap-2 rounded-xl border border-[#2a2f3c] bg-[#15171e] px-3 py-2 text-[13px] text-[#c7cdda] shadow-xl">
+        <div className="fixed bottom-20 right-5 z-50 flex max-w-[240px] items-center gap-2 rounded-xl border border-[#2a2f3c] bg-[#15171e] px-3 py-2 text-sm text-[#c7cdda] shadow-xl">
           <button
             type="button"
             onClick={() => {
@@ -377,7 +377,7 @@ export function CopilotWidget() {
               </span>
               <div>
                 <div className="text-sm font-bold leading-none text-white">Copilot</div>
-                <div className="text-[11px] text-[#6b7385]">tu guía paso a paso</div>
+                <div className="text-xs text-[#6b7385]">tu guía paso a paso</div>
               </div>
             </div>
             <button
@@ -391,13 +391,13 @@ export function CopilotWidget() {
           </div>
 
           {/* Barra de conversaciones (historial por usuario) */}
-          <div className="flex items-center justify-between border-b border-[#2a2f3c] px-3 py-1.5 text-[11px]">
+          <div className="flex items-center justify-between border-b border-[#2a2f3c] px-3 py-1.5 text-xs">
             <button
               type="button"
               onClick={toggleHistory}
               className="flex items-center gap-1 text-[#9aa3b2] hover:text-white"
             >
-              🗂 Ver conversaciones pasadas <span className="text-[9px]">{showHistory ? '▲' : '▼'}</span>
+              🗂 Ver conversaciones pasadas <span className="text-xs">{showHistory ? '▲' : '▼'}</span>
             </button>
             <button type="button" onClick={newConversation} className="text-[#9aa3b2] hover:text-white">
               ＋ Nueva
@@ -406,9 +406,9 @@ export function CopilotWidget() {
           {showHistory && (
             <div className="max-h-40 overflow-y-auto border-b border-[#2a2f3c] bg-[#13151b] px-2 py-1.5">
               {historyLoading ? (
-                <div className="px-2 py-1 text-[11px] text-[#6b7385]">Cargando…</div>
+                <div className="px-2 py-1 text-xs text-[#6b7385]">Cargando…</div>
               ) : history.length === 0 ? (
-                <div className="px-2 py-1 text-[11px] text-[#6b7385]">
+                <div className="px-2 py-1 text-xs text-[#6b7385]">
                   Aún no tienes conversaciones guardadas.
                 </div>
               ) : (
@@ -419,7 +419,7 @@ export function CopilotWidget() {
                     onClick={() => void loadConversation(h.id)}
                     title={h.title}
                     className={
-                      'block w-full truncate rounded-md px-2 py-1.5 text-left text-[12px] transition-colors hover:bg-[#222633] ' +
+                      'block w-full truncate rounded-md px-2 py-1.5 text-left text-xs transition-colors hover:bg-[#222633] ' +
                       (h.id === conversationId ? 'text-white' : 'text-[#c7cdda]')
                     }
                   >
@@ -433,7 +433,7 @@ export function CopilotWidget() {
           {/* Mensajes */}
           <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
             {/* Comentario explicativo de qué es el Copilot (siempre visible) */}
-            <div className="rounded-xl border border-[#2a2f3c] bg-[#1b1e27] p-3 text-[13px] leading-relaxed text-[#c7cdda]">
+            <div className="rounded-xl border border-[#2a2f3c] bg-[#1b1e27] p-3 text-sm leading-relaxed text-[#c7cdda]">
               ¡Hola! 👋 Soy tu <b className="text-white">Copilot</b>. Te guío para usar la herramienta sin
               enredos. Pregúntame lo que quieras — por ejemplo, cómo crear un video.
             </div>
@@ -454,7 +454,7 @@ export function CopilotWidget() {
                 >
                   <div
                     className={
-                      'max-w-[85%] rounded-2xl px-3 py-2 text-[13px] leading-relaxed ' +
+                      'max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-relaxed ' +
                       (m.role === 'user' ? 'bg-[#7c6cff] text-white' : 'bg-[#222633] text-[#e6e9f0]')
                     }
                   >
@@ -462,10 +462,10 @@ export function CopilotWidget() {
                   </div>
 
                   {sugg.suggestion && (
-                    <div className="mt-1.5 max-w-[85%] rounded-xl border border-[#7c6cff]/40 bg-[#7c6cff]/10 p-2.5 text-[12px]">
+                    <div className="mt-1.5 max-w-[85%] rounded-xl border border-[#7c6cff]/40 bg-[#7c6cff]/10 p-2.5 text-xs">
                       <div className="font-semibold text-white">💡 {sugg.suggestion.titulo}</div>
                       <div className="mt-0.5 text-[#c7cdda]">{sugg.suggestion.descripcion}</div>
-                      <div className="mt-1.5 text-[11px] font-medium">
+                      <div className="mt-1.5 text-xs font-medium">
                         {sentSugg[i] === 'sent' && (
                           <span className="text-emerald-400">✓ Guardada para los administradores</span>
                         )}
@@ -487,7 +487,7 @@ export function CopilotWidget() {
                     <button
                       type="button"
                       onClick={() => createFromBrief(br.brief!)}
-                      className="mt-1.5 flex items-center gap-2 rounded-xl px-3.5 py-2 text-[13px] font-semibold text-white"
+                      className="mt-1.5 flex items-center gap-2 rounded-xl px-3.5 py-2 text-sm font-semibold text-white"
                       style={{ background: 'linear-gradient(135deg,#7c6cff,#9d8bff)' }}
                     >
                       ✅ Crear este video
@@ -499,7 +499,7 @@ export function CopilotWidget() {
 
             {loading && (
               <div className="flex justify-start">
-                <div className="rounded-2xl bg-[#222633] px-3 py-2 text-[13px] text-[#9aa3b2]">Escribiendo…</div>
+                <div className="rounded-2xl bg-[#222633] px-3 py-2 text-sm text-[#9aa3b2]">Escribiendo…</div>
               </div>
             )}
 
@@ -511,7 +511,7 @@ export function CopilotWidget() {
                     key={c}
                     type="button"
                     onClick={() => send(c)}
-                    className="rounded-full border border-[#2a2f3c] bg-[#1b1e27] px-3 py-1.5 text-[12px] text-[#c7cdda] transition-colors hover:border-[#7c6cff] hover:text-white"
+                    className="rounded-full border border-[#2a2f3c] bg-[#1b1e27] px-3 py-1.5 text-xs text-[#c7cdda] transition-colors hover:border-[#7c6cff] hover:text-white"
                   >
                     {c}
                   </button>
@@ -534,7 +534,7 @@ export function CopilotWidget() {
                 }}
                 rows={1}
                 placeholder="Escribe tu pregunta…"
-                className="max-h-24 flex-1 resize-none rounded-xl border border-[#2a2f3c] bg-[#0f1116] px-3 py-2 text-[13px] text-white placeholder:text-[#6b7385] focus:border-[#7c6cff] focus:outline-none"
+                className="max-h-24 flex-1 resize-none rounded-xl border border-[#2a2f3c] bg-[#0f1116] px-3 py-2 text-sm text-white placeholder:text-[#6b7385] focus:border-[#7c6cff] focus:outline-none"
               />
               <button
                 type="button"

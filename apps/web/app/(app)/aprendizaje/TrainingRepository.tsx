@@ -127,7 +127,7 @@ export function TrainingRepository({ initialItems }: Props) {
                   <h3 className="text-sm font-semibold truncate" title={item.videoFileName}>
                     {item.videoFileName}
                   </h3>
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-xs text-muted-foreground">
                     {(item.videoBytes / 1024 / 1024).toFixed(1)} MB · {fmtDate(item.createdAt)}
                   </p>
                 </div>
@@ -139,14 +139,14 @@ export function TrainingRepository({ initialItems }: Props) {
               {(item.status === 'analyzing' || item.status === 'training') && (
                 <div className="space-y-1.5">
                   <Progress value={item.progress} />
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-xs text-muted-foreground">
                     {item.currentStep ?? 'En curso'} · {item.progress}%
                   </p>
                 </div>
               )}
 
               {item.status === 'failed' && item.errorMessage && (
-                <pre className="rounded-md bg-destructive/10 p-2 text-[10px] text-destructive whitespace-pre-wrap">
+                <pre className="rounded-md bg-destructive/10 p-2 text-xs text-destructive whitespace-pre-wrap">
                   {item.errorMessage.slice(0, 300)}
                 </pre>
               )}
@@ -154,7 +154,7 @@ export function TrainingRepository({ initialItems }: Props) {
               {item.status === 'completed' && item.resultPresetId && (
                 <div className="rounded-md bg-green-500/10 px-3 py-2 text-xs">
                   ✓ Preset destilado en{' '}
-                  <code className="text-[10px]">{item.resultPresetId}</code> ·
+                  <code className="text-xs">{item.resultPresetId}</code> ·
                   Aprobalo en <Link href="/admin" className="underline">/admin</Link> para
                   que aparezca en <Link href="/create" className="underline">/create</Link>.
                 </div>

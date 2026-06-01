@@ -149,7 +149,7 @@ export function TrainingDetailView({ trainingId }: { trainingId: string }) {
               <span className="text-xs text-muted-foreground">{data.progress}%</span>
             </div>
             <Progress value={data.progress} />
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               El loop genera variaciones, las compara con Gemini Vision y refina
               hasta lograr alta similitud por frame. Tarda 1-5 min según largo del video y nro de iteraciones necesarias.
             </p>
@@ -166,7 +166,7 @@ export function TrainingDetailView({ trainingId }: { trainingId: string }) {
                 {data.errorMessage}
               </pre>
             )}
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Los errores 5xx de Google API suelen ser transitorios (server overload).
               Reintentar suele funcionar.
             </p>
@@ -361,10 +361,10 @@ function FrameCell({
           // eslint-disable-next-line @next/next/no-img-element
           <img src={src} alt={label} className="h-full w-full object-cover" />
         ) : (
-          <span className="text-[10px] text-muted-foreground p-1">sin imagen</span>
+          <span className="text-xs text-muted-foreground p-1">sin imagen</span>
         )}
       </div>
-      <div className="flex items-center justify-between mt-1 text-[10px]">
+      <div className="flex items-center justify-between mt-1 text-xs">
         <span className={isOriginal ? 'font-medium' : 'text-muted-foreground'}>{label}</span>
         {score !== undefined && (
           <span className={`rounded px-1 ${scoreColor}`}>{score.toFixed(0)}</span>
@@ -483,7 +483,7 @@ function AutoLearnSection({ trainingId }: { trainingId: string }) {
               ))}
             </div>
             <p className="text-muted-foreground italic">{result.executiveSummary}</p>
-            <p className="text-[10px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Persistido en <code>{result.presetFilePath}</code>. Aprobá en /admin para usar.
             </p>
           </div>
@@ -579,7 +579,7 @@ function AutoLearnIterativeSection({ trainingId }: { trainingId: string }) {
           </Button>
         </div>
 
-        <div className="flex gap-3 text-[11px] text-muted-foreground">
+        <div className="flex gap-3 text-xs text-muted-foreground">
           <label className="flex items-center gap-1">
             Target score:
             <input
@@ -635,7 +635,7 @@ function AutoLearnIterativeSection({ trainingId }: { trainingId: string }) {
               {result.iterations.map((it) => (
                 <div
                   key={it.iteration}
-                  className="rounded border border-border/50 bg-muted/30 px-2 py-1.5 text-[11px]"
+                  className="rounded border border-border/50 bg-muted/30 px-2 py-1.5 text-xs"
                 >
                   <div className="flex items-center gap-2">
                     <span className="font-mono">iter {it.iteration}</span>
@@ -649,7 +649,7 @@ function AutoLearnIterativeSection({ trainingId }: { trainingId: string }) {
                 </div>
               ))}
             </div>
-            <p className="text-[10px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Persistido en <code>{result.presetFilePath}</code>. Reporte de iteraciones al lado en{' '}
               <code>*.iterations.json</code>.
             </p>

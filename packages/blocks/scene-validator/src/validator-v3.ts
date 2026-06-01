@@ -892,7 +892,7 @@ Prompt usado para generar la imagen:
 ${input.narratorProfile?.characterCard ? `El personaje del narrador (si aparece en esta escena) debería coincidir con esta descripción:\n"${input.narratorProfile.characterCard}"\n` : ''}
 ${input.styleBase ? `Estilo visual esperado: ${input.styleBase}\n` : ''}
 
-Aplicá las REGLAS ABSOLUTAS del system instruction. Contá explícitamente, no estimes.`;
+Aplica las REGLAS ABSOLUTAS del system instruction. Contá explícitamente, no estimes.`;
   }
 }
 

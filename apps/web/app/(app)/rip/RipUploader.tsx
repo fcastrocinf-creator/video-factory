@@ -64,7 +64,7 @@ export function RipUploader() {
           <p className="text-xs text-muted-foreground">
             Máximo {MAX_MB} MB. Idealmente videos de 15-90s. MP4 / MOV / WebM.
           </p>
-          <p className="text-[11px] text-muted-foreground/80">
+          <p className="text-xs text-muted-foreground/80">
             Videos ≤14 MB se analizan en ~30-60s. Más grandes pasan por File API
             de Google y tardan ~1-3 min adicionales para subir + procesar.
           </p>

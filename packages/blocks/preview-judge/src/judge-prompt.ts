@@ -115,8 +115,8 @@ Cada score es 0-100. Calculá honesto, no compres lealtad al generador:
 SUGGESTED SYSTEMIC PATCH
 ================================================================================
 
-Si detectás un issue que PROBABLEMENTE va a aparecer en OTRAS scenes del mismo run
-(ej. hex codes burned-in, gallery mode general, character-sheet labels), proponé un
+Si detectas un issue que PROBABLEMENTE va a aparecer en OTRAS scenes del mismo run
+(ej. hex codes burned-in, gallery mode general, character-sheet labels), propone un
 \`suggestedSystemicPatch\`: una línea que se podría agregar al promptTemplate del
 preset para evitar el error sistémicamente.
 
@@ -160,7 +160,7 @@ EJEMPLO DE RESPUESTA
 }
 
 REGLA CRÍTICA ADICIONAL — COHERENCIA PRODUCTO-VISUAL (REFORZADA):
-Antes de emitir tu veredicto, VERIFICÁ EXPLÍCITAMENTE:
+Antes de emitir tu veredicto, VERIFICA EXPLÍCITAMENTE:
 1. Si brandContext.productDescription menciona "sublingual" / "gotas" / "bajo la lengua" → la imagen DEBE mostrar el producto cerca/dentro de la boca, NO en manos/piel/superficie externa.
 2. Si productDescription dice "crema" / "tópico" / "facial" → la imagen DEBE mostrar aplicación en piel/rostro, NO ingesta oral.
 3. Si sceneNarration dice "unas gotas" → la cantidad visual debe ser PEQUEÑA (no cucharada, no chorro grande).
@@ -171,12 +171,12 @@ EJEMPLOS DE FALLOS AUTOMÁTICOS (severity=critical, category=subject):
 - Producto crema facial + imagen muestra persona bebiendo de un frasco → CRITICAL FAIL
 - Narración "aplica en el rostro" + imagen muestra aplicación en abdomen → MAJOR (downgrade a CRITICAL si el producto es explícitamente facial)
 
-Si detectás CUALQUIERA de estos mismatches lógicos:
+Si detectas CUALQUIERA de estos mismatches lógicos:
 - pass = false (forzado)
 - scoreVisual máximo permitido = 75 (aunque técnicamente sea perfecta)
 - scoreBrandFit máximo permitido = 60
-- Agregá issue con severity=critical, category=subject, description="Mismatch semántico: [explicar qué muestra la imagen vs qué debería mostrar según producto/narración]"
-- En suggestions, incluí: "Regenerar con prompt explícito: '[acción correcta con el producto]' (ej: 'mujer echando gotas bajo su lengua' en lugar de 'en su mano')"
+- Agrega issue con severity=critical, category=subject, description="Mismatch semántico: [explicar qué muestra la imagen vs qué debería mostrar según producto/narración]"
+- En suggestions, incluye: "Regenerar con prompt explícito: '[acción correcta con el producto]' (ej: 'mujer echando gotas bajo su lengua' en lugar de 'en su mano')"
 
 NO APRUEBES una imagen técnicamente perfecta si el USO del producto es ILÓGICO para su naturaleza. La coherencia producto-acción es TAN CRÍTICA como la anatomía.`;
 
@@ -243,8 +243,8 @@ export function buildUserPromptText(input: JudgeInput): string {
 
   lines.push('---');
   lines.push('Evaluá la imagen contra los criterios estrictos del system prompt.');
-  lines.push('Si detectás CUALQUIER error que un humano no entregaría al cliente, fail.');
-  lines.push('Devolvé SOLO el JSON estructurado.');
+  lines.push('Si detectas CUALQUIER error que un humano no entregaría al cliente, fail.');
+  lines.push('Devuelve SOLO el JSON estructurado.');
 
   return lines.join('\n');
 }

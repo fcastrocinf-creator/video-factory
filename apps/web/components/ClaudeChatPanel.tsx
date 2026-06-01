@@ -144,7 +144,7 @@ export function ClaudeChatPanel({
         <div className="border-t border-blue-500/20 p-4">
           {messages.length === 0 && (
             <p className="mb-3 text-xs text-muted-foreground">
-              Escribí abajo. Claude conoce el contexto del sistema y te puede ayudar a refinar
+              Escribe abajo. Claude conoce el contexto del sistema y te puede ayudar a refinar
               tu idea, identificar problemas, o estimar esfuerzo.
             </p>
           )}

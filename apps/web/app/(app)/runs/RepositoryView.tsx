@@ -213,6 +213,24 @@ function RunCard({
     pending: 'bg-muted text-muted-foreground',
   }[run.status];
 
+  const statusLabel = {
+    completed: 'Completado',
+    'completed-with-warnings': 'Completado con avisos',
+    running: 'En proceso',
+    failed: 'Falló',
+    pending: 'Pendiente',
+  }[run.status];
+
+  // Cualquier video terminado tiene miniatura (incluido "con avisos").
+  const hasVideo = run.status === 'completed' || run.status === 'completed-with-warnings';
+  const placeholder = hasVideo
+    ? { icon: '🎬', text: 'Sin miniatura' }
+    : run.status === 'failed'
+      ? { icon: '⚠️', text: 'Falló el render' }
+      : run.status === 'running'
+        ? { icon: '⏳', text: 'Generando…' }
+        : { icon: '🎬', text: 'En cola' };
+
   const date = new Date(run.createdAt).toLocaleString('es', {
     day: '2-digit',
     month: '2-digit',
@@ -221,28 +239,31 @@ function RunCard({
   });
 
   return (
-    <Card>
+    <Card className="transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30">
       <CardContent className="pt-4 space-y-2">
-        <Link href={`/runs/${run.id}`} className="block">
-          {run.status === 'completed' ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={`/api/runs/${run.id}/thumbnail`}
-              alt="Thumbnail"
-              className="aspect-[9/16] w-full rounded-md bg-muted object-cover"
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = 'none';
-              }}
-            />
-          ) : (
-            <div className="aspect-[9/16] w-full rounded-md bg-muted flex items-center justify-center text-xs text-muted-foreground">
-              {run.status === 'running' ? 'En proceso…' : run.status}
+        <Link href={`/runs/${run.id}`} className="group block">
+          <div className="relative aspect-[9/16] w-full overflow-hidden rounded-md border border-border bg-muted/40">
+            {/* Placeholder de fondo — visible si no hay miniatura */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 text-muted-foreground">
+              <span className="text-3xl opacity-70">{placeholder.icon}</span>
+              <span className="text-xs">{placeholder.text}</span>
             </div>
-          )}
+            {hasVideo && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={`/api/runs/${run.id}/thumbnail`}
+                alt={`Miniatura del video del ${date}`}
+                className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).style.display = 'none';
+                }}
+              />
+            )}
+          </div>
         </Link>
         <div className="flex items-center justify-between text-xs">
-          <span className={cn('rounded px-1.5 py-0.5 text-[10px] font-medium', statusBadge)}>
-            {run.status}
+          <span className={cn('rounded px-1.5 py-0.5 text-xs font-medium', statusBadge)}>
+            {statusLabel}
           </span>
           <span className="text-muted-foreground">{date}</span>
         </div>

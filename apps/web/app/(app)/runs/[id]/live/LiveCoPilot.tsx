@@ -522,7 +522,7 @@ function ScoresGrid(props: {
     <div className="grid grid-cols-2 md:grid-cols-7 gap-2">
       {entries.map(([label, score]) => (
         <div key={label} className="text-center">
-          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+          <div className="text-xs uppercase tracking-wide text-muted-foreground">
             {label}
           </div>
           <div

@@ -40,11 +40,14 @@ export function Sidebar({ isAdmin = false }: { isAdmin?: boolean }) {
 
   return (
     <>
-      <aside className="w-60 shrink-0 bg-[#15171e] border-r border-[#2a2f3c] p-3.5 flex flex-col gap-1 sticky top-0 h-screen">
-        <Link href="/runs" className="flex items-center gap-2.5 font-bold text-base px-2 pt-1.5 pb-3.5">
+      <aside className="sticky top-0 flex h-screen w-60 shrink-0 flex-col gap-1 border-r border-border bg-card/40 p-3.5 backdrop-blur-xl">
+        <Link
+          href="/runs"
+          className="flex items-center gap-2.5 px-2 pb-3.5 pt-1.5 text-base font-bold tracking-tight"
+        >
           <span
-            className="w-7 h-7 rounded-[9px] grid place-items-center text-base"
-            style={{ background: 'linear-gradient(135deg,#7c6cff,#ffcf4a)' }}
+            className="grid h-7 w-7 place-items-center rounded-[9px] text-base shadow-[0_4px_14px_-4px_hsl(247_100%_71%/0.7)] ring-1 ring-white/10"
+            style={{ background: 'linear-gradient(135deg,#8b7bff,#5b4bd6)' }}
           >
             🎬
           </span>
@@ -54,15 +57,18 @@ export function Sidebar({ isAdmin = false }: { isAdmin?: boolean }) {
         <button
           type="button"
           onClick={() => setCreateOpen(true)}
-          className="flex items-center justify-center gap-2 text-white rounded-xl py-2.5 font-semibold text-sm mb-2 w-full"
-          style={{ background: 'linear-gradient(135deg,#7c6cff,#9d8bff)', boxShadow: '0 6px 18px -6px #7c6cff' }}
+          className="mb-2 flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold text-white transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
+          style={{
+            background: 'linear-gradient(135deg,#7c6cff,#9d8bff)',
+            boxShadow: '0 8px 22px -8px #7c6cff',
+          }}
         >
           ＋ Crear video
         </button>
 
         {groups.map((g) => (
           <div key={g.label}>
-            <div className="text-[10.5px] tracking-[0.09em] uppercase text-[#6b7385] px-2.5 pt-3.5 pb-1.5 font-bold">
+            <div className="px-2.5 pb-1.5 pt-3.5 text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground/70">
               {g.label}
             </div>
             {g.items.map((it) => {
@@ -72,16 +78,23 @@ export function Sidebar({ isAdmin = false }: { isAdmin?: boolean }) {
                   key={it.href}
                   href={it.href}
                   className={
-                    'flex items-center gap-3 px-2.5 py-2.5 rounded-[10px] font-medium transition-colors ' +
+                    'group relative flex items-center gap-3 rounded-[10px] px-2.5 py-2.5 font-medium transition-colors ' +
                     (active
-                      ? 'bg-[#262a3a] text-white'
-                      : 'text-[#9aa3b2] hover:bg-[#222633] hover:text-white')
+                      ? 'bg-accent text-foreground'
+                      : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground')
                   }
                 >
-                  <span className="text-base w-5 text-center">{it.icon}</span>
+                  {active && (
+                    <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-primary shadow-[0_0_8px_hsl(247_100%_71%/0.85)]" />
+                  )}
+                  <span className="w-5 text-center text-base">{it.icon}</span>
                   <span className="leading-tight">
                     {it.name}
-                    {it.sub && <span className="block text-[11px] text-[#6b7385] font-normal mt-px">{it.sub}</span>}
+                    {it.sub && (
+                      <span className="mt-px block text-xs font-normal text-muted-foreground/70">
+                        {it.sub}
+                      </span>
+                    )}
                   </span>
                 </Link>
               );
@@ -89,8 +102,12 @@ export function Sidebar({ isAdmin = false }: { isAdmin?: boolean }) {
           </div>
         ))}
 
-        <div className="mt-auto pt-2.5 border-t border-[#2a2f3c] text-[11px] text-[#6b7385] flex items-center gap-2 px-2.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> Todo operativo
+        <div className="mt-auto flex items-center gap-2 border-t border-border px-2.5 pt-2.5 text-xs text-muted-foreground">
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
+            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
+          </span>
+          Todo operativo
         </div>
       </aside>
 
@@ -110,24 +127,24 @@ function CreateChooser({ onClose }: { onClose: () => void }) {
   }, [onClose]);
   return (
     <div
-      className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4"
+      className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4 backdrop-blur-sm"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
     >
       <div
-        className="w-full max-w-md rounded-2xl border border-[#2a2f3c] bg-[#15171e] p-5 shadow-2xl"
+        className="w-full max-w-md rounded-2xl border border-border bg-card p-5 shadow-elevation animate-fade-in-up"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between">
           <div>
-            <h2 className="text-lg font-bold text-white">Crear video</h2>
-            <p className="text-sm text-[#9aa3b2]">¿Cómo quieres empezar?</p>
+            <h2 className="text-lg font-bold tracking-tight text-foreground">Crear video</h2>
+            <p className="text-sm text-muted-foreground">¿Cómo quieres empezar?</p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="text-[#6b7385] hover:text-white text-xl leading-none"
+            className="text-xl leading-none text-muted-foreground transition-colors hover:text-foreground"
             aria-label="Cerrar"
           >
             ×
@@ -138,12 +155,12 @@ function CreateChooser({ onClose }: { onClose: () => void }) {
           <Link
             href="/create"
             onClick={onClose}
-            className="flex items-start gap-3 rounded-xl border border-[#2a2f3c] p-3.5 hover:border-[#7c6cff] hover:bg-[#7c6cff]/10 transition-colors"
+            className="flex items-start gap-3 rounded-xl border border-border p-3.5 transition-colors hover:border-primary/60 hover:bg-primary/10"
           >
             <span className="text-2xl leading-none">✨</span>
             <span>
-              <span className="block font-semibold text-white">Desde cero</span>
-              <span className="block text-xs text-[#9aa3b2]">
+              <span className="block font-semibold text-foreground">Desde cero</span>
+              <span className="block text-xs text-muted-foreground">
                 Escribe el guión y elige el estilo. Ideal para una idea nueva.
               </span>
             </span>
@@ -152,17 +169,17 @@ function CreateChooser({ onClose }: { onClose: () => void }) {
           <Link
             href="/rip"
             onClick={onClose}
-            className="flex items-start gap-3 rounded-xl border border-[#2a2f3c] p-3.5 hover:border-[#7c6cff] hover:bg-[#7c6cff]/10 transition-colors"
+            className="flex items-start gap-3 rounded-xl border border-border p-3.5 transition-colors hover:border-primary/60 hover:bg-primary/10"
           >
             <span className="text-2xl leading-none">🎯</span>
             <span>
-              <span className="flex items-center gap-2 font-semibold text-white">
+              <span className="flex items-center gap-2 font-semibold text-foreground">
                 Ripear un anuncio
-                <span className="rounded-full bg-[#7c6cff]/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#b3a9ff]">
+                <span className="rounded-full bg-primary/20 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-primary">
                   recomendado
                 </span>
               </span>
-              <span className="block text-xs text-[#9aa3b2]">
+              <span className="block text-xs text-muted-foreground">
                 Sube un video que funciona y replícalo — cambia estilo, idioma o producto.
               </span>
             </span>

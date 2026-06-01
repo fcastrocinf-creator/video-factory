@@ -44,11 +44,101 @@ const ENGINE_OPTIONS = [
   'higgsfield',
 ] as const;
 
+// ─── Rediseño UX (dashboard dev calmo, estilo Linear/Vercel) ──────────────────
+
+const TABS = [
+  { id: 'estilos', label: 'Estilos', icon: '🎨' },
+  { id: 'cerebro', label: 'Cerebro', icon: '🧠' },
+  { id: 'costos', label: 'Costos', icon: '📊' },
+  { id: 'evolutivo', label: 'Evolutivo', icon: '🧬' },
+] as const;
+type AdminTab = (typeof TABS)[number]['id'];
+
+function StatCard({
+  label,
+  value,
+  hint,
+  accent = false,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+  accent?: boolean;
+}) {
+  return (
+    <div
+      className={
+        'group relative overflow-hidden rounded-xl border bg-card/70 px-4 py-3.5 shadow-elevation transition-transform duration-300 hover:-translate-y-0.5 ' +
+        (accent ? 'border-primary/40' : 'border-border')
+      }
+    >
+      {/* Línea de luz superior — atmósfera sutil */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent opacity-70" />
+      <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">{label}</p>
+      <p className="mt-2 font-mono text-[26px] font-semibold leading-none tabular-nums text-foreground">{value}</p>
+      {hint && <p className="mt-1.5 text-xs text-muted-foreground">{hint}</p>}
+    </div>
+  );
+}
+
+/** Resumen del estado del admin de un vistazo (regla de los 3 segundos). */
+function AdminOverview({ presetsPendientes }: { presetsPendientes: number }) {
+  const [kbEventos, setKbEventos] = useState<number | null>(null);
+  const [hallazgos, setHallazgos] = useState<number | null>(null);
+  const [gastoUsd, setGastoUsd] = useState<number | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    const j = (url: string) =>
+      fetch(url, { cache: 'no-store' })
+        .then((r) => (r.ok ? r.json() : null))
+        .catch(() => null);
+    void (async () => {
+      const [kb, audit, central] = await Promise.all([
+        j('/api/admin/kb?limit=1'),
+        j('/api/admin/kb/audit?limit=200'),
+        j('/api/admin/central'),
+      ]);
+      if (!alive) return;
+      setKbEventos(kb?.stats?.total ?? 0);
+      setHallazgos(Array.isArray(audit?.hallazgos) ? audit.hallazgos.length : 0);
+      const gasto = Array.isArray(central?.stats)
+        ? central.stats.reduce(
+            (s: number, x: { gastoTotalUsd?: number }) => s + (x.gastoTotalUsd ?? 0),
+            0,
+          )
+        : 0;
+      setGastoUsd(gasto);
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const cards = [
+    { label: 'Estilos pendientes', value: String(presetsPendientes), hint: 'por aprobar', accent: presetsPendientes > 0 },
+    { label: 'Eventos del Cerebro', value: kbEventos === null ? '—' : String(kbEventos), hint: 'registrados', accent: false },
+    { label: 'Hallazgos', value: hallazgos === null ? '—' : String(hallazgos), hint: 'de auditoría', accent: false },
+    { label: 'Gasto total', value: gastoUsd === null ? '—' : `$${gastoUsd.toFixed(2)}`, hint: 'estimado', accent: false },
+  ];
+
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {cards.map((c, i) => (
+        <div key={c.label} className="animate-fade-in-up" style={{ animationDelay: `${i * 70}ms` }}>
+          <StatCard label={c.label} value={c.value} hint={c.hint} accent={c.accent} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function AdminPanel({ initialPending }: AdminPanelProps) {
   const router = useRouter();
   const [pending, setPending] = useState<PendingItem[]>(initialPending);
   const [globalError, setGlobalError] = useState('');
   const [isRefreshing, startRefresh] = useTransition();
+  const [tab, setTab] = useState<AdminTab>('estilos');
 
   async function refresh() {
     startRefresh(() => {
@@ -73,72 +163,95 @@ export function AdminPanel({ initialPending }: AdminPanelProps) {
     setPending((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
   }
 
-  if (pending.length === 0) {
-    return (
-      <div className="space-y-4">
-        <Card>
-          <CardContent className="pt-6 text-center space-y-3">
-            <div className="text-5xl">🧠</div>
-            <p className="text-sm font-medium">Sin presets pendientes de aprobación</p>
-            <p className="text-xs text-muted-foreground max-w-md mx-auto">
-              Cuando alguien suba un video en <a href="/rip" className="underline">/rip</a>{' '}
-              y dispare un ripeo, el sistema construirá un preset aprendido (estilo,
-              categoría, formato, paleta) y aparecerá aquí para tu revisión.
-            </p>
-            <Button onClick={refresh} variant="outline" size="sm" disabled={isRefreshing}>
-              {isRefreshing ? 'Refrescando…' : 'Refrescar'}
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Base de Conocimiento (Fase 1) — visible aunque no haya presets pendientes */}
-        <KnowledgeBaseSection />
-        <KnowledgeAuditSection />
-        <CentralCostSection />
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          <strong>{pending.length}</strong> preset{pending.length === 1 ? '' : 's'} pendiente
-          {pending.length === 1 ? '' : 's'} de revisión
-        </p>
-        <Button onClick={refresh} variant="outline" size="sm" disabled={isRefreshing}>
-          {isRefreshing ? 'Refrescando…' : 'Refrescar'}
-        </Button>
+    <div className="space-y-6">
+      {/* Resumen: estado del admin de un vistazo */}
+      <AdminOverview presetsPendientes={pending.length} />
+
+      {/* Navegación por pestañas (en vez de la pila vertical) */}
+      <div className="flex flex-wrap gap-1 border-b border-border">
+        {TABS.map((t) => {
+          const active = tab === t.id;
+          return (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={
+                'relative px-4 py-2.5 text-sm font-medium transition-colors ' +
+                (active ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')
+              }
+            >
+              <span className="mr-1.5">{t.icon}</span>
+              {t.label}
+              {active && (
+                <span className="absolute inset-x-3 -bottom-px h-0.5 rounded-full bg-primary shadow-[0_0_10px_hsl(247_100%_71%_/_0.7)]" />
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {globalError && (
         <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{globalError}</p>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        {pending.map((item) => (
-          <PendingCard
-            key={item.id}
-            item={item}
-            onApproved={() => removeLocal(item.id)}
-            onRejected={() => removeLocal(item.id)}
-            onUpdated={(patch) => updateLocal(item.id, patch)}
-            onError={setGlobalError}
-          />
+      <div key={tab} className="animate-fade-in-up">
+      {/* ── Pestaña: Estilos pendientes ── */}
+      {tab === 'estilos' &&
+        (pending.length === 0 ? (
+          <Card>
+            <CardContent className="pt-6 text-center space-y-3">
+              <div className="text-5xl">🎨</div>
+              <p className="text-sm font-medium">Sin estilos pendientes de aprobación</p>
+              <p className="text-xs text-muted-foreground max-w-md mx-auto">
+                Cuando alguien suba un video en <a href="/rip" className="underline">/rip</a> y dispare
+                un ripeo, el sistema construirá un preset aprendido y aparecerá aquí para tu revisión.
+              </p>
+              <Button onClick={refresh} variant="outline" size="sm" disabled={isRefreshing}>
+                {isRefreshing ? 'Refrescando…' : 'Refrescar'}
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                <strong>{pending.length}</strong> estilo{pending.length === 1 ? '' : 's'} pendiente
+                {pending.length === 1 ? '' : 's'} de revisión
+              </p>
+              <Button onClick={refresh} variant="outline" size="sm" disabled={isRefreshing}>
+                {isRefreshing ? 'Refrescando…' : 'Refrescar'}
+              </Button>
+            </div>
+            <div className="grid gap-4 lg:grid-cols-2">
+              {pending.map((item) => (
+                <PendingCard
+                  key={item.id}
+                  item={item}
+                  onApproved={() => removeLocal(item.id)}
+                  onRejected={() => removeLocal(item.id)}
+                  onUpdated={(patch) => updateLocal(item.id, patch)}
+                  onError={setGlobalError}
+                />
+              ))}
+            </div>
+          </div>
         ))}
+
+      {/* ── Pestaña: Cerebro (Base de Conocimiento + Auditoría) ── */}
+      {tab === 'cerebro' && (
+        <div className="space-y-4">
+          <KnowledgeBaseSection />
+          <KnowledgeAuditSection />
+        </div>
+      )}
+
+      {/* ── Pestaña: Costos ── */}
+      {tab === 'costos' && <CentralCostSection />}
+
+      {/* ── Pestaña: Evolutivo (prompt patches) ── */}
+      {tab === 'evolutivo' && <PromptPatchesSection />}
       </div>
-
-      {/* M7 #5 — Cerebro evolutivo: propuestas de patches automáticos a prompts */}
-      <PromptPatchesSection />
-
-      {/* Base de Conocimiento (Fase 1): vista de todo lo que el sistema registra */}
-      <KnowledgeBaseSection />
-
-      {/* Auditoría profunda (Fase 2): los especialistas que revisan a fondo on-demand */}
-      <KnowledgeAuditSection />
-
-      {/* Receptor central: costo-eficiencia por instalación (owner) */}
-      <CentralCostSection />
     </div>
   );
 }
@@ -272,7 +385,7 @@ function PendingCard({
                 className="w-full aspect-[9/16] rounded-md border bg-muted object-cover"
               />
             ) : (
-              <div className="aspect-[9/16] w-full rounded-md border border-dashed bg-muted/40 flex flex-col items-center justify-center text-center text-[10px] text-muted-foreground p-2">
+              <div className="aspect-[9/16] w-full rounded-md border border-dashed bg-muted/40 flex flex-col items-center justify-center text-center text-xs text-muted-foreground p-2">
                 <span className="text-xl">🎬</span>
                 <span className="mt-1">Sin preview todavía. Se genera al primer render con este estilo.</span>
               </div>
@@ -412,7 +525,7 @@ function PendingCard({
 
 function Tag({ children }: { children: React.ReactNode }) {
   return (
-    <span className="rounded-full border bg-background px-2 py-0.5 text-[10px] text-muted-foreground">
+    <span className="rounded-full border border-border/60 bg-secondary/50 px-2 py-0.5 text-xs font-medium text-muted-foreground">
       {children}
     </span>
   );
@@ -590,20 +703,20 @@ function KnowledgeBaseSection() {
               {stats.ultimoTs && <span className="text-muted-foreground">último: {fmtTs(stats.ultimoTs)}</span>}
               {stats.codeVersion && (
                 <span className="text-muted-foreground">
-                  versión: <code className="rounded bg-muted px-1 text-[10px]">{stats.codeVersion}</code>
+                  versión: <code className="rounded bg-muted px-1 text-xs">{stats.codeVersion}</code>
                 </span>
               )}
             </div>
             <div className="flex flex-wrap gap-1.5">
               {Object.entries(stats.porVault).map(([k, v]) => (
-                <span key={k} className="rounded bg-emerald-500/15 px-2 py-0.5 text-[10px]">
+                <span key={k} className="rounded bg-emerald-500/15 px-2 py-0.5 text-xs">
                   vault {k}: <strong>{v}</strong>
                 </span>
               ))}
               {Object.entries(stats.porSubsistema)
                 .sort((a, b) => b[1] - a[1])
                 .map(([k, v]) => (
-                  <span key={k} className="rounded bg-muted px-2 py-0.5 text-[10px]">
+                  <span key={k} className="rounded bg-muted px-2 py-0.5 text-xs">
                     {k}: {v}
                   </span>
                 ))}
@@ -613,12 +726,12 @@ function KnowledgeBaseSection() {
 
         {tiposOrdenados.length > 0 && (
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-[10px] text-muted-foreground">Filtrar por tipo:</span>
+            <span className="text-xs text-muted-foreground">Filtrar por tipo:</span>
             {tiposOrdenados.map(([tipo, count]) => (
               <button
                 key={tipo}
                 onClick={() => applyTipo(tipo)}
-                className={`rounded px-2 py-0.5 text-[10px] transition-colors ${
+                className={`rounded px-2 py-0.5 text-xs transition-colors ${
                   tipoFilter === tipo
                     ? 'bg-emerald-600 text-white'
                     : 'bg-background/60 text-muted-foreground hover:bg-muted'
@@ -630,7 +743,7 @@ function KnowledgeBaseSection() {
             {tipoFilter && (
               <button
                 onClick={() => applyTipo(tipoFilter)}
-                className="rounded px-2 py-0.5 text-[10px] text-muted-foreground underline hover:text-foreground"
+                className="rounded px-2 py-0.5 text-xs text-muted-foreground underline hover:text-foreground"
               >
                 limpiar
               </button>
@@ -656,24 +769,24 @@ function KnowledgeBaseSection() {
                   className="rounded-md border border-emerald-500/15 bg-background/60 p-2 text-xs"
                 >
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <span className="text-muted-foreground text-[10px]">{fmtTs(ev.ts)}</span>
-                    <code className="rounded bg-muted px-1 text-[10px]">
+                    <span className="text-muted-foreground text-xs">{fmtTs(ev.ts)}</span>
+                    <code className="rounded bg-muted px-1 text-xs">
                       {ev.subsistema}/{ev.tipo}
                     </code>
                     {ev.severidad && ev.severidad !== 'info' && (
-                      <span className={`rounded px-1.5 py-0.5 text-[10px] ${severityClass(ev.severidad)}`}>
+                      <span className={`rounded px-1.5 py-0.5 text-xs ${severityClass(ev.severidad)}`}>
                         {ev.severidad}
                       </span>
                     )}
                     {ev.estado && (
-                      <span className="rounded bg-blue-500/15 px-1.5 py-0.5 text-[10px] text-blue-700 dark:text-blue-300">
+                      <span className="rounded bg-blue-500/15 px-1.5 py-0.5 text-xs text-blue-700 dark:text-blue-300">
                         {ev.estado}
                       </span>
                     )}
-                    <span className="ml-auto text-[10px] text-muted-foreground">{ev.fuente}</span>
+                    <span className="ml-auto text-xs text-muted-foreground">{ev.fuente}</span>
                   </div>
                   <p className="mt-1">{ev.titulo}</p>
-                  {ent && <p className="mt-0.5 text-[10px] text-muted-foreground">{ent}</p>}
+                  {ent && <p className="mt-0.5 text-xs text-muted-foreground">{ent}</p>}
                 </div>
               );
             })}
@@ -786,7 +899,7 @@ function KnowledgeAuditSection() {
                   key={d}
                   onClick={() => setDepth(d)}
                   disabled={auditing}
-                  className={`rounded px-2 py-0.5 text-[10px] transition-colors ${
+                  className={`rounded px-2 py-0.5 text-xs transition-colors ${
                     depth === d ? 'bg-amber-600 text-white' : 'bg-background/60 text-muted-foreground hover:bg-muted'
                   }`}
                 >
@@ -811,7 +924,7 @@ function KnowledgeAuditSection() {
 
         {report && (
           <div className="space-y-2 rounded-md border border-amber-500/20 bg-background/50 p-3 text-xs">
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Auditados: {report.subsistemasAuditados.join(', ') || '—'}
               {report.subsistemasSalteados.length > 0 && (
                 <> · salteados (sin cambios): {report.subsistemasSalteados.join(', ')}</>
@@ -835,7 +948,7 @@ function KnowledgeAuditSection() {
               </p>
             )}
             {report.errores.length > 0 && (
-              <p className="text-[10px] text-orange-600 dark:text-orange-400">
+              <p className="text-xs text-orange-600 dark:text-orange-400">
                 Avisos: {report.errores.join(' · ')}
               </p>
             )}
@@ -843,7 +956,7 @@ function KnowledgeAuditSection() {
         )}
 
         <div className="flex items-center justify-between">
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             {loading ? 'Cargando hallazgos…' : `${findings.length} hallazgo${findings.length === 1 ? '' : 's'} registrado${findings.length === 1 ? '' : 's'}`}
           </p>
         </div>
@@ -856,21 +969,21 @@ function KnowledgeAuditSection() {
                 className="rounded-md border border-amber-500/15 bg-background/60 p-2.5 text-xs space-y-1"
               >
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${severityClass(h.severidad)}`}>
+                  <span className={`rounded px-1.5 py-0.5 text-xs font-semibold uppercase ${severityClass(h.severidad)}`}>
                     {h.severidad}
                   </span>
-                  <code className="rounded bg-muted px-1 text-[10px]">{h.subsistema}</code>
-                  <span className="rounded bg-blue-500/15 px-1.5 py-0.5 text-[10px] text-blue-700 dark:text-blue-300">
+                  <code className="rounded bg-muted px-1 text-xs">{h.subsistema}</code>
+                  <span className="rounded bg-blue-500/15 px-1.5 py-0.5 text-xs text-blue-700 dark:text-blue-300">
                     {h.estado}
                   </span>
-                  <span className="ml-auto text-[10px] text-muted-foreground">
+                  <span className="ml-auto text-xs text-muted-foreground">
                     confianza {Math.round((h.confianza ?? 0) * 100)}%
                   </span>
                 </div>
                 <p className="font-medium">{h.titulo}</p>
                 <p className="text-muted-foreground">{h.descripcion}</p>
                 {h.fixPropuesto && (
-                  <details className="text-[11px]">
+                  <details className="text-xs">
                     <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
                       Fix propuesto + evidencia →
                     </summary>
@@ -993,14 +1106,14 @@ function CentralCostSection() {
                           🏆
                         </span>
                       )}
-                      <code className="rounded bg-muted px-1 text-[10px]">{s.instalacion}</code>
+                      <code className="rounded bg-muted px-1 text-xs">{s.instalacion}</code>
                     </td>
                     <td className="py-1.5 pr-3 text-right">{s.videos}</td>
                     <td className="py-1.5 pr-3 text-right">{fmtUsd(s.gastoTotalUsd)}</td>
                     <td className="py-1.5 pr-3 text-right font-semibold">
                       {fmtUsd(s.costoPromedioUsd)}
                     </td>
-                    <td className="py-1.5 text-right text-[10px] text-muted-foreground">
+                    <td className="py-1.5 text-right text-xs text-muted-foreground">
                       {s.ultimoTs ? s.ultimoTs.slice(0, 10) : '—'}
                     </td>
                   </tr>
@@ -1101,8 +1214,8 @@ function PromptPatchesSection() {
             <p className="mt-1 text-xs text-muted-foreground">
               El sistema escanea logs + post-render-reports buscando errores que se REPITEN en
               varios runs. Por cada patrón detectado, Claude Sonnet propone un patch al SYSTEM_PROMPT
-              del bloque afectado. Vos aprobás o rechazás. Si aprobás, el patch se aplica al archivo
-              source (NO commit automático). Reiniciá dev server para que tome efecto.
+              del bloque afectado. Tú apruebas o rechazas. Si apruebas, el patch se aplica al archivo
+              source (NO commit automático). Reinicia el dev server para que tome efecto.
             </p>
           </div>
           <Button
@@ -1126,7 +1239,7 @@ function PromptPatchesSection() {
 
         {patches.length === 0 ? (
           <p className="rounded-md border border-dashed bg-background/30 p-4 text-center text-xs text-muted-foreground">
-            Sin patches propuestos. Apretá "Escanear patrones" para que el sistema busque errores
+            Sin patches propuestos. Pulsa "Escanear patrones" para que el sistema busque errores
             sistémicos en runs recientes y proponga mejoras al código.
           </p>
         ) : (
@@ -1137,11 +1250,11 @@ function PromptPatchesSection() {
                 className="rounded-md border border-purple-500/20 bg-background/60 p-3 text-xs space-y-2"
               >
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                  <span className="rounded bg-purple-500/20 px-2 py-0.5 font-semibold uppercase tracking-wide text-[10px] text-purple-700 dark:text-purple-300">
+                  <span className="rounded bg-purple-500/20 px-2 py-0.5 font-semibold uppercase tracking-wide text-xs text-purple-700 dark:text-purple-300">
                     {p.pattern.category}
                   </span>
                   <span className="text-muted-foreground">→</span>
-                  <code className="rounded bg-muted px-1 text-[10px]">{p.pattern.affectedBlock}</code>
+                  <code className="rounded bg-muted px-1 text-xs">{p.pattern.affectedBlock}</code>
                   <span className="text-muted-foreground">
                     {p.pattern.occurrenceCount} runs · severity {p.pattern.severityScore.toFixed(1)}
                   </span>
@@ -1152,10 +1265,10 @@ function PromptPatchesSection() {
 
                 <p className="italic text-muted-foreground">{p.pattern.description}</p>
 
-                <details className="text-[11px]">
+                <details className="text-xs">
                   <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
                     Ver patch propuesto ({p.patchType}) →
-                    <code className="ml-1 text-[10px]">
+                    <code className="ml-1 text-xs">
                       {p.targetFilePath.split(/[\\/]/).slice(-3).join('/')}
                     </code>
                   </summary>
@@ -1173,7 +1286,7 @@ function PromptPatchesSection() {
                         <p className="font-semibold text-red-600 dark:text-red-400">
                           − Reemplazar:
                         </p>
-                        <pre className="overflow-x-auto rounded bg-red-500/10 p-2 text-[10px] whitespace-pre-wrap">
+                        <pre className="overflow-x-auto rounded bg-red-500/10 p-2 text-xs whitespace-pre-wrap">
                           {p.oldText}
                         </pre>
                       </div>
@@ -1182,7 +1295,7 @@ function PromptPatchesSection() {
                       <p className="font-semibold text-green-600 dark:text-green-400">
                         + Con:
                       </p>
-                      <pre className="overflow-x-auto rounded bg-green-500/10 p-2 text-[10px] whitespace-pre-wrap">
+                      <pre className="overflow-x-auto rounded bg-green-500/10 p-2 text-xs whitespace-pre-wrap">
                         {p.newText}
                       </pre>
                     </div>

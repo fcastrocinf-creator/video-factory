@@ -398,7 +398,7 @@ export function RipDetailView({ ripId, brands }: RipDetailViewProps) {
                       alt={`logo ${selectedBrand.displayName}`}
                       className="h-16 w-16 rounded-md border bg-white object-contain p-1"
                     />
-                    <span className="text-[10px] text-muted-foreground">logo</span>
+                    <span className="text-xs text-muted-foreground">logo</span>
                   </div>
                 )}
                 {selectedBrand.assets.slice(0, 6).map((asset) => (
@@ -410,24 +410,24 @@ export function RipDetailView({ ripId, brands }: RipDetailViewProps) {
                       title={asset.description}
                       className="h-16 w-16 rounded-md border bg-white object-cover"
                     />
-                    <span className="text-[10px] text-muted-foreground capitalize">
+                    <span className="text-xs text-muted-foreground capitalize">
                       {asset.kind.replace('-', ' ')}
                     </span>
                   </div>
                 ))}
                 {selectedBrand.assets.length > 6 && (
-                  <div className="flex h-16 w-16 items-center justify-center rounded-md border bg-muted text-[10px] text-muted-foreground">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-md border bg-muted text-xs text-muted-foreground">
                     +{selectedBrand.assets.length - 6}
                   </div>
                 )}
               </div>
-              <p className="text-[10px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Gestionalos en <Link href={`/brands/${selectedBrand.id}`} className="underline hover:text-foreground">Marcas → {selectedBrand.displayName}</Link>.
               </p>
             </div>
           )}
           {selectedBrand && !selectedBrand.hasLogo && selectedBrand.assets.length === 0 && (
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               La marca no tiene logo ni assets configurados. El ripeo va a generar
               todo desde el análisis del original. Si quieres que reconozca el
               packaging exacto del producto, sube ingredients en{' '}
@@ -460,7 +460,7 @@ export function RipDetailView({ ripId, brands }: RipDetailViewProps) {
                 }`}
               >
                 <p className="font-semibold">⚡ Rápido</p>
-                <p className="text-muted-foreground text-[11px]">
+                <p className="text-muted-foreground text-xs">
                   Genera cada escena 1 sola vez. ~2-3 min, ~$0.30. Usa el preset
                   destilado del análisis pero NO compara visualmente con el original.
                 </p>
@@ -476,7 +476,7 @@ export function RipDetailView({ ripId, brands }: RipDetailViewProps) {
                 }`}
               >
                 <p className="font-semibold">🎯 Alta fidelidad</p>
-                <p className="text-muted-foreground text-[11px]">
+                <p className="text-muted-foreground text-xs">
                   Por cada escena, loop iterativo: generar → comparar con keyframe
                   del original → refinar prompt → hasta 80% similitud de estilo o
                   3 intentos. Incluye validación anatómica V3. ~6-10 min, ~$2-4.
@@ -675,7 +675,7 @@ function LearnPresetSection({ ripId }: { ripId: string }) {
           </Button>
         </div>
 
-        <div className="flex gap-3 text-[11px] text-muted-foreground">
+        <div className="flex gap-3 text-xs text-muted-foreground">
           <label className="flex items-center gap-1">
             Target score:
             <input
@@ -724,14 +724,14 @@ function LearnPresetSection({ ripId }: { ripId: string }) {
                 <strong>{result.elapsedSec.toFixed(1)}s</strong>
               </span>
               <span>
-                <code className="text-[10px]">{result.presetId}</code>
+                <code className="text-xs">{result.presetId}</code>
               </span>
             </div>
             <div className="space-y-1">
               {result.iterations.map((it) => (
                 <div
                   key={it.iteration}
-                  className="rounded border border-border/50 bg-muted/30 px-2 py-1.5 text-[11px]"
+                  className="rounded border border-border/50 bg-muted/30 px-2 py-1.5 text-xs"
                 >
                   <div className="flex items-center gap-2">
                     <span className="font-mono">iter {it.iteration}</span>
@@ -745,7 +745,7 @@ function LearnPresetSection({ ripId }: { ripId: string }) {
                 </div>
               ))}
             </div>
-            <p className="text-[10px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Persistido en <code>{result.presetFilePath}</code>. Aprobá en /admin para usar.
             </p>
           </div>
@@ -777,7 +777,7 @@ function ProposalCard({
           <span className="text-xs text-muted-foreground">~{proposal.durationSeconds}s</span>
         </div>
         <pre className="whitespace-pre-wrap text-sm rounded-md bg-muted/30 p-3">{proposal.script}</pre>
-        <p className="text-[11px] italic text-muted-foreground">
+        <p className="text-xs italic text-muted-foreground">
           Fidelidad editorial: {proposal.fidelityNote}
         </p>
         <div className="flex gap-2 flex-wrap pt-2">

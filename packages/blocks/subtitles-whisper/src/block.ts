@@ -96,7 +96,7 @@ export class SubtitlesWhisperBlock implements Block<AudioTrack, SubtitleTrack> {
         new BlockError(
           this.name,
           'NO_WORDS_RETURNED',
-          'Whisper no devolvió palabras con timestamps. Verificá que el modelo sea "whisper-1" y que el audio no esté vacío.',
+          'Whisper no devolvió palabras con timestamps. Verifica que el modelo sea "whisper-1" y que el audio no esté vacío.',
           false,
         ),
       );

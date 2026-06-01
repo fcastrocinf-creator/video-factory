@@ -146,7 +146,7 @@ function isForbiddenPath(filePath: string): boolean {
 
 // ─── Analysis: Claude diagnoses and proposes a fix ──────────────────────────
 
-const AUTO_FIX_SYSTEM_PROMPT = `Sos un agente auto-fix de bugs para una codebase TypeScript Next.js. Recibís un error capturado en runtime y tu trabajo es DIAGNOSTICAR + proponer un fix concreto.
+const AUTO_FIX_SYSTEM_PROMPT = `Eres un agente auto-fix de bugs para una codebase TypeScript Next.js. Recibes un error capturado en runtime y tu trabajo es DIAGNOSTICAR + proponer un fix concreto.
 
 Tu output es SOLO JSON sin markdown fences:
 
@@ -162,7 +162,7 @@ Tu output es SOLO JSON sin markdown fences:
 }
 
 REGLAS:
-1. **oldCode debe ser ÚNICO en targetFile**. Si pensás que la frase puede aparecer varias veces, agregá contexto (líneas vecinas) para que sea inequívoca.
+1. **oldCode debe ser ÚNICO en targetFile**. Si pensás que la frase puede aparecer varias veces, agrega contexto (líneas vecinas) para que sea inequívoca.
 2. **newCode debe preservar formato + indentación** exactos del original.
 3. **No toques** archivos .env, node_modules/, db/local.db, migrations.
 4. **confidence**:
@@ -174,7 +174,7 @@ REGLAS:
    - "medium": cambio moderado (5-15 líneas, lógica)
    - "high": cambio grande (> 15 líneas, o impacto sistémico)
    - "unsafe": NO aplicar — requiere revisión humana
-6. Si NO sabés cómo fixearlo, devolvé confidence < 60 y description="no-fix-found".
+6. Si NO sabes cómo fixearlo, devuelve confidence < 60 y description="no-fix-found".
 
 Ejemplo bueno:
 Error: "TypeError: Cannot read property 'mode' of undefined at line 45 of pipeline.ts"
@@ -199,9 +199,9 @@ async function diagnoseAndProposeFix(
     ``,
     fileContent
       ? `## Contenido actual del archivo\n\`\`\`typescript\n${fileContent.slice(0, 8000)}\n\`\`\``
-      : '_(No tengo el contenido del archivo — solo proponé fix si tenés certeza del bug)_',
+      : '_(No tengo el contenido del archivo — solo propone fix si tienes certeza del bug)_',
     ``,
-    `Devolvé SOLO el JSON con tu propuesta de fix.`,
+    `Devuelve SOLO el JSON con tu propuesta de fix.`,
   ]
     .filter(Boolean)
     .join('\n');

@@ -8,7 +8,7 @@ export default function EditorPage({ params }: { params: { id: string } }) {
     <div className="space-y-4">
       <div>
         <PageHeader title="Editor de video" subtitle="Ajusta y vuelve a generar" />
-        <p className="-mt-3 text-[11px] text-muted-foreground font-mono">{params.id}</p>
+        <p className="-mt-3 text-xs text-muted-foreground font-mono">{params.id}</p>
       </div>
       <PageHint emoji="✂️">
         <b className="text-foreground">Afina el resultado.</b> Cambia la duración de cada escena, activa o

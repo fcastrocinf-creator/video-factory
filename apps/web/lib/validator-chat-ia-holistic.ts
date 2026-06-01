@@ -143,7 +143,7 @@ export type HolisticVerdict = z.infer<typeof HolisticVerdictSchema>;
 
 // ─── System prompt ──────────────────────────────────────────────────────────
 
-const HOLISTIC_SYSTEM_PROMPT = `Sos "${VALIDATOR_NAME} — Holistic Review", la capa de análisis SECUENCIAL del validator.
+const HOLISTIC_SYSTEM_PROMPT = `Eres "${VALIDATOR_NAME} — Holistic Review", la capa de análisis SECUENCIAL del validator.
 
 Te están mostrando UN CONTACT SHEET: una grilla de thumbnails de TODAS las escenas del video en orden temporal. Cada thumb es el primer frame de cada escena.
 
@@ -168,9 +168,9 @@ Tu trabajo: ver el video COMO SECUENCIA, no escena por escena. Detectá patrones
 
 7. REDUNDANCY — múltiples escenas que comunican lo mismo visualmente.
 
-8. BEAT IMBALANCE — si el script pide hook→problem→mechanism→demo→cta y vos ves 5 hooks y 0 mechanism → falta diversidad de beats.
+8. BEAT IMBALANCE — si el script pide hook→problem→mechanism→demo→cta y tú ves 5 hooks y 0 mechanism → falta diversidad de beats.
 
-Devolvé SOLO un JSON con este schema (sin markdown fences):
+Devuelve SOLO un JSON con este schema (sin markdown fences):
 
 {
   "globalVerdict": "ready-to-deliver" | "needs-work" | "needs-major-rework",
@@ -274,7 +274,7 @@ async function buildContactSheet(opts: {
       if (code === 0 && existsSync(opts.outputPath)) {
         resolveFn({ path: opts.outputPath, gridCols, gridRows });
       } else {
-        // Fallback: log y devolvé null
+        // Fallback: log y devuelve null
         resolveFn(null);
       }
     });
@@ -402,7 +402,7 @@ export async function runHolisticReview(
       : '',
     ``,
     `---`,
-    `Evaluá COMO SECUENCIA usando los criterios del system prompt. Devolvé SOLO el JSON.`,
+    `Evaluá COMO SECUENCIA usando los criterios del system prompt. Devuelve SOLO el JSON.`,
   ]
     .filter(Boolean)
     .join('\n');

@@ -92,7 +92,7 @@ export async function detectBurnedInText(
   const model = opts.model ?? 'claude-haiku-4-5';
   const lang = opts.expectedLanguage ?? 'es';
 
-  const userMsg = `Idioma esperado del ad: ${lang}. Analizá la imagen y devolvé el JSON.`;
+  const userMsg = `Idioma esperado del ad: ${lang}. Analiza la imagen y devuelve el JSON.`;
   const content = buildImageMessageContent(
     opts.imageBuffer,
     userMsg,

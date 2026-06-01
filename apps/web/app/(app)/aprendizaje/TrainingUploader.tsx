@@ -15,7 +15,7 @@ export function TrainingUploader() {
 
   async function submit() {
     if (!file) {
-      setError('Seleccioná un video MP4 primero');
+      setError('Selecciona un video MP4 primero');
       return;
     }
     if (file.size > MAX_MB * 1024 * 1024) {
@@ -62,7 +62,7 @@ export function TrainingUploader() {
               {file.name} · {(file.size / 1024 / 1024).toFixed(1)} MB
             </p>
           )}
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             Máximo {MAX_MB} MB. Idealmente videos de 15-90s. MP4 / MOV / WebM.
             No se inicia el aprendizaje automáticamente: el video queda en el
             repositorio para que tú decidas cuándo aprenderlo.

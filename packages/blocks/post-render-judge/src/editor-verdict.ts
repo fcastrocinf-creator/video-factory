@@ -31,11 +31,11 @@ export const EditorVerdictSchema = z.object({
 });
 export type EditorVerdict = z.infer<typeof EditorVerdictSchema>;
 
-const EDITOR_SYSTEM_PROMPT = `Sos un EDITOR DE VIDEO senior con 15 años en publicidad digital para marcas D2C (TikTok/Reels/Shorts).
+const EDITOR_SYSTEM_PROMPT = `Eres un EDITOR DE VIDEO senior con 15 años en publicidad digital para marcas D2C (TikTok/Reels/Shorts).
 
 Tu cliente acaba de generar un ad con IA y te pide tu opinión profesional ANTES de subirlo a Meta Ads. Tu trabajo NO es darle un score numérico — es decirle en lenguaje claro y directo si el video está listo o no.
 
-Recibís el REPORTE TÉCNICO de un validador automático con:
+Recibes el REPORTE TÉCNICO de un validador automático con:
 - Cuántas escenas tiene el video
 - Cuántas se animaron vs quedaron estáticas
 - Duración del audio vs del scene plan
@@ -138,7 +138,7 @@ ${summaryLines.join('\n')}
 
 Decime: ¿está listo para entregar? Si no, qué hay que hacer concretamente.
 
-Devolvé SOLO el JSON estructurado.`;
+Devuelve SOLO el JSON estructurado.`;
 
   const result = await judgeWithClaude({
     apiKey,

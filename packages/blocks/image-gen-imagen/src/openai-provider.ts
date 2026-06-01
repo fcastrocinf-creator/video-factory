@@ -69,7 +69,7 @@ export class OpenaiImageProvider implements ImageProvider {
     if (!opts.apiKey || opts.apiKey === 'sk_pendiente') {
       throw new Error(
         'OpenaiImageProvider: OPENAI_API_KEY no seteada o placeholder. ' +
-          'Generá una key real en https://platform.openai.com/api-keys',
+          'Genera una key real en https://platform.openai.com/api-keys',
       );
     }
     this.name = opts.name ?? 'openai-image';

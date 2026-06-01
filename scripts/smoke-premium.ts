@@ -50,7 +50,7 @@ const SOURCE_AUDIO = resolve(
 );
 
 // targetSceneCount ahora se deriva de la duración REAL del audio dentro del
-// scene-planner (25 escenas/min). Si querés forzar, pasalo aquí.
+// scene-planner (25 escenas/min). Si quieres forzar, pásalo aquí.
 const TARGET_SCENES: number | undefined = undefined;
 
 // Ruta al ffprobe bundleado por Remotion (Windows). Lo usamos para leer la
@@ -165,7 +165,7 @@ async function main() {
       );
       if (!existsSync(SOURCE_AUDIO)) {
         throw new Error(
-          `TTS falló y no hay cached audio en ${SOURCE_AUDIO}. Cargá créditos ElevenLabs o setea otro audio fuente.`,
+          `TTS falló y no hay cached audio en ${SOURCE_AUDIO}. Carga créditos ElevenLabs o setea otro audio fuente.`,
         );
       }
       await copyFile(SOURCE_AUDIO, audioPath);

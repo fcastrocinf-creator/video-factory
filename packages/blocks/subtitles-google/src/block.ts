@@ -146,7 +146,7 @@ export class SubtitlesGoogleBlock implements Block<AudioTrack, SubtitleTrack> {
         new BlockError(
           this.name,
           'NO_WORDS_RETURNED',
-          'Google Speech no devolvió palabras con timestamps. Verificá que el modelo sea "latest_long", que el audio no esté vacío y que el languageCode sea correcto.',
+          'Google Speech no devolvió palabras con timestamps. Verifica que el modelo sea "latest_long", que el audio no esté vacío y que el languageCode sea correcto.',
           false,
         ),
       );

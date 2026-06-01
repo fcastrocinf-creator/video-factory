@@ -68,7 +68,7 @@ Devuelve EXCLUSIVAMENTE JSON con este shape:
     }
   ]
 }
-Si la secuencia está bien, devolvé scenesToRegenerate: [].`;
+Si la secuencia está bien, devuelve scenesToRegenerate: [].`;
 
 export interface SequenceValidatorOptions {
   apiKey?: string;
@@ -144,8 +144,8 @@ export class SceneSequenceValidator {
     parts.push({
       text:
         `\nDevuelve la revisión completa de la secuencia en JSON estricto siguiendo el shape indicado. ` +
-        `Sólo marcá para regenerar las escenas que TENGAN issues reales y resolvibles via prompt refinement. ` +
-        `Si la secuencia se ve bien en conjunto, devolvé scenesToRegenerate: [].`,
+        `Sólo marca para regenerar las escenas que TENGAN issues reales y resolvibles via prompt refinement. ` +
+        `Si la secuencia se ve bien en conjunto, devuelve scenesToRegenerate: [].`,
     });
 
     const body = {

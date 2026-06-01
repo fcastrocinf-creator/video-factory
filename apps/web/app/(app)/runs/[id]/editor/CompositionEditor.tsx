@@ -462,7 +462,7 @@ export function CompositionEditor({ runId }: { runId: string }) {
                       }}
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-neutral-800 text-[10px] text-neutral-400">
+                    <div className="w-full h-full flex items-center justify-center bg-neutral-800 text-xs text-neutral-400">
                       sin imagen
                     </div>
                   )}
@@ -489,7 +489,7 @@ export function CompositionEditor({ runId }: { runId: string }) {
               );
             })}
         </div>
-        <p className="mt-1 text-[10px] text-muted-foreground">
+        <p className="mt-1 text-xs text-muted-foreground">
           Canvas 9:16 — arrastra para mover, esquinas para redimensionar
         </p>
       </div>
@@ -510,7 +510,7 @@ export function CompositionEditor({ runId }: { runId: string }) {
                   {saving ? 'Guardando…' : 'Guardar'}
                 </Button>
                 <label
-                  className="flex items-center gap-1 text-[11px] text-muted-foreground cursor-pointer select-none"
+                  className="flex items-center gap-1 text-xs text-muted-foreground cursor-pointer select-none"
                   title="Aplica movimiento Ken Burns (pan/zoom) a las imágenes estáticas. Por defecto las escenas quedan fijas."
                 >
                   <input
@@ -532,8 +532,8 @@ export function CompositionEditor({ runId }: { runId: string }) {
                 </Button>
               </div>
             </div>
-            {notice && <p className="text-[11px] text-green-500">{notice}</p>}
-            {error && <p className="text-[11px] text-red-500">{error}</p>}
+            {notice && <p className="text-xs text-green-500">{notice}</p>}
+            {error && <p className="text-xs text-red-500">{error}</p>}
           </CardContent>
         </Card>
 
@@ -613,7 +613,7 @@ export function CompositionEditor({ runId }: { runId: string }) {
                 .map((el) => (
                   <div
                     key={el.id}
-                    className={`flex items-center gap-1 rounded px-2 py-1 text-[11px] ${
+                    className={`flex items-center gap-1 rounded px-2 py-1 text-xs ${
                       el.id === selectedElId ? 'bg-primary/15' : 'hover:bg-muted'
                     }`}
                   >
@@ -690,7 +690,7 @@ function NumberField({
 }) {
   return (
     <label className="flex flex-col gap-0.5">
-      <span className="text-[10px] text-muted-foreground">{label}</span>
+      <span className="text-xs text-muted-foreground">{label}</span>
       <input
         type="number"
         step={step}

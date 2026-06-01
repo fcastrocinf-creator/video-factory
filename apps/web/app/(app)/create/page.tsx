@@ -12,7 +12,7 @@ export default async function CreatePage() {
       <PageHeader title="Crear video" subtitle="Marca, preset y guión → Generar" />
       <PageHint emoji="✨">
         <b className="text-foreground">Empieza un video desde cero.</b> Elige la marca y el estilo (preset),
-        pega el guión y dale a Generar — la herramienta arma escenas, voz y subtítulos. ¿Copiar un anuncio
+        pega el guión y pulsa Generar — la herramienta arma escenas, voz y subtítulos. ¿Copiar un anuncio
         que ya funciona? Usa <b className="text-foreground">Ripear</b>.
       </PageHint>
       <CreateForm

@@ -44,7 +44,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle>Video Factory</CardTitle>
-          <CardDescription>Ingresá la contraseña para continuar.</CardDescription>
+          <CardDescription>Ingresa la contraseña para continuar.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">

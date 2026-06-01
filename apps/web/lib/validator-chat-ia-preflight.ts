@@ -52,7 +52,7 @@ export type PreflightVerdict = z.infer<typeof PreflightVerdictSchema>;
 
 // ─── System prompt para Haiku ───────────────────────────────────────────────
 
-const PREFLIGHT_SYSTEM_PROMPT = `Sos "${VALIDATOR_NAME} — Pre-flight", la capa preventiva del validator.
+const PREFLIGHT_SYSTEM_PROMPT = `Eres "${VALIDATOR_NAME} — Pre-flight", la capa preventiva del validator.
 
 Tu trabajo: leer un imagePrompt que se va a mandar a un provider de imágenes (Imagen, gpt-image-1, Flux) y DETECTAR PALABRAS o frases en el TEXTO que probablemente generen errores conocidos en la imagen resultante.
 
@@ -68,26 +68,26 @@ NO ves la imagen — solo el TEXTO del prompt. Tu output es JSON puro sin markdo
   "rationale": "1-2 oraciones explicando tu veredicto"
 }
 
-ANTI-PATRONES A DETECTAR (devolvé los que veas, no inventés):
+ANTI-PATRONES A DETECTAR (devuelve los que veas, no inventes):
 
 ### A) Production / reference labels — CRITICAL
 Si el prompt contiene cualquiera de: "expression sheet", "character sheet",
 "concept art", "production reference", "model sheet", "turnaround", "design doc",
-"reference layout", "T-pose reference" → eliminá la frase del fortifiedPrompt
-y agregá a negativeReinforcements: "NO production sheets, NO character sheets,
+"reference layout", "T-pose reference" → elimina la frase del fortifiedPrompt
+y agrega a negativeReinforcements: "NO production sheets, NO character sheets,
 NO concept art layouts, single pose only".
 
 ### B) Hex codes escritos como texto in-image — CRITICAL
 Si el prompt menciona colores como TEXTO ("color #5DC3D2", "label with #FF6B35",
-"sign reading #2C1810") → los hex codes son palette colors, no labels. Eliminá
-la mención textual y dejá solo "warm sepia palette" o equivalente descriptivo.
-Agregá negativeReinforcements: "NO hex codes (#XXXXXX) as readable text in the
+"sign reading #2C1810") → los hex codes son palette colors, no labels. Elimina
+la mención textual y deja solo "warm sepia palette" o equivalente descriptivo.
+Agrega negativeReinforcements: "NO hex codes (#XXXXXX) as readable text in the
 image".
 
 ### C) Burned-in text crítico
 Si el prompt pide "text that says X", "sign reading X", "label with X", "banner
-saying X" PARA UN AD QUE LUEGO RENDEREA TEXTO EN POST: marcá CRITICAL y eliminá
-del fortifiedPrompt, agregá "NO text overlays in the image, text is added in
+saying X" PARA UN AD QUE LUEGO RENDEREA TEXTO EN POST: marca CRITICAL y elimina
+del fortifiedPrompt, agrega "NO text overlays in the image, text is added in
 post-production".
 
 EXCEPCIÓN: si la escena es legítimamente sobre un producto con label visible
@@ -101,11 +101,11 @@ pose, mid-action gesture, asymmetric posture". Cero "gallery of poses".
 
 ### E) Idioma incorrecto (cuando el ad es ES)
 Si el prompt está en español PERO pide explicitamente "before"/"after" como
-texto in-image, o "click here", o cualquier inglés textual → traducí o eliminá.
+texto in-image, o "click here", o cualquier inglés textual → traduce o elimina.
 
 ### F) Anti-pattern previo del MISMO run
 Si el user te pasa "anti-patrones acumulados" (patrones que VALIDATOR rechazó en
-escenas previas), VERIFICÁ que el prompt actual NO los repita. Si los repite,
+escenas previas), VERIFICA que el prompt actual NO los repita. Si los repite,
 fortificá agresivamente.
 
 ### G) Unhealthy character descriptors
@@ -193,7 +193,7 @@ export async function preflightImagePrompt(
           .map((p) => `  - ${p}`)
           .join('\n')}\n`
       : '',
-    `Devolvé SOLO el JSON estructurado.`,
+    `Devuelve SOLO el JSON estructurado.`,
   ]
     .filter(Boolean)
     .join('\n');

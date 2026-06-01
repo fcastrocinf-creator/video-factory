@@ -28,9 +28,9 @@
 
   /* Tema "Video Factory" — dark moderno (re-work UX, 31-may-2026) */
   .dark {
-    --background: 228 14% 7%;
+    --background: 230 22% 6%;
     --foreground: 222 30% 95%;
-    --card: 224 19% 15%;
+    --card: 226 18% 12%;
     --card-foreground: 222 30% 95%;
     --popover: 226 17% 13%;
     --popover-foreground: 222 30% 95%;
@@ -39,13 +39,13 @@
     --secondary: 226 18% 18%;
     --secondary-foreground: 222 30% 95%;
     --muted: 224 19% 15%;
-    --muted-foreground: 219 13% 65%;
+    --muted-foreground: 219 14% 72%;
     --accent: 228 21% 19%;
     --accent-foreground: 222 30% 95%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
-    --border: 223 18% 20%;
-    --input: 223 18% 20%;
+    --border: 224 16% 17%;
+    --input: 224 16% 17%;
     --ring: 247 100% 71%;
   }
 }
@@ -54,7 +54,22 @@
   * {
     @apply border-border;
   }
+  /* Legibilidad: base 17px (estándar cómodo de iOS). Todo lo que use rem
+     —la mayoría del front— crece de forma proporcional. */
+  html {
+    font-size: 17px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans antialiased;
+    /* Atmósfera premium: glow violeta sutil arriba (profundidad, no fondo plano) */
+    background-image: radial-gradient(
+      55rem 36rem at 50% -8%,
+      hsl(247 100% 71% / 0.07),
+      transparent 60%
+    );
+    background-attachment: fixed;
   }
 }

@@ -99,7 +99,7 @@ export default function AsistentePage() {
             >
               <div className="text-lg leading-none">{m.emoji}</div>
               <div className="mt-1 text-sm font-semibold text-foreground">{m.name}</div>
-              <div className="text-[11px] text-muted-foreground">{m.sub}</div>
+              <div className="text-xs text-muted-foreground">{m.sub}</div>
             </button>
           );
         })}

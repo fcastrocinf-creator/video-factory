@@ -195,9 +195,9 @@ export class ScenePlannerBlock implements Block<ScenePlannerInput, SceneTrack> {
     // El bloque de estilo se construye DESDE el styleBase del preset (no hardcoded).
     // Solo agregamos los modificadores generales (9:16, no watermark) sin imponer
     // un estilo que sobrescriba al del preset.
-    const styleBlock = `STYLE BASE OBLIGATORIO — copiá esto al inicio de CADA imagePrompt, literal, sin modificar:
+    const styleBlock = `STYLE BASE OBLIGATORIO — copia esto al inicio de CADA imagePrompt, literal, sin modificar:
 "${styleBase}"
-Después agregá la descripción específica de la escena. NO mezcles con otros estilos ni sustituyas por defaults.`;
+Después agrega la descripción específica de la escena. NO mezcles con otros estilos ni sustituyas por defaults.`;
 
     const shotTypeGuide = isPhotoRealistic
       ? `REGLAS DE PLANOS (estilo fotorealista/UGC):
@@ -227,13 +227,13 @@ Después agregá la descripción específica de la escena. NO mezcles con otros 
   * Product shot: producto ilustrado
   * Comic panel: viñetas`;
 
-    const systemInstruction = `Sos un director visual de clase mundial para ads verticales (TikTok/Reels/Shorts) 9:16. TU JOB MÁS IMPORTANTE: REPLICAR EL ESTILO VISUAL del styleBase que te paso abajo, sin sustituirlo por defaults o estilos genéricos.
+    const systemInstruction = `Eres un director visual de clase mundial para ads verticales (TikTok/Reels/Shorts) 9:16. TU JOB MÁS IMPORTANTE: REPLICAR EL ESTILO VISUAL del styleBase que te paso abajo, sin sustituirlo por defaults o estilos genéricos.
 
-CRÍTICO — REGLA #0: CADA ESCENA DEBE TENER "text" CON CONTENIDO REAL. NO devolvás escenas con text vacío. Si te quedaste sin narración, devolvé menos escenas (no rellenes con basura).
+CRÍTICO — REGLA #0: CADA ESCENA DEBE TENER "text" CON CONTENIDO REAL. NO devolvás escenas con text vacío. Si te quedaste sin narración, devuelve menos escenas (no rellenes con basura).
 
 CRÍTICO — REGLA #1: La imagen DEBE mostrar LITERALMENTE lo que el narrador dice. NADA de metáforas vagas.
 
-CRÍTICO — REGLA #2: CONTINUIDAD DEL NARRADOR. Cuando una escena muestre al narrador identificado en la NARRATOR CHARACTER CARD (más abajo), usá LITERALMENTE esa descripción al inicio del prompt de personaje. Si en distintas escenas hay otros personajes, inventales descripciones específicas y mantenelas consistentes.
+CRÍTICO — REGLA #2: CONTINUIDAD DEL NARRADOR. Cuando una escena muestre al narrador identificado en la NARRATOR CHARACTER CARD (más abajo), usa LITERALMENTE esa descripción al inicio del prompt de personaje. Si en distintas escenas hay otros personajes, invéntales descripciones específicas y mantenlas consistentes.
 
 CRÍTICO — REGLA #3 — ESTILO VISUAL: ${styleBlock}
 
@@ -242,7 +242,7 @@ ${shotTypeGuide}
 REGLAS GENERALES DE PROMPTS:
 - No más de 2 escenas seguidas del mismo tipo de plano.
 - Palabras prohibidas (safety filters): "doctor", "lab coat", "stethoscope", "clinic", "medical", "patient", "child", "young", "kid", "naked", "blood". Reemplazá por equivalentes neutros ("wise elder", "expert", "wellness setting").
-- NO escribas: "looking at camera", "eye contact" — usá "facing the viewer" o "subject centered".
+- NO escribas: "looking at camera", "eye contact" — usa "facing the viewer" o "subject centered".
 
 CRÍTICO — REGLA ANTI-EMBARAZO (hinchazón / retención de líquidos / vientre inflamado):
 Cuando la narración hable de HINCHAZÓN, RETENCIÓN DE LÍQUIDOS, vientre inflamado o
@@ -281,14 +281,14 @@ generar collage, grilla, multi-panel, split-screen, "character sheet" o "contact
 sheet". Tomá del styleBase el LOOK/estilo, NO la lista de momentos.
 
 REGLA OBLIGATORIA — REPETIR EN CADA ESCENA:
-Al final de CADA imagePrompt, incluí LITERALMENTE esta frase (copia-pega, no parafrasees).
+Al final de CADA imagePrompt, incluye LITERALMENTE esta frase (copia-pega, no parafrasees).
 ⚠️ OJO: es CORTA A PROPÓSITO. Repetir "text / NO text / NO captions / NO Spanish text"
 muchas veces es CONTRAPRODUCENTE: PRIMA al generador a DIBUJAR texto (paradoja de la
 negación en image-gen). Una sola mención concisa funciona mucho mejor que diez:
 
 "Clean artwork with no lettering or captions baked into the image — any wording is added later in post-production."
 
-Si la escena requiere mostrar un producto, botón, cartel o métrica: describe el OBJETO visual sin texto (ej: "clean white button shape" en vez de "button with text"), y usá textOverlays para el contenido textual.
+Si la escena requiere mostrar un producto, botón, cartel o métrica: describe el OBJETO visual sin texto (ej: "clean white button shape" en vez de "button with text"), y usa textOverlays para el contenido textual.
 
 CASOS donde DEBÉS usar textOverlays (el ÚNICO texto permitido en pantalla):
 1. Producto por nombre → kind:"product-label", text:"<NOMBRE>"
@@ -305,7 +305,7 @@ EN la imagen existe SOLO para los casos 1-5 de arriba (nombre de producto/villan
 Cuando uses textOverlays, el imagePrompt DEBE incluir (corto, sin repetir "text"): "clean artwork, no lettering baked in — wording is added in post-production".
 
 CRÍTICO — REGLA "speaking" (HABLA vs VOICE-OVER):
-Para CADA escena decidí si el personaje en pantalla DICE esa línea en primera
+Para CADA escena decide si el personaje en pantalla DICE esa línea en primera
 persona (lip-sync, boca se mueve) o si es VOICE-OVER / B-ROLL (narración off-
 screen, la boca NO debe sincronizar con el texto).
   - "speaking": true  → SOLO cuando la escena muestra al NARRADOR/personaje
@@ -315,10 +315,10 @@ screen, la boca NO debe sincronizar con el texto).
     mientras vemos escenas ilustrativas (una persona con un gesto, un producto,
     una anatomía, un objeto). La boca NO se mueve con el texto. La MAYORÍA de
     las escenas de ads D2C son ASÍ.
-Regla práctica: si dudás, poné false. Solo true para talking-head testimonial
+Regla práctica: si dudás, pon false. Solo true para talking-head testimonial
 explícito en primera persona.
 
-Devolvé EXCLUSIVAMENTE JSON con este shape, sin texto adicional:
+Devuelve EXCLUSIVAMENTE JSON con este shape, sin texto adicional:
 {
   "scenes": [
     {
@@ -411,9 +411,9 @@ ${narratorBlock}
 ESTILO BASE DEL PROYECTO (úsalo como referencia de paleta y atmósfera, no como copy):
 ${styleBase}
 ${ingredientsBlock}
-ANATOMÍA — REGLA OBLIGATORIA: cuando un prompt muestre manos, decí EXPLICITAMENTE "hand with five fingers, thumb visible, all digits separated and anatomically correct". Cuando muestre pies, "foot with five toes". Cuando muestre rostros, "symmetrical face, two eyes, no distortion". Estas frases activan correctamente a Imagen y evitan los errores de dedos faltantes.
+ANATOMÍA — REGLA OBLIGATORIA: cuando un prompt muestre manos, di EXPLICITAMENTE "hand with five fingers, thumb visible, all digits separated and anatomically correct". Cuando muestre pies, "foot with five toes". Cuando muestre rostros, "symmetrical face, two eyes, no distortion". Estas frases activan correctamente a Imagen y evitan los errores de dedos faltantes.
 ${lessonsBlock}
-Generá EXACTAMENTE ${targetSceneCount} escenas que cubran los ${totalDurationSeconds.toFixed(1)}s en orden cronológico. Cada escena dura aproximadamente ${(totalDurationSeconds / targetSceneCount).toFixed(1)}s. El campo "text" debe ser un extracto literal o casi-literal de la narración (la o las palabras que se dicen MIENTRAS la escena está en pantalla). Las escenas suman juntas TODA la narración sin saltos ni solapamientos.`;
+Genera EXACTAMENTE ${targetSceneCount} escenas que cubran los ${totalDurationSeconds.toFixed(1)}s en orden cronológico. Cada escena dura aproximadamente ${(totalDurationSeconds / targetSceneCount).toFixed(1)}s. El campo "text" debe ser un extracto literal o casi-literal de la narración (la o las palabras que se dicen MIENTRAS la escena está en pantalla). Las escenas suman juntas TODA la narración sin saltos ni solapamientos.`;
 
     ctx.logger.info(
       {
@@ -575,7 +575,7 @@ Devuelve EXCLUSIVAMENTE JSON con este shape exacto:
   "narratorPresent": true | false,
   "gender": "male" | "female" | "neutral",
   "ageRange": "20-30" | "30-40" | "40-55" | "55-70" | etc,
-  "characterCard": "<35-60 palabras describiendo VISUALMENTE al narrador para que un ilustrador lo dibuje siempre igual: edad aproximada, género, etnia/origen, peinado y color de pelo, vestimenta característica, ambiente típico donde aparece, expresión/actitud. SI narratorPresent=false, devolvé string vacío.>"
+  "characterCard": "<35-60 palabras describiendo VISUALMENTE al narrador para que un ilustrador lo dibuje siempre igual: edad aproximada, género, etnia/origen, peinado y color de pelo, vestimenta característica, ambiente típico donde aparece, expresión/actitud. SI narratorPresent=false, devuelve string vacío.>"
 }
 
 REGLAS:

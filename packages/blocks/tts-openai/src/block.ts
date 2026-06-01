@@ -68,7 +68,7 @@ export class TtsOpenaiBlock implements Block<ParsedScript, AudioTrack> {
         new BlockError(
           this.name,
           'MISSING_API_KEY',
-          'OPENAI_API_KEY no configurada o es placeholder. Generá una key real en https://platform.openai.com/api-keys y pegala en .env.',
+          'OPENAI_API_KEY no configurada o es placeholder. Genera una key real en https://platform.openai.com/api-keys y pégala en .env.',
           false,
         ),
       );

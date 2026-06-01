@@ -86,13 +86,13 @@ Tu output es SOLO JSON sin markdown fences:
 }
 
 REGLAS:
-- Si el owner dice "remover X" → quitá X del prompt
-- Si el owner dice "agregar X" → agregalo de forma específica
-- Si el owner dice "más Y" → reforzá Y con descriptores adicionales
-- Si el owner dice "se ve mal porque Z" → eliminá Z y proponé alternativa contextual
-- Si el owner usa metáforas o ejemplos ("como en X película") → traducí a descripción visual concreta
-- MANTENÉ las palabras-clave técnicas del prompt original: aspect ratio, NO text overlays, palette descriptors, art style
-- NUNCA ignores las correcciones del owner — ellos tienen contexto que vos no
+- Si el owner dice "remover X" → quita X del prompt
+- Si el owner dice "agregar X" → agrégalo de forma específica
+- Si el owner dice "más Y" → refuerza Y con descriptores adicionales
+- Si el owner dice "se ve mal porque Z" → elimina Z y propone alternativa contextual
+- Si el owner usa metáforas o ejemplos ("como en X película") → traduce a descripción visual concreta
+- MANTÉN las palabras-clave técnicas del prompt original: aspect ratio, NO text overlays, palette descriptors, art style
+- NUNCA ignores las correcciones del owner — ellos tienen contexto que tú no
 
 EJEMPLOS DE TRADUCCIÓN:
 
@@ -167,7 +167,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     ``,
     `---`,
     ``,
-    `Traducí el feedback del owner a un imagePrompt técnico nuevo. Devolvé SOLO el JSON.`,
+    `Traduce el feedback del owner a un imagePrompt técnico nuevo. Devuelve SOLO el JSON.`,
   ]
     .filter(Boolean)
     .join('\n');

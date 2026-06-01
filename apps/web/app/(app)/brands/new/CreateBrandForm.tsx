@@ -16,7 +16,7 @@ interface ProductDraft {
   dimensions: string;
 }
 
-// Voces preconfiguradas que podés elegir directo desde el dropdown. Si ninguna
+// Voces preconfiguradas que puedes elegir directo desde el dropdown. Si ninguna
 // te sirve, usa "Custom" y pega el voiceId de ElevenLabs.
 const VOICE_PRESETS: Array<{
   label: string;
@@ -241,7 +241,7 @@ export function CreateBrandForm() {
                   placeholder="vitaly-suplementos"
                   required
                 />
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   Minúsculas, números y guiones. Único, no se puede cambiar después.
                 </p>
               </div>
@@ -268,7 +268,7 @@ export function CreateBrandForm() {
             <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               Productos ({products.length})
             </h2>
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Cada producto necesita un id único (ej: &ldquo;vitaly-gotas&rdquo;), un nombre y
               una descripción que la IA usará para reconocerlo en los videos.
             </p>
@@ -281,7 +281,7 @@ export function CreateBrandForm() {
                       <button
                         type="button"
                         onClick={() => removeProduct(idx)}
-                        className="text-[11px] text-destructive hover:underline"
+                        className="text-xs text-destructive hover:underline"
                       >
                         Eliminar
                       </button>
@@ -336,8 +336,8 @@ export function CreateBrandForm() {
             <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               Voz por defecto (ElevenLabs)
             </h2>
-            <p className="text-[11px] text-muted-foreground">
-              La voz que se usa por defecto. Después podés agregar más voces a la{' '}
+            <p className="text-xs text-muted-foreground">
+              La voz que se usa por defecto. Después puedes agregar más voces a la{' '}
               <em>voice library</em> de la marca editando el archivo JSON o desde la
               UI de edición.
             </p>
@@ -352,7 +352,7 @@ export function CreateBrandForm() {
                   </option>
                 ))}
               </Select>
-              <p className="text-[11px] text-muted-foreground">{selectedPreset.description}</p>
+              <p className="text-xs text-muted-foreground">{selectedPreset.description}</p>
               {voicePresetIdx === VOICE_PRESETS.length - 1 && (
                 <div className="space-y-1 pt-1">
                   <Label className="text-xs">VoiceId de ElevenLabs</Label>
@@ -379,7 +379,7 @@ export function CreateBrandForm() {
                 onChange={(e) => setBrandColorsCsv(e.target.value)}
                 placeholder="#FFE600, #F5F2ED, #1A1A1A"
               />
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Formato hex de 6 dígitos. La paleta completa con nombres semánticos
                 se configura desde <em>Editar ingredients</em> de la marca.
               </p>

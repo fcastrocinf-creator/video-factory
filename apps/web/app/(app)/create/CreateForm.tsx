@@ -444,14 +444,14 @@ export function CreateForm({ brands, presets }: CreateFormProps) {
                 {orphanPresets.length > 0 && <option value="__orphan__">Otros (sin clasificar)</option>}
               </Select>
               {isLearnedCategory ? (
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   Estilos que el sistema aprendió analizando videos en{' '}
                   <a href="/rip" className="underline hover:text-foreground">/rip</a>.
                   Cada uno tiene preview del primer render que se hizo con él.
                 </p>
               ) : (
                 categories.find((c) => c.id === categoryId)?.description && (
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-xs text-muted-foreground">
                     {categories.find((c) => c.id === categoryId)!.description}
                   </p>
                 )
@@ -476,7 +476,7 @@ export function CreateForm({ brands, presets }: CreateFormProps) {
                   ))}
                 </Select>
                 {effectivePreset && (
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-xs text-muted-foreground">
                     {effectivePreset.description}
                   </p>
                 )}
@@ -501,7 +501,7 @@ export function CreateForm({ brands, presets }: CreateFormProps) {
                     }}
                   />
                   <div
-                    className="hidden aspect-[9/16] w-full flex-col items-center justify-center rounded-md border border-dashed bg-muted/40 p-2 text-center text-[11px] text-muted-foreground"
+                    className="hidden aspect-[9/16] w-full flex-col items-center justify-center rounded-md border border-dashed bg-muted/40 p-2 text-center text-xs text-muted-foreground"
                   >
                     <span className="text-2xl">🎬</span>
                     <span className="mt-1">
@@ -535,7 +535,7 @@ export function CreateForm({ brands, presets }: CreateFormProps) {
                   )}
                 </Select>
                 {formatsForCategory.find((f) => f.id === formatId)?.description && (
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-xs text-muted-foreground">
                     {formatsForCategory.find((f) => f.id === formatId)!.description}
                   </p>
                 )}
@@ -579,7 +579,7 @@ export function CreateForm({ brands, presets }: CreateFormProps) {
                   </option>
                 ))}
               </Select>
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Auto detecta gender del narrador y elige voz. Override para forzar manualmente.
               </p>
             </div>
@@ -614,7 +614,7 @@ export function CreateForm({ brands, presets }: CreateFormProps) {
                   </option>
                 ))}
               </Select>
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Asignar un producto permite agrupar este video en el repositorio.
               </p>
             </div>
@@ -701,7 +701,7 @@ export function CreateForm({ brands, presets }: CreateFormProps) {
               />
             </div>
             {!optVoice && (
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Sin voz, el video sale mudo y los subtítulos no aplican.
               </p>
             )}
@@ -720,10 +720,10 @@ export function CreateForm({ brands, presets }: CreateFormProps) {
                 {previewLoading ? 'Calculando…' : '👁 Previsualizar escenas'}
               </button>
             </div>
-            {previewError && <p className="text-[11px] text-destructive">{previewError}</p>}
+            {previewError && <p className="text-xs text-destructive">{previewError}</p>}
             {previewScenes && (
               <div className="space-y-1.5 rounded-lg border border-input p-3">
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   {previewScenes.length} escenas propuestas. Marca cuáles partir en{' '}
                   <b className="text-foreground">micro-escenas</b> (planos cortos por cada ítem de una lista).
                   Solo se ofrece en escenas que enumeran cosas.
@@ -733,10 +733,10 @@ export function CreateForm({ brands, presets }: CreateFormProps) {
                     key={s.index}
                     className="flex items-start gap-2 rounded-md bg-muted/30 p-2 text-xs"
                   >
-                    <span className="mt-0.5 font-mono text-[10px] text-muted-foreground">{s.index + 1}</span>
+                    <span className="mt-0.5 font-mono text-xs text-muted-foreground">{s.index + 1}</span>
                     <span className="flex-1">{s.text}</span>
                     {s.isEnumeration ? (
-                      <label className="flex shrink-0 items-center gap-1 text-[11px]">
+                      <label className="flex shrink-0 items-center gap-1 text-xs">
                         <input
                           type="checkbox"
                           checked={microIndices.includes(s.index)}
@@ -808,7 +808,7 @@ function OptionToggle({
       />
       <span className="leading-tight">
         <span className="block text-sm font-medium">{label}</span>
-        <span className="block text-[11px] text-muted-foreground">{desc}</span>
+        <span className="block text-xs text-muted-foreground">{desc}</span>
       </span>
     </label>
   );

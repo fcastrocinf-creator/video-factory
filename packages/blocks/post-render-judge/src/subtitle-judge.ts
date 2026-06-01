@@ -59,7 +59,7 @@ export const ANTHROPIC_VERSION_EXPORT = ANTHROPIC_VERSION;
 
 const SUBTITLE_SYSTEM_PROMPT = `Eres un editor de subtítulos para ads en español neutro (Latam) sobre productos de salud/belleza.
 
-Tu tarea: validar UNA LISTA de subtítulos generados automáticamente por un sistema de speech-to-text. Detectás:
+Tu tarea: validar UNA LISTA de subtítulos generados automáticamente por un sistema de speech-to-text. Detectas:
 - Gibberish (texto sin sentido)
 - Errores ortográficos
 - Idioma incorrecto (debe ser español neutro)

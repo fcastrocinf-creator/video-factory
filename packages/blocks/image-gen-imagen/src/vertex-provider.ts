@@ -7,7 +7,7 @@
 //   - Quota: ~2000 RPM por proyecto, sin daily cap rígido (vs 70/día Tier 1)
 //
 // Setup requerido por el usuario (~30 min):
-//   1. https://console.cloud.google.com → seleccionar el proyecto que ya tenés
+//   1. https://console.cloud.google.com → seleccionar el proyecto que ya tienes
 //   2. APIs → habilitar "Vertex AI API"
 //   3. IAM → Service Accounts → crear nuevo → role "Vertex AI User"
 //   4. Keys → descargar JSON
@@ -76,7 +76,7 @@ export class VertexImagenProvider implements ImageProvider {
 
     if (!this.projectId) {
       throw new Error(
-        'VertexImagenProvider: GCP_PROJECT_ID no seteado. Pasalo en options o vía env.',
+        'VertexImagenProvider: GCP_PROJECT_ID no seteado. Pásalo en options o vía env.',
       );
     }
 

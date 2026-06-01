@@ -53,7 +53,7 @@ function SeverityChip({ severity }: { severity: PostRenderIssue['severity'] }) {
   };
   return (
     <span
-      className={`inline-block rounded border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${styles[severity]}`}
+      className={`inline-block rounded border px-2 py-0.5 text-xs font-medium uppercase tracking-wide ${styles[severity]}`}
     >
       {severity}
     </span>
@@ -131,7 +131,7 @@ export function ValidationLog({ runId }: ValidationLogProps) {
                 <p className="italic text-muted-foreground">
                   {data.postRender.rationale}
                 </p>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground">
                   <div>
                     Audio: {data.postRender.audioDurationSec.toFixed(2)}s · Plan:{' '}
                     {data.postRender.scenePlanDurationSec.toFixed(2)}s · Mismatch:{' '}
@@ -159,16 +159,16 @@ export function ValidationLog({ runId }: ValidationLogProps) {
                       >
                         <div className="mb-1 flex items-center gap-2">
                           <SeverityChip severity={iss.severity} />
-                          <span className="text-[11px] font-medium">
+                          <span className="text-xs font-medium">
                             {iss.category}
                             {typeof iss.sceneIndex === 'number'
                               ? ` · scene ${iss.sceneIndex}`
                               : ''}
                           </span>
                         </div>
-                        <p className="text-[11px]">{iss.description}</p>
+                        <p className="text-xs">{iss.description}</p>
                         {iss.suggestion && (
-                          <p className="mt-1 text-[11px] text-muted-foreground">
+                          <p className="mt-1 text-xs text-muted-foreground">
                             💡 {iss.suggestion}
                           </p>
                         )}
@@ -192,7 +192,7 @@ export function ValidationLog({ runId }: ValidationLogProps) {
               <span className="text-muted-foreground">{editorOpen ? '▾' : '▸'}</span>
             </button>
             {editorOpen && (
-              <pre className="overflow-x-auto whitespace-pre-wrap px-3 pb-3 text-[11px] leading-relaxed text-foreground/90">
+              <pre className="overflow-x-auto whitespace-pre-wrap px-3 pb-3 text-xs leading-relaxed text-foreground/90">
                 {data.editorConversationMarkdown}
               </pre>
             )}

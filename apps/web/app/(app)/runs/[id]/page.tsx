@@ -8,7 +8,7 @@ export default function RunPage({ params }: { params: { id: string } }) {
     <div className="space-y-6">
       <div>
         <PageHeader title="Tu video" subtitle="Míralo, descárgalo o ábrelo en el editor" />
-        <p className="-mt-3 text-[11px] text-muted-foreground font-mono">{params.id}</p>
+        <p className="-mt-3 text-xs text-muted-foreground font-mono">{params.id}</p>
       </div>
       <PageHint emoji="🎬">
         Acá ves el resultado final y el detalle de cada paso (escenas, voz, subtítulos). ¿Necesitas ajustar
