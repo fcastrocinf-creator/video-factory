@@ -18,6 +18,9 @@ Monorepo TypeScript: Next.js 14 · Remotion 4.x · Drizzle ORM + libsql · pnpm.
    sesión grande.
 3. Si vas a tocar la cascada de providers o la generación de imágenes,
    **`investigacion/99-PLAN-FINAL.md`** tiene el plan de fix detallado.
+4. **`HANDOFF-USUARIO.md`** — si vas a cambiar keys, prereqs, el wizard de
+   onboarding o el módulo de sync KB, mantén este documento actualizado en el
+   mismo commit.
 
 ## Reglas
 

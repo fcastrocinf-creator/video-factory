@@ -24,6 +24,7 @@ export function middleware(req: NextRequest) {
 // Protegemos /create/**, /runs/**, /rip/**, /admin/** y /aprendizaje/**.
 // El index (/) es público (login).
 // NOTA: /brands también debería protegerse (bug pre-existente fuera del scope).
+// /onboarding es público por diseño (flujo pre-auth de setup inicial). No agregar al matcher.
 export const config = {
   matcher: [
     '/create/:path*',
