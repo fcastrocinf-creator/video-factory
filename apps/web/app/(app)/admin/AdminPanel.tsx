@@ -93,6 +93,7 @@ export function AdminPanel({ initialPending }: AdminPanelProps) {
 
         {/* Base de Conocimiento (Fase 1) — visible aunque no haya presets pendientes */}
         <KnowledgeBaseSection />
+        <KnowledgeAuditSection />
       </div>
     );
   }
@@ -131,6 +132,9 @@ export function AdminPanel({ initialPending }: AdminPanelProps) {
 
       {/* Base de Conocimiento (Fase 1): vista de todo lo que el sistema registra */}
       <KnowledgeBaseSection />
+
+      {/* Auditoría profunda (Fase 2): los especialistas que revisan a fondo on-demand */}
+      <KnowledgeAuditSection />
     </div>
   );
 }
@@ -669,6 +673,223 @@ function KnowledgeBaseSection() {
                 </div>
               );
             })}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Auditoría profunda on-demand (Fase 2) ───────────────────────────────────
+
+interface HallazgoView {
+  id: string;
+  auditId: string;
+  ts: string;
+  subsistema: string;
+  severidad: string;
+  estado: string;
+  titulo: string;
+  descripcion: string;
+  evidencia: string;
+  fixPropuesto: string;
+  confianza: number;
+  verificacion?: { veredicto: string; razon: string };
+}
+
+interface SintesisView {
+  resumenEjecutivo: string;
+  topHallazgos: Array<{ titulo: string; severidad: string; porQueImporta: string }>;
+  proximoPaso: string;
+}
+
+interface AuditReportView {
+  auditId: string;
+  subsistemasAuditados: string[];
+  subsistemasSalteados: string[];
+  hallazgos: HallazgoView[];
+  descartados: number;
+  sintesis: SintesisView | null;
+  llamadas: number;
+  errores: string[];
+}
+
+function KnowledgeAuditSection() {
+  const [findings, setFindings] = useState<HallazgoView[]>([]);
+  const [report, setReport] = useState<AuditReportView | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [auditing, setAuditing] = useState(false);
+  const [error, setError] = useState('');
+  const [depth, setDepth] = useState<'rapido' | 'profundo'>('rapido');
+
+  async function loadFindings() {
+    setLoading(true);
+    try {
+      const r = await fetch('/api/admin/kb/audit?limit=50', { cache: 'no-store' });
+      const data = (await r.json()) as { hallazgos?: HallazgoView[]; error?: string };
+      if (!r.ok) throw new Error(data.error ?? `HTTP ${r.status}`);
+      setFindings(data.hallazgos ?? []);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function runAudit() {
+    setAuditing(true);
+    setError('');
+    setReport(null);
+    try {
+      const r = await fetch('/api/admin/kb/audit', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ depth }),
+      });
+      const data = (await r.json()) as (AuditReportView & { error?: string });
+      if (!r.ok) throw new Error(data.error ?? `HTTP ${r.status}`);
+      setReport(data);
+      await loadFindings();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setAuditing(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadFindings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <Card className="border-amber-500/30 bg-amber-500/5">
+      <CardContent className="space-y-4 pt-5">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold">🔍 Auditoría profunda (on-demand)</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Cuando lo pidas, unos <strong>agentes especialistas</strong> revisan a fondo la
+              actividad registrada (uno por subsistema), un <strong>verificador</strong> descarta los
+              falsos positivos y una <strong>IA superior</strong> sintetiza. Cuesta llamadas a Claude
+              —por eso es manual—. <strong>Nada se aplica solo</strong>: te propone, tú decides.
+            </p>
+          </div>
+          <div className="flex shrink-0 flex-col items-end gap-1.5">
+            <div className="flex gap-1">
+              {(['rapido', 'profundo'] as const).map((d) => (
+                <button
+                  key={d}
+                  onClick={() => setDepth(d)}
+                  disabled={auditing}
+                  className={`rounded px-2 py-0.5 text-[10px] transition-colors ${
+                    depth === d ? 'bg-amber-600 text-white' : 'bg-background/60 text-muted-foreground hover:bg-muted'
+                  }`}
+                >
+                  {d === 'rapido' ? 'Rápido' : 'Profundo'}
+                </button>
+              ))}
+            </div>
+            <Button
+              onClick={runAudit}
+              disabled={auditing}
+              size="sm"
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              {auditing ? 'Auditando… (tarda)' : '🔍 Auditar a fondo'}
+            </Button>
+          </div>
+        </div>
+
+        {error && (
+          <p className="rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">{error}</p>
+        )}
+
+        {report && (
+          <div className="space-y-2 rounded-md border border-amber-500/20 bg-background/50 p-3 text-xs">
+            <p className="text-[11px] text-muted-foreground">
+              Auditados: {report.subsistemasAuditados.join(', ') || '—'}
+              {report.subsistemasSalteados.length > 0 && (
+                <> · salteados (sin cambios): {report.subsistemasSalteados.join(', ')}</>
+              )}
+              {' · '}falsos positivos descartados: {report.descartados} · llamadas IA: {report.llamadas}
+            </p>
+            {report.sintesis ? (
+              <div className="space-y-1.5">
+                <p className="font-semibold">Síntesis</p>
+                <p>{report.sintesis.resumenEjecutivo}</p>
+                {report.sintesis.proximoPaso && (
+                  <p className="text-muted-foreground">
+                    <strong>Próximo paso:</strong> {report.sintesis.proximoPaso}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <p className="text-muted-foreground">
+                Sin hallazgos esta vez (o subsistemas salteados por estar sin cambios). Es una buena
+                señal.
+              </p>
+            )}
+            {report.errores.length > 0 && (
+              <p className="text-[10px] text-orange-600 dark:text-orange-400">
+                Avisos: {report.errores.join(' · ')}
+              </p>
+            )}
+          </div>
+        )}
+
+        <div className="flex items-center justify-between">
+          <p className="text-[11px] text-muted-foreground">
+            {loading ? 'Cargando hallazgos…' : `${findings.length} hallazgo${findings.length === 1 ? '' : 's'} registrado${findings.length === 1 ? '' : 's'}`}
+          </p>
+        </div>
+
+        {findings.length > 0 && (
+          <div className="max-h-96 space-y-2 overflow-y-auto pr-1">
+            {findings.map((h) => (
+              <div
+                key={h.id}
+                className="rounded-md border border-amber-500/15 bg-background/60 p-2.5 text-xs space-y-1"
+              >
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${severityClass(h.severidad)}`}>
+                    {h.severidad}
+                  </span>
+                  <code className="rounded bg-muted px-1 text-[10px]">{h.subsistema}</code>
+                  <span className="rounded bg-blue-500/15 px-1.5 py-0.5 text-[10px] text-blue-700 dark:text-blue-300">
+                    {h.estado}
+                  </span>
+                  <span className="ml-auto text-[10px] text-muted-foreground">
+                    confianza {Math.round((h.confianza ?? 0) * 100)}%
+                  </span>
+                </div>
+                <p className="font-medium">{h.titulo}</p>
+                <p className="text-muted-foreground">{h.descripcion}</p>
+                {h.fixPropuesto && (
+                  <details className="text-[11px]">
+                    <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+                      Fix propuesto + evidencia →
+                    </summary>
+                    <div className="mt-1 space-y-1">
+                      <p>
+                        <strong className="text-muted-foreground">Fix:</strong> {h.fixPropuesto}
+                      </p>
+                      {h.evidencia && (
+                        <p>
+                          <strong className="text-muted-foreground">Evidencia:</strong> {h.evidencia}
+                        </p>
+                      )}
+                      {h.verificacion && (
+                        <p>
+                          <strong className="text-muted-foreground">Verificación:</strong>{' '}
+                          {h.verificacion.veredicto} — {h.verificacion.razon}
+                        </p>
+                      )}
+                    </div>
+                  </details>
+                )}
+              </div>
+            ))}
           </div>
         )}
       </CardContent>

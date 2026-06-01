@@ -70,6 +70,11 @@ function codeVersion(): string {
   return _codeVersion;
 }
 
+/** Versión del código (git short hash) cacheada — para frescura y caché de auditoría. */
+export function getCodeVersion(): string {
+  return codeVersion();
+}
+
 /** Registra un evento en la base de conocimiento. Best-effort, sin IA. */
 export async function recordEvent(input: RecordInput): Promise<void> {
   try {
