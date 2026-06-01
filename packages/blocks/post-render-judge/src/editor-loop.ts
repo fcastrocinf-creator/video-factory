@@ -38,6 +38,8 @@ Si detectás un mismatch así, emití "manual-fix" o "regenerate-scene" con prom
 
 **Sobre timing por escena:** si ves issues "duration-mismatch" a nivel scene (no solo total) → la voz va más rápido que el tiempo asignado a la imagen. Ejecutá extend-duration en esa scene específica para que la imagen acompañe la narración correctamente.
 
+**Animación desactivada a propósito:** si el reporte indica que la animación se desactivó a propósito (el usuario eligió "sin animación"), las escenas estáticas son el RESULTADO DESEADO. NO lo marques como problema ni escales a manual-fix por "falta de animación".
+
 Recibís el reporte técnico de un validador automático con:
 - Cantidad de escenas, cuántas animadas vs estáticas
 - Duración del audio vs scene plan
@@ -73,7 +75,7 @@ REGLAS PARA EMITIR ACCIONES:
 5. **adjust-prompt** — UNA scene tiene visual OK pero el prompt necesita refinarse para próxima generación (ej. brand mismatch del producto). No re-renderiza ahora; queda guardado para futuro.
 
 6. **manual-fix** — problema GRAVE que NO podés arreglar:
-   - Múltiples scenes sin animación (probable quota provider agotada)
+   - Múltiples scenes sin animación cuando SÍ se esperaba animar (probable quota provider agotada) — NO aplica si la animación se desactivó a propósito
    - Múltiples scenes con calidad mala (problema sistémico del preset)
    - Subtítulos con typos críticos (idioma incorrecto)
    Pasás humanSteps específicos. Run = failed con tu veredicto.
@@ -130,6 +132,11 @@ async function callEditorV2(
   summaryLines.push(`Animadas: ${report.scenesWithVideo}`);
   summaryLines.push(`Estáticas: ${report.scenesWithStaticImageOnly}`);
   summaryLines.push(`Sin visual: ${report.scenesMissingVisual}`);
+  if (report.animationDisabled) {
+    summaryLines.push(
+      'NOTA: la animación se DESACTIVÓ a propósito en este run. Las escenas estáticas son el resultado deseado — NO es un fallo y NO debes escalar por "falta de animación".',
+    );
+  }
   summaryLines.push(`Audio dur: ${report.audioDurationSec.toFixed(1)}s`);
   summaryLines.push(`Scene plan dur: ${report.scenePlanDurationSec.toFixed(1)}s`);
   if (report.durationMismatchSec !== undefined) {
@@ -149,7 +156,7 @@ async function callEditorV2(
     summaryLines.push('Sin issues detectados.');
   }
 
-  const userMessage = `Reporte del validador automático:\n\n${summaryLines.join('\n')}\n\n¿Aprobás, ejecutás una acción reparadora, o escalás a manual-fix? Devolvé JSON.`;
+  const userMessage = `Reporte del validador automático:\n\n${summaryLines.join('\n')}\n\n¿Apruebas, ejecutas una acción reparadora, o escalas a manual-fix? Devuelve el JSON.`;
 
   // M9: si el caller pasó projectContext, prepend al system prompt del rol.
   const fullSystem = projectContext

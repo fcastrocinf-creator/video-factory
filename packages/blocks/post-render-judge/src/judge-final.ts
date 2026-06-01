@@ -50,14 +50,19 @@ export async function judgeFinalRender(
       scenesWithVideo++;
     } else if (hasImage) {
       scenesWithStaticImageOnly++;
-      issues.push({
-        severity: 'info',
-        category: 'missing-animation',
-        sceneIndex: scene.index,
-        description: `Scene ${scene.index} no se animó (fallback a estática). Texto: "${scene.text.slice(0, 60)}"`,
-        suggestion:
-          'Verificar quota del provider (Kling balance / Veo daily limits). Si es recurrente, considerar provider extra.',
-      });
+      // Si el usuario desactivó la animación a propósito, la estática es el
+      // resultado deseado: NO la marcamos como issue (evita la falsa alarma de
+      // "fallback masivo de animación" en el editor IA).
+      if (!input.animationDisabled) {
+        issues.push({
+          severity: 'info',
+          category: 'missing-animation',
+          sceneIndex: scene.index,
+          description: `Scene ${scene.index} no se animó (fallback a estática). Texto: "${scene.text.slice(0, 60)}"`,
+          suggestion:
+            'Verificar quota del provider (Kling balance / Veo daily limits). Si es recurrente, considerar provider extra.',
+        });
+      }
     } else {
       scenesMissingVisual++;
       issues.push({
@@ -293,6 +298,7 @@ export async function judgeFinalRender(
     scenesWithVideo,
     scenesWithStaticImageOnly,
     scenesMissingVisual,
+    animationDisabled: input.animationDisabled,
     audioDurationSec,
     scenePlanDurationSec,
     durationMismatchSec,

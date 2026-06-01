@@ -44,6 +44,8 @@ export const FinalRenderReportSchema = z.object({
   scenesWithVideo: z.number().int().min(0),
   scenesWithStaticImageOnly: z.number().int().min(0),
   scenesMissingVisual: z.number().int().min(0),
+  // True si la animación se desactivó a propósito (el editor IA no debe penalizarla).
+  animationDisabled: z.boolean().optional(),
   // Duración
   audioDurationSec: z.number().min(0),
   scenePlanDurationSec: z.number().min(0),
@@ -82,6 +84,10 @@ export interface FinalRenderInput {
   /** Duración REAL del audio (la conoce el caller vía TTS/ffprobe). Si se pasa, M5 la usa en vez de estimar por tamaño de archivo. */
   audioDurationSec?: number;
   finalVideoPath?: string;
+  /** True si el usuario desactivó la animación a propósito (toggle "sin animación").
+   *  Cuando es true, M5 NO marca las escenas estáticas como problema, y el editor IA
+   *  NO debe escalar por "falta de animación": la estática es el resultado deseado. */
+  animationDisabled?: boolean;
   // Si se pasa, se valida subtitle quality con Claude (lenguaje, gibberish, ortografía).
   subtitleSegments?: Array<{ text: string; startSec: number; endSec: number }>;
   brandContext?: {

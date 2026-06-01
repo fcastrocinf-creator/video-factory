@@ -1772,6 +1772,11 @@ export async function runPipeline(
             audioDurationSec: audioTrack.durationSeconds,
             finalVideoPath: outputPath,
             subtitleSegments,
+            // Si el usuario desactivó la animación a propósito, el juez NO debe
+            // marcar las escenas estáticas como fallo (evita la falsa alarma de
+            // "fallback masivo de animación").
+            animationDisabled:
+              process.env['DISABLE_REAL_ANIMATION'] === '1' || overrides.disableAnimation === true,
             brandContext: {
               brandId: brand.id,
               styleSummary: [preset.format?.displayName, preset.style?.displayName]
@@ -1974,7 +1979,7 @@ export async function runPipeline(
                 `Editor IA marcó el video con advisories (${r.iterations}/3 iter${r.exhausted ? ', exhausted' : ''}). ` +
                 `Final verdict: ${finalVerdict}. ` +
                 `Acciones recomendadas: ${finalActions}. ` +
-                `El video se entrega tal cual — revisá las advisories y decidí si re-lanzar con prompts corregidos.`;
+                `El video se entrega tal cual — revisa las advisories y decide si re-lanzar con prompts corregidos.`;
               logger.warn(
                 {
                   runId,
