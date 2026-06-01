@@ -38,6 +38,15 @@ Monorepo TypeScript: Next.js 14 · Remotion 4.x · Drizzle ORM + libsql · pnpm.
 - **#3 Feedback loop de aprobación humana** — `packages/core/src/preset-judgment-memory.ts`. `recordPresetJudgment()` registra `approved`/`rejected`/`edited`/`run-success`/`run-failed`/`used-for-rip` en `storage/preset-memory/judgments.jsonl`. `getPresetConfidenceScores()` calcula ranking. Wired en: approve endpoint, pipeline run-completed, pipeline run-failed. Inyectado en `buildSystemContext` → cada llamada Claude ve preset confidence histórica
 - **#5 Auto-mejora de prompts** — `apps/web/lib/prompt-evolution.ts`. `detectSystemicPatterns()` escanea logs + post-render-reports buscando errores que se repiten en N+ runs distintos. `proposePromptPatch()` le pide a Claude Sonnet un patch al SYSTEM_PROMPT del bloque afectado. `applyPatch(id)` lo escribe al source si owner aprueba. UI en `/admin` sección "🧬 Cerebro evolutivo". Endpoint: `POST /api/admin/prompt-patches` (detect) + `POST /api/admin/prompt-patches/[id]/decide` (approve/reject). El cerebro NO modifica código sin consentimiento — solo propone
 
+## Consejo de mejora continua (Entrega 1 — cimiento, jun-2026)
+
+Evolución del `deepAudit` hacia un motor de mejora continua. Entrega 1 = alimentar el Cerebro + análisis continuo agrupado + vista. **Nada se auto-aplica** (solo observa/propone); cerrar el círculo (aplicar mejoras con OK del owner, reutilizando `applyPatch`) es la Entrega 2.
+
+- **Alimentar el Cerebro** — el bridge M9 (`system-log.ts` → `systemEventToKb`) YA refleja `run-completed`/`run-failed` a subsistema `pipeline`. Entrega 1 llenó el gap del VALIDADOR: `pipeline.ts` emite `logSystemEvent({kind:'editor-ia-verdict'})` cuando el editor IA deja avisos (→ subsistema `validator`, que antes quedaba vacío). Pendiente (follow-up): alimentar `image-gen`/`animacion`/`compositor` (no tienen kinds aún en `systemEventToKb`).
+- **Análisis continuo agrupado** — `apps/web/lib/kb/auto-audit.ts` → `maybeAutoAudit()` se llama fire-and-forget al finalizar cada run; dispara `deepAudit()` (auto-scopeado, Haiku, cacheado por codeVersion) solo cada `VF_AUTO_AUDIT_EVERY` runs (default 5) o `VF_AUTO_AUDIT_MAX_HOURS` (default 24). Gate `VF_AUTO_AUDIT=1` (OFF por defecto). Cursor en `storage/kb/auto-audit-cursor.json`. Se mantiene el botón manual.
+- **Vista Consejo** — `/admin` pestaña Cerebro (`KnowledgeAuditSection`): último informe (síntesis de la IA superior + próximo paso) + hallazgos agrupados por subsistema + estado del motor automático. El informe se persiste vía `writeLastAuditReport`/`readLastAuditReport` (`kb/findings.ts`) y se sirve en `GET /api/admin/kb/audit`.
+- **Env nuevas** (en `.env.example`): `VF_AUTO_AUDIT`, `VF_AUTO_AUDIT_EVERY`, `VF_AUTO_AUDIT_MAX_HOURS`. `next.config.mjs` carga todo el `.env` raíz, así que basta agregarlas allí.
+
 ## Capa de IA conversacional (M2/M3/M5/M6/M7/M8/M9)
 
 Video Factory tiene Claude integrado como **capa universal de validación + asistencia**:

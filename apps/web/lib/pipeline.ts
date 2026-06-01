@@ -2269,6 +2269,32 @@ export async function runPipeline(
       // best-effort
     }
 
+    // Cerebro (KB): si el editor IA dejó avisos, registrarlos como veredicto del
+    // VALIDADOR (subsistema 'validator') vía el bridge M9 system-log. Llena un
+    // gap real: el kind 'editor-ia-verdict' existía pero no se emitía. El
+    // run-completed ya se reflejó arriba (logSystemEvent kind:'run-completed').
+    if (editorAdvisoryMessage) {
+      void logSystemEvent({
+        kind: 'editor-ia-verdict',
+        data: {
+          runId,
+          brandId,
+          presetId,
+          advisory: String(editorAdvisoryMessage).slice(0, 500),
+        },
+        summary: `Editor IA marcó avisos en el run ${runId.slice(0, 8)}`,
+      });
+    }
+    // Disparar el análisis continuo agrupado del Consejo. Fire-and-forget.
+    void (async () => {
+      try {
+        const { maybeAutoAudit } = await import('./kb/auto-audit');
+        await maybeAutoAudit();
+      } catch {
+        // best-effort
+      }
+    })();
+
     // AUTO-LEARN POST-RIP (M7-B v3, 25-may-2026):
     // Si este run fue un rip de alta fidelidad (tiene referenceVideoPath), al
     // terminar disparamos en background el loop iterativo de aprendizaje de
@@ -2360,6 +2386,17 @@ export async function runPipeline(
     } catch {
       // best-effort
     }
+    // Disparar el análisis continuo agrupado del Consejo. Fire-and-forget.
+    // (El run-failed ya se reflejó a la KB con logSystemEvent kind:'run-failed'.)
+    void (async () => {
+      try {
+        const { maybeAutoAudit } = await import('./kb/auto-audit');
+        await maybeAutoAudit();
+      } catch {
+        // best-effort
+      }
+    })();
+
     try {
       await updateRun(runId, {
         status: 'failed',

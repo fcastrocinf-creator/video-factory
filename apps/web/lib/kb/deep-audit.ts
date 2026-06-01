@@ -21,6 +21,7 @@ import {
   recordHallazgo,
   readLastAudit,
   writeLastAudit,
+  writeLastAuditReport,
   type Hallazgo,
   type LastAuditMap,
 } from './findings';
@@ -373,6 +374,24 @@ export async function deepAudit(opts: DeepAuditOptions = {}): Promise<AuditRepor
   const nextLast: LastAuditMap = { ...lastAudit };
   for (const s of subsistemas) nextLast[s] = { codeVersion, ts };
   await writeLastAudit(nextLast);
+
+  // Persistir un resumen del informe (incl. síntesis) para la vista Consejo en
+  // /admin — captura tanto las auditorías manuales como las automáticas.
+  await writeLastAuditReport({
+    ts,
+    codeVersion,
+    depth,
+    subsistemasAuditados: subsistemas,
+    totalHallazgos: persistidos.length,
+    descartados,
+    sintesis: sintesis
+      ? {
+          resumenEjecutivo: sintesis.resumenEjecutivo,
+          topHallazgos: sintesis.topHallazgos,
+          proximoPaso: sintesis.proximoPaso,
+        }
+      : null,
+  }).catch(() => {});
 
   return {
     auditId,

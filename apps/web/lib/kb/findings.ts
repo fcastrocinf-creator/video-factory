@@ -143,3 +143,41 @@ export async function writeLastAudit(map: LastAuditMap): Promise<void> {
     // best-effort
   }
 }
+
+// ─── Último informe (para mostrar el "Consejo" en /admin) ────────────────────
+
+const LAST_REPORT_PATH = resolve(HALLAZGOS_DIR, 'last-report.json');
+
+export interface LastAuditReportSintesis {
+  resumenEjecutivo: string;
+  topHallazgos: Array<{ titulo: string; severidad: string; porQueImporta: string }>;
+  proximoPaso: string;
+}
+
+export interface LastAuditReport {
+  ts: string;
+  codeVersion: string;
+  depth: string;
+  subsistemasAuditados: string[];
+  totalHallazgos: number;
+  descartados: number;
+  sintesis: LastAuditReportSintesis | null;
+}
+
+/** Guarda un resumen del último audit (incl. síntesis) para la vista Consejo. */
+export async function writeLastAuditReport(r: LastAuditReport): Promise<void> {
+  try {
+    await mkdir(HALLAZGOS_DIR, { recursive: true });
+    await writeFile(LAST_REPORT_PATH, JSON.stringify(r), 'utf-8');
+  } catch {
+    // best-effort
+  }
+}
+
+export async function readLastAuditReport(): Promise<LastAuditReport | null> {
+  try {
+    return JSON.parse(await readFile(LAST_REPORT_PATH, 'utf-8')) as LastAuditReport;
+  } catch {
+    return null;
+  }
+}

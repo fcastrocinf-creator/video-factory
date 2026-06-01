@@ -831,9 +831,28 @@ interface AuditReportView {
   errores: string[];
 }
 
+interface LastReportView {
+  ts: string;
+  depth: string;
+  subsistemasAuditados: string[];
+  totalHallazgos: number;
+  descartados: number;
+  sintesis: SintesisView | null;
+}
+
+interface AutoStatusView {
+  enabled: boolean;
+  every: number;
+  maxHours: number;
+  runsDesdeUltima: number;
+  ultimaTs: string | null;
+}
+
 function KnowledgeAuditSection() {
   const [findings, setFindings] = useState<HallazgoView[]>([]);
   const [report, setReport] = useState<AuditReportView | null>(null);
+  const [lastReport, setLastReport] = useState<LastReportView | null>(null);
+  const [auto, setAuto] = useState<AutoStatusView | null>(null);
   const [loading, setLoading] = useState(false);
   const [auditing, setAuditing] = useState(false);
   const [error, setError] = useState('');
@@ -843,9 +862,16 @@ function KnowledgeAuditSection() {
     setLoading(true);
     try {
       const r = await fetch('/api/admin/kb/audit?limit=50', { cache: 'no-store' });
-      const data = (await r.json()) as { hallazgos?: HallazgoView[]; error?: string };
+      const data = (await r.json()) as {
+        hallazgos?: HallazgoView[];
+        lastReport?: LastReportView | null;
+        auto?: AutoStatusView | null;
+        error?: string;
+      };
       if (!r.ok) throw new Error(data.error ?? `HTTP ${r.status}`);
       setFindings(data.hallazgos ?? []);
+      setLastReport(data.lastReport ?? null);
+      setAuto(data.auto ?? null);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -884,13 +910,30 @@ function KnowledgeAuditSection() {
       <CardContent className="space-y-4 pt-5">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold">🔍 Auditoría profunda (on-demand)</p>
+            <p className="text-sm font-semibold">🧪 Consejo de mejora continua</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Cuando lo pidas, unos <strong>agentes especialistas</strong> revisan a fondo la
-              actividad registrada (uno por subsistema), un <strong>verificador</strong> descarta los
-              falsos positivos y una <strong>IA superior</strong> sintetiza. Cuesta llamadas a Claude
-              —por eso es manual—. <strong>Nada se aplica solo</strong>: te propone, tú decides.
+              Unos <strong>agentes especialistas</strong> revisan a fondo la actividad registrada
+              (uno por subsistema), un <strong>verificador</strong> descarta los falsos positivos y
+              una <strong>IA superior</strong> sintetiza. Corre solo de forma agrupada o cuando lo
+              pidas. <strong>Nada se aplica solo</strong>: te propone, tú decides.
             </p>
+            {auto && (
+              <p className="mt-1.5 text-xs">
+                Análisis automático:{' '}
+                {auto.enabled ? (
+                  <span className="text-emerald-600 dark:text-emerald-400">
+                    activo · cada {auto.every} videos o {auto.maxHours}h · acumulados{' '}
+                    {auto.runsDesdeUltima}/{auto.every}
+                    {auto.ultimaTs ? ` · último ${fmtTs(auto.ultimaTs)}` : ''}
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground">
+                    desactivado (actívalo con <code className="rounded bg-muted px-1">VF_AUTO_AUDIT=1</code>).
+                    El botón manual sigue disponible.
+                  </span>
+                )}
+              </p>
+            )}
           </div>
           <div className="flex shrink-0 flex-col items-end gap-1.5">
             <div className="flex gap-1">
@@ -955,6 +998,23 @@ function KnowledgeAuditSection() {
           </div>
         )}
 
+        {!report && lastReport && lastReport.sintesis && (
+          <div className="space-y-2 rounded-md border border-amber-500/20 bg-background/50 p-3 text-xs">
+            <p className="font-semibold">
+              Último informe del Consejo{' '}
+              <span className="font-normal text-muted-foreground">
+                · {fmtTs(lastReport.ts)} · {lastReport.subsistemasAuditados.join(', ') || '—'}
+              </span>
+            </p>
+            <p>{lastReport.sintesis.resumenEjecutivo}</p>
+            {lastReport.sintesis.proximoPaso && (
+              <p className="text-muted-foreground">
+                <strong>Próximo paso:</strong> {lastReport.sintesis.proximoPaso}
+              </p>
+            )}
+          </div>
+        )}
+
         <div className="flex items-center justify-between">
           <p className="text-xs text-muted-foreground">
             {loading ? 'Cargando hallazgos…' : `${findings.length} hallazgo${findings.length === 1 ? '' : 's'} registrado${findings.length === 1 ? '' : 's'}`}
@@ -962,55 +1022,72 @@ function KnowledgeAuditSection() {
         </div>
 
         {findings.length > 0 && (
-          <div className="max-h-96 space-y-2 overflow-y-auto pr-1">
-            {findings.map((h) => (
-              <div
-                key={h.id}
-                className="rounded-md border border-amber-500/15 bg-background/60 p-2.5 text-xs space-y-1"
-              >
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <span className={`rounded px-1.5 py-0.5 text-xs font-semibold uppercase ${severityClass(h.severidad)}`}>
-                    {h.severidad}
-                  </span>
-                  <code className="rounded bg-muted px-1 text-xs">{h.subsistema}</code>
-                  <span className="rounded bg-blue-500/15 px-1.5 py-0.5 text-xs text-blue-700 dark:text-blue-300">
-                    {h.estado}
-                  </span>
-                  <span className="ml-auto text-xs text-muted-foreground">
-                    confianza {Math.round((h.confianza ?? 0) * 100)}%
-                  </span>
+          <div className="max-h-96 space-y-3 overflow-y-auto pr-1">
+            {Object.entries(
+              findings.reduce<Record<string, HallazgoView[]>>((acc, h) => {
+                (acc[h.subsistema] ??= []).push(h);
+                return acc;
+              }, {}),
+            )
+              .sort((a, b) => b[1].length - a[1].length)
+              .map(([sub, items]) => (
+                <div key={sub} className="space-y-1.5">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    {sub} <span className="font-normal">({items.length})</span>
+                  </p>
+                  {items.map((h) => (
+                    <AuditFindingCard key={h.id} h={h} />
+                  ))}
                 </div>
-                <p className="font-medium">{h.titulo}</p>
-                <p className="text-muted-foreground">{h.descripcion}</p>
-                {h.fixPropuesto && (
-                  <details className="text-xs">
-                    <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
-                      Fix propuesto + evidencia →
-                    </summary>
-                    <div className="mt-1 space-y-1">
-                      <p>
-                        <strong className="text-muted-foreground">Fix:</strong> {h.fixPropuesto}
-                      </p>
-                      {h.evidencia && (
-                        <p>
-                          <strong className="text-muted-foreground">Evidencia:</strong> {h.evidencia}
-                        </p>
-                      )}
-                      {h.verificacion && (
-                        <p>
-                          <strong className="text-muted-foreground">Verificación:</strong>{' '}
-                          {h.verificacion.veredicto} — {h.verificacion.razon}
-                        </p>
-                      )}
-                    </div>
-                  </details>
-                )}
-              </div>
-            ))}
+              ))}
           </div>
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function AuditFindingCard({ h }: { h: HallazgoView }) {
+  return (
+    <div className="rounded-md border border-amber-500/15 bg-background/60 p-2.5 text-xs space-y-1">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <span className={`rounded px-1.5 py-0.5 text-xs font-semibold uppercase ${severityClass(h.severidad)}`}>
+          {h.severidad}
+        </span>
+        <code className="rounded bg-muted px-1 text-xs">{h.subsistema}</code>
+        <span className="rounded bg-blue-500/15 px-1.5 py-0.5 text-xs text-blue-700 dark:text-blue-300">
+          {h.estado}
+        </span>
+        <span className="ml-auto text-xs text-muted-foreground">
+          confianza {Math.round((h.confianza ?? 0) * 100)}%
+        </span>
+      </div>
+      <p className="font-medium">{h.titulo}</p>
+      <p className="text-muted-foreground">{h.descripcion}</p>
+      {h.fixPropuesto && (
+        <details className="text-xs">
+          <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+            Fix propuesto + evidencia →
+          </summary>
+          <div className="mt-1 space-y-1">
+            <p>
+              <strong className="text-muted-foreground">Fix:</strong> {h.fixPropuesto}
+            </p>
+            {h.evidencia && (
+              <p>
+                <strong className="text-muted-foreground">Evidencia:</strong> {h.evidencia}
+              </p>
+            )}
+            {h.verificacion && (
+              <p>
+                <strong className="text-muted-foreground">Verificación:</strong>{' '}
+                {h.verificacion.veredicto} — {h.verificacion.razon}
+              </p>
+            )}
+          </div>
+        </details>
+      )}
+    </div>
   );
 }
 

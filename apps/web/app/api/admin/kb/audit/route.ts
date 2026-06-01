@@ -7,7 +7,8 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { isAuthenticated } from '@/lib/auth';
 import { deepAudit } from '@/lib/kb/deep-audit';
-import { listHallazgos, type HallazgoEstado } from '@/lib/kb/findings';
+import { listHallazgos, readLastAuditReport, type HallazgoEstado } from '@/lib/kb/findings';
+import { getAutoAuditStatus } from '@/lib/kb/auto-audit';
 
 export const runtime = 'nodejs';
 // Una auditoría profunda (varias llamadas a Claude) puede tardar minutos.
@@ -22,8 +23,12 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const estado = (url.searchParams.get('estado') as HallazgoEstado | null) || undefined;
   const limitRaw = Number(url.searchParams.get('limit'));
   const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.min(200, Math.floor(limitRaw)) : 50;
-  const hallazgos = await listHallazgos({ subsistema, estado, limit });
-  return NextResponse.json({ hallazgos });
+  const [hallazgos, lastReport, auto] = await Promise.all([
+    listHallazgos({ subsistema, estado, limit }),
+    readLastAuditReport(),
+    getAutoAuditStatus(),
+  ]);
+  return NextResponse.json({ hallazgos, lastReport, auto });
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
