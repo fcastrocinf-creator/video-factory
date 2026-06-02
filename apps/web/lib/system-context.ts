@@ -403,5 +403,17 @@ export function formatSystemContextForPrompt(ctx: SystemContext): string {
  */
 export async function getSystemContextForPrompt(): Promise<string> {
   const ctx = await buildSystemContext();
-  return formatSystemContextForPrompt(ctx);
+  const base = formatSystemContextForPrompt(ctx);
+  // Invariantes del proyecto ("memoria viva"): reglas duras + wirings no-obvios
+  // que TODA la IA in-app debe respetar. Best-effort: si falla, devuelve base.
+  try {
+    const { formatInvariantsForContext } = await import('./kb/invariants');
+    const inv = await formatInvariantsForContext();
+    if (inv) {
+      return `${base}\n## Invariantes del proyecto (reglas duras — respétalas SIEMPRE)\n${inv}\n`;
+    }
+  } catch {
+    // best-effort
+  }
+  return base;
 }

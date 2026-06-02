@@ -54,6 +54,18 @@ const TABS = [
 ] as const;
 type AdminTab = (typeof TABS)[number]['id'];
 
+// Explicación corta de para qué sirve cada pestaña (para el owner no técnico).
+const TAB_HELP: Record<AdminTab, string> = {
+  estilos:
+    'Estilos que la IA aprendió de tus videos. Apruébalos para que aparezcan al crear, o recházalos.',
+  cerebro:
+    'La memoria de la herramienta: todo lo que pasa queda registrado, y el Consejo lo audita solo para encontrar mejoras.',
+  costos:
+    'Cuánto gasta en IA cada empleado/instalación por video — para ver quién es más costo-eficiente.',
+  evolutivo:
+    'Mejoras a las instrucciones de la IA que el sistema propone cuando detecta errores que se repiten. Tú apruebas.',
+};
+
 function StatCard({
   label,
   value,
@@ -116,10 +128,10 @@ function AdminOverview({ presetsPendientes }: { presetsPendientes: number }) {
   }, []);
 
   const cards = [
-    { label: 'Estilos pendientes', value: String(presetsPendientes), hint: 'por aprobar', accent: presetsPendientes > 0 },
-    { label: 'Eventos del Cerebro', value: kbEventos === null ? '—' : String(kbEventos), hint: 'registrados', accent: false },
-    { label: 'Hallazgos', value: hallazgos === null ? '—' : String(hallazgos), hint: 'de auditoría', accent: false },
-    { label: 'Gasto total', value: gastoUsd === null ? '—' : `$${gastoUsd.toFixed(2)}`, hint: 'estimado', accent: false },
+    { label: 'Estilos pendientes', value: String(presetsPendientes), hint: 'esperan tu aprobación', accent: presetsPendientes > 0 },
+    { label: 'Eventos del Cerebro', value: kbEventos === null ? '—' : String(kbEventos), hint: 'actividad registrada', accent: false },
+    { label: 'Hallazgos', value: hallazgos === null ? '—' : String(hallazgos), hint: 'detectados por el Consejo', accent: false },
+    { label: 'Gasto total', value: gastoUsd === null ? '—' : `$${gastoUsd.toFixed(2)}`, hint: 'estimado en IA', accent: false },
   ];
 
   return (
@@ -196,6 +208,7 @@ export function AdminPanel({ initialPending }: AdminPanelProps) {
       )}
 
       <div key={tab} className="animate-fade-in-up">
+      <p className="mb-3 text-xs text-muted-foreground">{TAB_HELP[tab]}</p>
       {/* ── Pestaña: Estilos pendientes ── */}
       {tab === 'estilos' &&
         (pending.length === 0 ? (
@@ -842,6 +855,7 @@ interface LastReportView {
 
 interface AutoStatusView {
   enabled: boolean;
+  source?: string;
   every: number;
   maxHours: number;
   runsDesdeUltima: number;
@@ -857,6 +871,26 @@ function KnowledgeAuditSection() {
   const [auditing, setAuditing] = useState(false);
   const [error, setError] = useState('');
   const [depth, setDepth] = useState<'rapido' | 'profundo'>('rapido');
+  const [togglingAuto, setTogglingAuto] = useState(false);
+
+  async function toggleAuto() {
+    if (!auto) return;
+    setTogglingAuto(true);
+    try {
+      const r = await fetch('/api/admin/kb/auto-audit', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ enabled: !auto.enabled }),
+      });
+      const data = (await r.json()) as { auto?: AutoStatusView; error?: string };
+      if (r.ok && data.auto) setAuto(data.auto);
+      else if (data.error) setError(data.error);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setTogglingAuto(false);
+    }
+  }
 
   async function loadFindings() {
     setLoading(true);
@@ -918,21 +952,39 @@ function KnowledgeAuditSection() {
               pidas. <strong>Nada se aplica solo</strong>: te propone, tú decides.
             </p>
             {auto && (
-              <p className="mt-1.5 text-xs">
-                Análisis automático:{' '}
-                {auto.enabled ? (
-                  <span className="text-emerald-600 dark:text-emerald-400">
-                    activo · cada {auto.every} videos o {auto.maxHours}h · acumulados{' '}
-                    {auto.runsDesdeUltima}/{auto.every}
-                    {auto.ultimaTs ? ` · último ${fmtTs(auto.ultimaTs)}` : ''}
+              <div className="mt-2 space-y-1.5 rounded-md border border-amber-500/20 bg-background/40 p-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-medium">
+                    Análisis automático:{' '}
+                    {auto.enabled ? (
+                      <span className="text-emerald-600 dark:text-emerald-400">ENCENDIDO</span>
+                    ) : (
+                      <span className="text-muted-foreground">APAGADO</span>
+                    )}
                   </span>
-                ) : (
-                  <span className="text-muted-foreground">
-                    desactivado (actívalo con <code className="rounded bg-muted px-1">VF_AUTO_AUDIT=1</code>).
-                    El botón manual sigue disponible.
-                  </span>
-                )}
-              </p>
+                  <Button
+                    size="sm"
+                    variant={auto.enabled ? 'outline' : 'default'}
+                    disabled={togglingAuto}
+                    onClick={toggleAuto}
+                  >
+                    {togglingAuto ? '…' : auto.enabled ? 'Apagar' : 'Encender'}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Si lo enciendes, el Consejo revisa la herramienta <strong>solo</strong>, de forma
+                  agrupada (cada {auto.every} videos o cada {auto.maxHours}h), y deja sus hallazgos
+                  aquí abajo. Cuesta algunas llamadas a la IA. <strong>Nada se aplica solo</strong> —
+                  solo te avisa.
+                  {auto.enabled && (
+                    <>
+                      {' '}
+                      Acumulados {auto.runsDesdeUltima}/{auto.every}
+                      {auto.ultimaTs ? ` · último análisis ${fmtTs(auto.ultimaTs)}` : ''}.
+                    </>
+                  )}
+                </p>
+              </div>
             )}
           </div>
           <div className="flex shrink-0 flex-col items-end gap-1.5">

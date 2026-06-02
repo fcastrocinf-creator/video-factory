@@ -3,7 +3,62 @@
 > Documento de traspaso entre conversaciones de Claude Code.
 > Para continuar: abre un chat nuevo en este proyecto y di **"lee HANDOFF.md y seguimos"**.
 > 💡 Backlog de ideas futuras (para barrer e implementar): **`IDEAS.md`**.
-> Última actualización: 2026-06-01 (Versión 4).
+> Última actualización: 2026-06-01 (Versión 5).
+
+---
+
+## 🚀 VERSIÓN 5 — 01-06-2026 (Rediseño front + español neutro total + Consejo de mejora continua + Memoria viva)
+
+> **LEER PRIMERO: las `## Invariantes del proyecto` al inicio de `CLAUDE.md`** (memoria viva,
+> reglas duras + wirings no-obvios). Evitan re-descubrir y repetir errores.
+> **Puntos de retorno (commits locales, sin push):** tag `pre-admin-redesign` → `3f9faf9`
+> (rediseño + voseo en la IA) → `d232786` (pantallas secundarias + voseo) → `9e8503d`
+> (Consejo Entrega 1). El bloque "Memoria viva + botón + explicaciones admin" va en el
+> commit de esta sesión.
+
+### 1. Rediseño del front (premium oscuro, legible)
+- **Bug crítico resuelto:** la fuente caía a **Times New Roman** (serif) porque el CSS apuntaba a
+  `var(--font-inter)` (inexistente). Ahora **Inter** (estilo Apple; SF real en equipos Apple) vía
+  `var(--font-sans)` en `tailwind.config.ts` + `layout.tsx`. Base **17px** (`globals.css`) y barrido
+  de ~128 textos px→clases escalables para legibilidad.
+- Sistema de diseño: `components/ui/{card,button}.tsx` (shadow-elevation, tactile), `Sidebar.tsx`
+  (tokens + acento violeta), `globals.css` (atmósfera). "Mis videos": tarjetas con miniatura real
+  (cualquier video terminado, no solo `completed`) + estado en español con color (`RepositoryView.tsx`).
+- **Español neutro TOTAL:** eliminado el voseo de UI **y de los prompts de la IA** (validador, editor,
+  jueces, chat, scene-planner, mensajes de error) — ~167 correcciones. También "acá"→"aquí" y
+  "Discutí"→"Discute". Verificado: grep en `.tsx` y `.ts` → solo quedan las listas de "formas
+  prohibidas" intencionales.
+
+### 2. Consejo de mejora continua — Entrega 1 (commit 9e8503d)
+Evolución del `deepAudit` (orquestador → especialista/subsistema → verificador → IA superior).
+- **Análisis continuo agrupado:** `apps/web/lib/kb/auto-audit.ts` → `maybeAutoAudit()` (fire-and-forget
+  al terminar un run en `pipeline.ts`). Dispara `deepAudit()` cada N runs o X horas. **Control: BOTÓN
+  en /admin** (persistido en `storage/kb/auto-audit-config.json`) o env `VF_AUTO_AUDIT=1` (override).
+  **OFF por defecto** (el owner lo enciende).
+- **Alimentar el Cerebro:** el bridge M9 (`system-log.ts`→`systemEventToKb`) YA reflejaba
+  run-completed/failed a subsistema `pipeline`. Se llenó el gap del **validador** emitiendo
+  `editor-ia-verdict` cuando el editor IA deja avisos. ⚠️ NO duplicar con emisores paralelos a
+  `recordEvent` (ver invariante `kb-fed-by-system-log`).
+- **Vista Consejo** en `/admin`→Cerebro (`KnowledgeAuditSection`): último informe (síntesis) +
+  hallazgos agrupados por subsistema + botón encender/apagar. Persistencia: `findings.ts`
+  `writeLastAuditReport`; `GET /api/admin/kb/audit` devuelve `{hallazgos,lastReport,auto}`.
+- **Nada se auto-aplica** (Entrega 1 = observar/proponer).
+
+### 3. Memoria viva del proyecto (invariantes)
+- `apps/web/lib/kb/invariants.ts`: registro (`storage/kb/invariantes.jsonl`) + semilla
+  `CORE_INVARIANTS` (7 reglas: español neutro, nada-auto-aplica, kb-fed-by-system-log, storage
+  unificado, env-root, admin-gate, no-push).
+- **Propagación:** inyectadas a la IA in-app vía `getSystemContextForPrompt()` (system-context) y
+  sincronizadas a `CLAUDE.md` (sección "Invariantes", auto-cargada por sesión) con
+  `npx tsx scripts/sync-invariants.ts`.
+- **Admin:** explicación corta por pestaña (`TAB_HELP`) + pistas claras en las tarjetas de stats.
+
+### 4. Próximos pasos sugeridos
+- **Consejo Entrega 2 — cerrar el círculo:** que el Consejo proponga mejoras y, con OK del owner,
+  las aplique (reutilizar `prompt-evolution.applyPatch`) → marcar hallazgo `arreglado`.
+- **Alimentar** `image-gen`/`animacion`/`compositor` (subsistemas sin kinds en `systemEventToKb`).
+- Que el owner **agregue invariantes desde /admin** (hoy: por código `addInvariant` o las propongo yo).
+- (Hygiene) limpiar `apps/web/storage` viejo duplicado (el storage vivo es `/storage`).
 
 ---
 

@@ -6,6 +6,25 @@ marca al producto propio.
 
 Monorepo TypeScript: Next.js 14 · Remotion 4.x · Drizzle ORM + libsql · pnpm.
 
+## Invariantes del proyecto (memoria viva — LEER PRIMERO)
+
+Reglas duras + wirings no-obvios que cualquier Claude (o la IA in-app) debe respetar
+para no re-descubrir ni tropezar. Fuente de verdad: `storage/kb/invariantes.jsonl` (o la
+semilla `CORE_INVARIANTS` en `apps/web/lib/kb/invariants.ts`). Se inyectan a la IA in-app
+vía `system-context` y se sincronizan aquí con `npx tsx scripts/sync-invariants.ts`.
+
+<!-- INVARIANTES:START -->
+_(Generado por `scripts/sync-invariants.ts` desde el registro vivo. No editar a mano.)_
+
+- **El .env raíz es la única fuente de verdad** _(arquitectura)_ — next.config.mjs carga TODO el .env raíz y SOBREESCRIBE process.env al arrancar. Vars nuevas: agrégalas al .env raíz (y .env.example). _Por qué:_ Evita valores stale/vacíos (ANTHROPIC_API_KEY rompía el judge IA). _Fuente:_ `next.config.mjs`
+- **Storage único en /storage** _(arquitectura)_ — Todo el storage vive en <root>/storage vía VF_STORAGE_DIR (lo fuerza next.config.mjs). NO uses process.cwd() para rutas de storage. _Por qué:_ Antes se partía entre apps/web/storage y /storage (split-brain). _Fuente:_ `apps/web/lib/paths.ts; next.config.mjs`
+- **Nunca hacer git push sin que el owner lo pida** _(decision)_ — Commits locales OK cuando el owner los pide; git push SOLO con orden explícita del owner. _Por qué:_ Regla del owner. _Fuente:_ `owner`
+- **Español neutro SIEMPRE** _(idioma)_ — Toda salida (UI, chat, prompts, código, commits) en español neutro con "tú". PROHIBIDO el voseo argentino (sos/tenés/podés/hacé/mirá/decí/dale) y "acá" (usar "aquí"). _Por qué:_ Regla crítica del owner. El chat tiene un normalizador, pero los prompts deben estar limpios en origen. _Fuente:_ `CLAUDE.md; apps/web/lib/claude-chat-discuss.ts (normalizeNeutralSpanish)`
+- **Admin protegido por ADMIN_PASSWORD** _(seguridad)_ — /admin y /api/admin/* exigen cookie admin_auth (separada de app_auth). La clave vive en ADMIN_PASSWORD del .env. _Por qué:_ El panel admin es solo para el owner. _Fuente:_ `apps/web/lib/auth.ts; apps/web/middleware.ts`
+- **Nada se auto-aplica** _(seguridad)_ — El sistema PROPONE; el owner aprueba. Ningún cambio de código/prompt/config se aplica sin consentimiento explícito. _Por qué:_ Invariante de seguridad del owner. El Consejo/auditoría/evolución solo observan y proponen. _Fuente:_ `apps/web/lib/prompt-evolution.ts applyPatch (gated); kb/deep-audit.ts`
+- **La KB se alimenta vía el bridge M9 (system-log)** _(wiring)_ — Los eventos de run (run-completed/failed, editor-ia-verdict, etc.) llegan a la KB SOLO vía logSystemEvent → systemEventToKb. NO agregues emisores paralelos a recordEvent para esos eventos: duplicarías. _Por qué:_ En jun-2026 casi se duplicó el feed creando un run-events.ts paralelo. El bridge ya existía y no estaba documentado de forma accesible. _Fuente:_ `apps/web/lib/system-log.ts (systemEventToKb); apps/web/lib/kb/record.ts`
+<!-- INVARIANTES:END -->
+
 ## Continuidad entre sesiones
 
 **Si retomas trabajo o sos un Claude entrando fresco:**
