@@ -35,7 +35,7 @@ export interface SubScenePanel {
 // complejas tipo collage/PiP/overlay que no encajan en un grid rígido.
 export interface CompositeElementVisual {
   id: string;
-  kind: 'image' | 'video' | 'text';
+  kind: 'image' | 'video' | 'text' | 'annotation';
   imageSrc?: string; // basename
   videoSrc?: string; // basename
   text?: string;
@@ -48,6 +48,10 @@ export interface CompositeElementVisual {
   startSeconds?: number;
   endSeconds?: number;
   textOverlay?: TextOverlay;
+  // Recorte por chroma key (elimina el fondo verde → sujeto "sin fondo").
+  chromaKey?: { color?: 'green' | 'blue'; similarity?: number };
+  // Anotación (kind='annotation'): círculo/flecha señaladora.
+  annotation?: { shape?: 'circle' | 'arrow' | 'circle-arrow'; color?: string; fromXPct?: number; fromYPct?: number };
 }
 
 export interface SceneVisual {
@@ -624,6 +628,25 @@ const PanelTextOverlay: React.FC<{ overlay: TextOverlay }> = ({ overlay }) => {
 // Es el motor compartido sobre el que renderizan:
 //   - el modo AUTOMÁTICO (detector de geometría exacta — Fase 2)
 //   - el EDITOR MANUAL (Fase 3)
+// Id del filtro SVG de chroma key (alpha = R - G + B → el verde puro se vuelve
+// transparente; piel/blancos quedan opacos). feComponentTransfer suaviza el borde.
+const CHROMA_ID = 'vf-chroma-green';
+
+const ChromaKeyDef: React.FC = () => (
+  <svg width={0} height={0} style={{ position: 'absolute' }}>
+    <defs>
+      <filter id={CHROMA_ID} colorInterpolationFilters="sRGB">
+        <feColorMatrix type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  -2 4 -2 0 0" />
+        <feComponentTransfer>
+          <feFuncA type="table" tableValues="1 1 1 0" />
+        </feComponentTransfer>
+        <feComposite in2="SourceGraphic" operator="in" />
+        <feMorphology operator="erode" radius="1.6" />
+      </filter>
+    </defs>
+  </svg>
+);
+
 const FreeformComposite: React.FC<{
   elements: CompositeElementVisual[];
   durationInFrames: number;
@@ -639,6 +662,7 @@ const FreeformComposite: React.FC<{
 
   return (
     <AbsoluteFill style={{ backgroundColor: '#0a0a0a', opacity: fillOpacity }}>
+      <ChromaKeyDef />
       {ordered.map((el, idx) => {
         const key = el.id || `el-${idx}`;
         // Timing: si el elemento define start/end, lo envolvemos en una Sequence
@@ -672,7 +696,19 @@ const FreeformComposite: React.FC<{
 // arbitrarias (% del frame) con rotación, opacidad, recorte y bordes propios.
 const FreeformElement: React.FC<{ element: CompositeElementVisual }> = ({ element }) => {
   const localFrame = useCurrentFrame();
-  const { height } = useVideoConfig();
+  const { width, height } = useVideoConfig();
+  // Anotación: capa full-frame (círculo + flecha), no usa la caja del rect.
+  if (element.kind === 'annotation' && element.annotation) {
+    return (
+      <AnnotationLayer
+        rect={element.rect}
+        ann={element.annotation}
+        frame={localFrame}
+        width={width}
+        height={height}
+      />
+    );
+  }
   const FADE = 5;
   const enterOpacity = Math.min(1, localFrame / FADE);
   const { rect } = element;
@@ -696,16 +732,61 @@ const FreeformElement: React.FC<{ element: CompositeElementVisual }> = ({ elemen
 
   return (
     <div style={boxStyle}>
-      {element.kind === 'image' && element.imageSrc && (
-        <Img
-          src={staticFile(element.imageSrc)}
-          style={{ width: '100%', height: '100%', objectFit: fit }}
-        />
-      )}
+      {element.kind === 'image' &&
+        element.imageSrc &&
+        (element.chromaKey ? (
+          // RECORTE por chroma key: SVG auto-contenido (filtro + imagen en el mismo
+          // SVG → el filtro siempre resuelve en el render headless). La matriz
+          // "greenness" (-1.5R +3G -1.5B) + tabla invertida vuelve transparente el
+          // verde (incluido el claro) y conserva piel, blancos y negros.
+          <svg
+            width="100%"
+            height="100%"
+            preserveAspectRatio="none"
+            style={{ position: 'absolute', inset: 0, display: 'block' }}
+          >
+            <defs>
+              <filter id={`ck-${element.id}`} colorInterpolationFilters="sRGB">
+                <feColorMatrix type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  -2 4 -2 0 0" />
+                <feComponentTransfer>
+                  <feFuncA type="table" tableValues="1 1 1 0" />
+                </feComponentTransfer>
+                {/* Recorta al área opaca original → el letterbox/transparente NO se vuelve negro. */}
+                <feComposite in2="SourceGraphic" operator="in" />
+                {/* Despill/erode: come 1-2px del borde para limpiar el fleco verde contaminado. */}
+                <feMorphology operator="erode" radius="1.6" />
+              </filter>
+            </defs>
+            <image
+              href={staticFile(element.imageSrc)}
+              width="100%"
+              height="100%"
+              preserveAspectRatio={
+                fit === 'contain' ? 'xMidYMid meet' : fit === 'fill' ? 'none' : 'xMidYMid slice'
+              }
+              filter={`url(#ck-${element.id})`}
+            />
+          </svg>
+        ) : (
+          <Img
+            src={staticFile(element.imageSrc)}
+            style={{ width: '100%', height: '100%', objectFit: fit }}
+          />
+        ))}
       {element.kind === 'video' && element.videoSrc && (
         <OffthreadVideo
           src={staticFile(element.videoSrc)}
-          style={{ width: '100%', height: '100%', objectFit: fit }}
+          // Recorte de video por chroma: se PRE-PROCESA a .webm con alpha real
+          // (vp9 yuva420p, keying+despill por frame) y se rinde con transparent.
+          // OffthreadVideo descarta el alpha por defecto (mostraría el fondo verde),
+          // y el filtro SVG url() NO resuelve fiable sobre <video> en el render
+          // headless — por eso el alpha va horneado en el webm, no por filtro.
+          transparent={element.videoSrc.toLowerCase().endsWith('.webm') || !!element.chromaKey}
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: fit,
+          }}
           muted
         />
       )}
@@ -718,12 +799,15 @@ const FreeformElement: React.FC<{ element: CompositeElementVisual }> = ({ elemen
             alignItems: 'center',
             justifyContent: 'center',
             fontFamily: 'Inter, system-ui, sans-serif',
-            fontWeight: 800,
+            fontWeight: 900,
             fontSize: textFontSize,
             color: '#FFFFFF',
             textAlign: 'center',
             lineHeight: 1.1,
             padding: '4%',
+            // Contorno negro grueso + sombra (look UGC, aguanta cualquier fondo).
+            textShadow:
+              '4px 4px 0 #000, -4px -4px 0 #000, 4px -4px 0 #000, -4px 4px 0 #000, 0 0 4px #000, 0 5px 8px rgba(0,0,0,0.45)',
           }}
         >
           {element.text ?? ''}
@@ -731,6 +815,88 @@ const FreeformElement: React.FC<{ element: CompositeElementVisual }> = ({ elemen
       )}
       {element.textOverlay && <PanelTextOverlay overlay={element.textOverlay} />}
     </div>
+  );
+};
+
+// Capa de ANOTACIÓN (círculo + flecha) dibujada sobre toda la escena. El círculo
+// se centra en el `rect` del elemento; la flecha sale de from{X,Y}Pct. Se dibuja
+// animada (stroke-dashoffset) en los primeros frames de la escena.
+const AnnotationLayer: React.FC<{
+  rect: { xPct: number; yPct: number; widthPct: number; heightPct: number };
+  ann: { shape?: 'circle' | 'arrow' | 'circle-arrow'; color?: string; fromXPct?: number; fromYPct?: number };
+  frame: number;
+  width: number;
+  height: number;
+}> = ({ rect, ann, frame, width, height }) => {
+  const color = ann.color ?? '#FF3B30';
+  const cx = ((rect.xPct + rect.widthPct / 2) / 100) * width;
+  const cy = ((rect.yPct + rect.heightPct / 2) / 100) * height;
+  const rx = (rect.widthPct / 2 / 100) * width;
+  const ry = (rect.heightPct / 2 / 100) * height;
+  const circ = Math.PI * (3 * (rx + ry) - Math.sqrt((3 * rx + ry) * (rx + 3 * ry)));
+  const draw = interpolate(frame, [0, 18], [0, 1], {
+    extrapolateLeft: 'clamp',
+    extrapolateRight: 'clamp',
+  });
+  const showCircle = ann.shape !== 'arrow';
+  const showArrow = ann.shape !== 'circle' && ann.fromXPct !== undefined && ann.fromYPct !== undefined;
+  return (
+    <svg
+      width={width}
+      height={height}
+      viewBox={`0 0 ${width} ${height}`}
+      style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }}
+    >
+      {showCircle && (
+        <ellipse
+          cx={cx}
+          cy={cy}
+          rx={rx}
+          ry={ry}
+          fill="none"
+          stroke={color}
+          strokeWidth={10}
+          strokeLinecap="round"
+          strokeDasharray={circ}
+          strokeDashoffset={circ * (1 - draw)}
+        />
+      )}
+      {showArrow && (
+        <FreeformArrow
+          x1={(ann.fromXPct! / 100) * width}
+          y1={(ann.fromYPct! / 100) * height}
+          x2={cx}
+          y2={cy + ry}
+          color={color}
+          progress={draw}
+        />
+      )}
+    </svg>
+  );
+};
+
+const FreeformArrow: React.FC<{
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  color: string;
+  progress: number;
+}> = ({ x1, y1, x2, y2, color, progress }) => {
+  const ex = x1 + (x2 - x1) * progress;
+  const ey = y1 + (y2 - y1) * progress;
+  const angle = Math.atan2(ey - y1, ex - x1);
+  const head = 26;
+  return (
+    <>
+      <line x1={x1} y1={y1} x2={ex} y2={ey} stroke={color} strokeWidth={10} strokeLinecap="round" />
+      {progress > 0.9 && (
+        <polygon
+          points={`${ex},${ey} ${ex - head * Math.cos(angle - 0.5)},${ey - head * Math.sin(angle - 0.5)} ${ex - head * Math.cos(angle + 0.5)},${ey - head * Math.sin(angle + 0.5)}`}
+          fill={color}
+        />
+      )}
+    </>
   );
 };
 

@@ -14,6 +14,7 @@ import { resolve } from 'node:path';
 import { mkdir, readFile } from 'node:fs/promises';
 import { z } from 'zod';
 import { extractKeyframes, type ExtractedKeyframe } from './frame-extractor';
+import { buildMotionMap, type MotionMap } from './motion-map';
 
 // (ANTHROPIC_URL / VERSION ya no se usan localmente — viven en @video-factory/core
 // vía `judgeWithClaude`. Compat: si algún caller externo importaba constantes
@@ -205,6 +206,8 @@ export interface UnderstandVideoOptions {
   model?: string;
   /** ANTHROPIC_API_KEY override. Default: lee de process.env */
   apiKey?: string;
+  /** Adjuntar el mapa de movimiento (animado vs estático). Default true. */
+  includeMotionMap?: boolean;
 }
 
 /**
@@ -221,6 +224,7 @@ export async function understandVideo(
   keyframes: ExtractedKeyframe[];
   modelUsed: string;
   elapsedSec: number;
+  motionMap?: MotionMap;
 }> {
   const t0 = Date.now();
   const apiKey = opts.apiKey ?? process.env['ANTHROPIC_API_KEY'];
@@ -296,11 +300,22 @@ export async function understandVideo(
     );
   }
 
+  // Fase 1 "Estilo CapCut": adjuntar el mapa de movimiento (animado vs estático)
+  // para que el aprendizaje conozca QUÉ tramos animar al reproducir el formato.
+  let motionMap: MotionMap | undefined;
+  if (opts.includeMotionMap !== false) {
+    try {
+      motionMap = await buildMotionMap({ videoPath: opts.videoPath });
+    } catch {
+      // best-effort: el entendimiento IA sigue siendo válido sin el mapa
+    }
+  }
   const elapsedSec = (Date.now() - t0) / 1000;
   return {
     understanding,
     keyframes,
     modelUsed: model,
     elapsedSec,
+    motionMap,
   };
 }

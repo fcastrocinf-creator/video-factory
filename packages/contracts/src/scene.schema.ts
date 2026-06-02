@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { NarratorProfileSchema } from './script.schema.js';
+import { NarratorProfileSchema, SpeakerProfileSchema } from './script.schema.js';
 
 // Capas de texto que se renderizan ENCIMA de la imagen base en Remotion.
 // Resuelven el problema estructural de que Imagen 4 no genera texto coherente
@@ -94,8 +94,9 @@ export const CompositeElementSchema = z.object({
   // ID estable del elemento — el editor manual y el loop de aprendizaje lo
   // referencian para trackear ajustes a lo largo del tiempo.
   id: z.string(),
-  // Tipo de pieza: imagen generada, clip de video, o texto vectorial puro.
-  kind: z.enum(['image', 'video', 'text']),
+  // Tipo de pieza: imagen, clip de video, texto vectorial, o ANOTACIÓN (forma
+  // señaladora: círculo/flecha).
+  kind: z.enum(['image', 'video', 'text', 'annotation']),
   // Prompt usado para generar la pieza (kind image|video). Permite regenerarla.
   imagePrompt: z.string().optional(),
   // Paths de la pieza generada (poblados por el aligner).
@@ -129,6 +130,28 @@ export const CompositeElementSchema = z.object({
   endSeconds: z.number().nonnegative().optional(),
   // TextOverlay vectorial propio (para piezas image/video que necesitan label).
   textOverlay: TextOverlaySchema.optional(),
+  // RECORTE por chroma key: si está, al componer se elimina el fondo del color
+  // indicado (típicamente verde) → el sujeto queda recortado sobre las capas de
+  // abajo (overlay "figura sin fondo"). El sujeto debe generarse sobre ese color
+  // sólido. Primitivo para superponer una figura (ej. médica) sobre otro clip,
+  // como en las ediciones CapCut.
+  chromaKey: z
+    .object({
+      color: z.enum(['green', 'blue']).default('green'),
+      similarity: z.number().min(0).max(1).default(0.4),
+    })
+    .optional(),
+  // ANOTACIÓN (cuando kind='annotation'): forma señaladora dibujada sobre las
+  // capas (círculo y/o flecha), como el círculo+flecha rojos de los ads. El
+  // círculo usa el `rect` del elemento; la flecha sale de from{X,Y}Pct.
+  annotation: z
+    .object({
+      shape: z.enum(['circle', 'arrow', 'circle-arrow']).default('circle-arrow'),
+      color: z.string().default('#FF3B30'),
+      fromXPct: z.number().optional(),
+      fromYPct: z.number().optional(),
+    })
+    .optional(),
   // true si un humano ajustó esta pieza en el editor manual. El loop de
   // aprendizaje (Fase 4) usa este flag para registrar la corrección IA→humano.
   manuallyAdjusted: z.boolean().default(false),
@@ -178,6 +201,10 @@ export const SceneSchema = z.object({
   //     solo gestos/expresión ambiente (DEFAULT — la mayoría de ads D2C son VO).
   // El scene-planner lo decide por escena. El motion prompt ramifica con esto.
   speaking: z.boolean().default(false).optional(),
+  // Multi-voz ("Estilo CapCut"): qué hablante (SpeakerProfile.id) dice esta escena.
+  // Si está, el TTS sintetiza esta línea con la voz de ese hablante; si no, usa la
+  // voz única (narratorProfile) — retro-compatible.
+  speakerId: z.string().optional(),
   // v3.2 #145: override MANUAL de duración de la escena en segundos. Cuando el
   // owner recorta una escena a mano ("cortá en el segundo 2.3"), se guarda acá.
   // Si está, el compositor usa ESTO en vez de (endTimeSeconds - startTimeSeconds).
@@ -214,6 +241,9 @@ export const SceneTrackSchema = z.object({
   // Perfil inferido del narrador. Usado por scene-validator para validar
   // coherencia y por la UI/TTS para selección de voz.
   narratorProfile: NarratorProfileSchema.optional(),
+  // Multi-voz: hablantes del ad (opcional, retro-compat). Cada Scene referencia uno
+  // por speakerId. Si no hay speakers[], todo usa narratorProfile (una sola voz).
+  speakers: z.array(SpeakerProfileSchema).optional(),
 });
 
 export type SceneTrack = z.infer<typeof SceneTrackSchema>;

@@ -119,6 +119,8 @@ export class CompositorRemotionBlock implements Block<RenderJob, RenderJob> {
                     startSeconds: el.startSeconds,
                     endSeconds: el.endSeconds,
                     textOverlay: el.textOverlay,
+                    chromaKey: el.chromaKey,
+                    annotation: el.annotation,
                   }))
                 : undefined;
             // imageSrc principal: si la escena no tiene imagePath (freeform pura),

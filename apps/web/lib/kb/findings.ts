@@ -181,3 +181,56 @@ export async function readLastAuditReport(): Promise<LastAuditReport | null> {
     return null;
   }
 }
+
+// ─── Informes del AUDITOR DE FORMATO (scoped por runId/presetId/etiqueta) ─────
+// NO pisan last-report.json (el del Consejo global): viven en format-reports/.
+
+const FORMAT_REPORTS_DIR = resolve(HALLAZGOS_DIR, 'format-reports');
+
+export interface FormatAuditReportHallazgo {
+  especialista: string;
+  severidad: HallazgoSeveridad;
+  estado: HallazgoEstado;
+  titulo: string;
+  descripcion: string;
+  fixPropuesto: string;
+  confianza: number;
+}
+
+export interface FormatAuditReport {
+  scope: string; // runId / presetId / etiqueta única del formato auditado
+  label: string;
+  ts: string;
+  codeVersion: string;
+  especialistasAuditados: string[];
+  totalHallazgos: number;
+  descartados: number;
+  sintesis: LastAuditReportSintesis | null;
+  hallazgos: FormatAuditReportHallazgo[];
+}
+
+function safeScopeKey(scope: string): string {
+  return scope.replace(/[^a-zA-Z0-9_-]+/g, '_').slice(0, 80) || 'sin-scope';
+}
+
+/** Guarda el informe del Auditor de formato (scoped) + actualiza _latest.json. Best-effort. */
+export async function writeFormatAuditReport(r: FormatAuditReport): Promise<void> {
+  try {
+    await mkdir(FORMAT_REPORTS_DIR, { recursive: true });
+    const json = JSON.stringify(r);
+    await writeFile(resolve(FORMAT_REPORTS_DIR, `${safeScopeKey(r.scope)}.json`), json, 'utf-8');
+    await writeFile(resolve(FORMAT_REPORTS_DIR, '_latest.json'), json, 'utf-8');
+  } catch {
+    // best-effort
+  }
+}
+
+/** Lee el informe de un scope (o el último auditado si no se pasa scope). */
+export async function readFormatAuditReport(scope?: string): Promise<FormatAuditReport | null> {
+  try {
+    const file = resolve(FORMAT_REPORTS_DIR, scope ? `${safeScopeKey(scope)}.json` : '_latest.json');
+    return JSON.parse(await readFile(file, 'utf-8')) as FormatAuditReport;
+  } catch {
+    return null;
+  }
+}

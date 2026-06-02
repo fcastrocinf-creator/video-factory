@@ -37,11 +37,32 @@ export const NarratorProfileSchema = z.object({
 
 export type NarratorProfile = z.infer<typeof NarratorProfileSchema>;
 
+// Multi-voz ("Estilo CapCut"): un ad puede tener VARIOS hablantes (ej. una figura
+// de autoridad que explica + una usuaria que prueba el producto). SpeakerProfile
+// generaliza NarratorProfile con un id, un rol y la voz asignada. Retro-compatible:
+// si no hay speakers[], el flujo de una sola voz (narratorProfile) sigue igual.
+export const SpeakerProfileSchema = z.object({
+  // Identificador estable del hablante en el ad ('S1', 'S2', ...).
+  id: z.string(),
+  // Rol en el formato: autoridad/experto, usuaria que prueba, voz en off, otro.
+  role: z.enum(['authority', 'user', 'voiceover', 'other']).default('other'),
+  gender: z.enum(['male', 'female', 'neutral']).default('neutral'),
+  ageRange: z.string().default('30-50'),
+  // Descripción visual (para continuity si el hablante aparece en pantalla).
+  characterCard: z.string().default(''),
+  // Voz asignada (id de brand.voiceLibrary). La elige el director de reparto de voz.
+  voiceId: z.string().optional(),
+});
+
+export type SpeakerProfile = z.infer<typeof SpeakerProfileSchema>;
+
 export const ParsedScriptSchema = z.object({
   language: z.string(),
   segments: z.array(ScriptSegmentSchema),
   estimatedDurationSeconds: z.number(),
   narratorProfile: NarratorProfileSchema.optional(),
+  // Multi-voz: lista de hablantes detectados (opcional, retro-compat).
+  speakers: z.array(SpeakerProfileSchema).optional(),
 });
 
 export type ParsedScript = z.infer<typeof ParsedScriptSchema>;

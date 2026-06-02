@@ -104,6 +104,61 @@ export const CORE_INVARIANTS: Array<Omit<Invariant, 'ts'>> = [
     porQue: 'Regla del owner.',
     fuente: 'owner',
   },
+  {
+    id: 'composicion-multicapa-existe',
+    categoria: 'wiring',
+    titulo: 'La composición multi-capa YA existe (no rebuildear)',
+    regla:
+      'Para overlays/PiP/recorte(chroma)/anotaciones usa CompositeElement + FreeformComposite/FreeformElement + el editor manual + rip-fidelity-aligner. EXTIÉNDELO; no crees un motor de composición paralelo.',
+    porQue:
+      'En jun-2026 casi se reconstruyó un compositor desde cero sin saber que FreeformComposite ya hacía multi-capa. El chroma key + anotaciones se fusionaron en FreeformElement.',
+    fuente:
+      'packages/contracts/src/scene.schema.ts (CompositeElement); packages/blocks/compositor-remotion/src/compositions/PlanoEscenas.tsx (FreeformComposite)',
+  },
+  {
+    id: 'chroma-cutout-despill',
+    categoria: 'producto',
+    titulo: 'Recorte por chroma: hay que hacer DESPILL, no solo keying',
+    regla:
+      'Al recortar un sujeto generado sobre verde, el green-spill (reflejo verde sobre bata/piel) lo vuelve translúcido si solo aplicas el filtro SVG (feColorMatrix no hace min/max para despill). Haz chroma+despill por píxel sobre el asset: gd = G − max(R,B); gd alto → transparente; gd medio → ramp de alfa + despill (G = max(R,B)). Genera el sujeto con luz neutra y fondo verde saturado para minimizar spill. Mide píxeles reales antes de fijar umbrales.',
+    porQue:
+      'En jun-2026 el demo de la médica salía fantasma/translúcida por green-spill en la bata; el fondo verde generado tenía gd~100 (no ~200), así que umbrales a ojo fallaban. El chroma+despill por píxel + buen prompt de fondo lo dejó impecable.',
+    fuente:
+      'packages/blocks/compositor-remotion/src/compositions/PlanoEscenas.tsx (filtro chroma SVG, fallback); preproceso de cutout (System.Drawing chroma+despill → PNG transparente)',
+  },
+  {
+    id: 'estilo-capcut-edicion',
+    categoria: 'producto',
+    titulo: 'Estilo CapCut: edición profunda (Copilot + automática) — el norte',
+    regla:
+      '"Estilo CapCut" es el MODO de edición profunda de VF, para CUALQUIER estilo de video (no solo autoridad/doctor). Funciona de dos formas sobre el MISMO timeline (CompositeElement + FreeformComposite): (1) CONVERSACIONAL vía el Copilot — el owner le dice qué editar ("pon el círculo en la papada cuando diga papada", "muévelo", "más grande") y el Copilot PROPONE cambios al timeline; (2) AUTOMÁTICO — los agentes (rip + auditor de formato) lo arman y corrigen comparando ORIGINAL vs RENDER. Render con Remotion. Cabezas que hablan (lip-sync) vía HeyGen. Multi-voz por hablante. Personalizable e iterativo; NADA se auto-aplica (el owner aprueba).',
+    porQue:
+      'Decisión del owner (jun-2026): tratar la edición profunda como un modo con nombre, copilot-driven + automático. NO usar editor externo: CapCut no tiene API real de render server-side; Shotstack/Creatomate solo duplican lo que Remotion ya hace.',
+    fuente:
+      'owner; apps/web/lib/kb/format-audit.ts (auditor comparativo); packages/blocks/compositor-remotion (FreeformComposite/CompositeElement); Copilot (apps/web/lib/claude-chat-discuss.ts)',
+  },
+  {
+    id: 'video-chroma-alpha-webm',
+    categoria: 'producto',
+    titulo: 'Recorte de VIDEO: pre-keying a webm alpha + OffthreadVideo transparent',
+    regla:
+      'Para superponer un VIDEO recortado (ej. una figura de autoridad ANIMADA que habla), el filtro SVG url() sobre <OffthreadVideo> NO resuelve fiable en el render headless (sale negro). Y OffthreadVideo descarta el alpha por defecto (mostraría el fondo verde). Solución probada: (1) pre-procesa el clip a .webm con alpha REAL — extrae frames, keying+despill por frame (gd=G−max(R,B), keyer en C# por velocidad), y encodea con ffmpeg -c:v libvpx-vp9 -pix_fmt yuva420p -auto-alt-ref 0; (2) renderiza con OffthreadVideo transparent. El ffmpeg recortado de Remotion NO trae el filtro chromakey, pero SÍ encoders con alpha (vp9/prores).',
+    porQue:
+      'jun-2026: el doctor animado (Kling) salía como mancha negra (filtro url) y luego como caja verde (alpha descartado). Pre-keying a webm alpha + transparent lo montó limpio. Habilita overlays de video que hablan en el formato "Estilo CapCut".',
+    fuente:
+      'packages/blocks/compositor-remotion/src/compositions/PlanoEscenas.tsx (FreeformElement video: transparent); preproceso de cutout de video (frames → keyer C# → ffmpeg vp9 yuva420p)',
+  },
+  {
+    id: 'deteccion-patrones-animacion',
+    categoria: 'producto',
+    titulo: 'Aprender un formato = detectar patrones de animación/movimiento (no solo keyframes)',
+    regla:
+      'Los ads MEZCLAN tramos ANIMADOS (el experto se mueve/habla; el usuario prueba el producto) y ESTÁTICOS (imágenes fijas), con distintos elementos moviéndose en distintos momentos. Al ripear/aprender un formato hay que DETECTARLO, no solo mirar keyframes estáticos (lo que hace hoy video-understander). Método: (a) muestreo temporal denso + frame-diff → motion% por tramo (alto=animado, bajo=estático) = mapa temporal; (b) visión multimodal para interpretar QUÉ/QUIÉN se mueve en cada tramo (experto, usuaria, producto, b-roll). Es un especialista del panel multi-agente que debe MEJORAR con el tiempo (más agentes detectan más y mejor). Reproducción: el motor YA soporta tramos animados (OffthreadVideo) + estáticos (Img) + timing por elemento; falta automatizar el mapeo detección→composición.',
+    porQue:
+      'jun-2026: el owner señaló que el análisis solo veía keyframes estáticos y NO el movimiento (qué tramo está animado, quién se mueve y cuándo). Hueco real de la capacidad de reconocimiento a pulir.',
+    fuente:
+      'apps/web/lib/video-understander.ts (keyframes → extender a motion); frame-diff (mapa de movimiento); apps/web/lib/kb/format-audit.ts (panel multi-agente — nuevo especialista de animación); packages/blocks/compositor-remotion (reproducción animado+estático+timing)',
+  },
 ];
 
 async function readRaw(): Promise<Invariant[]> {

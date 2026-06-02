@@ -38,7 +38,7 @@ const conf = () =>
     .catch(0.5)
     .transform((v) => (Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 0.5));
 
-const HallazgoDraftSchema = z.object({
+export const HallazgoDraftSchema = z.object({
   titulo: cap(160),
   severidad: z.enum(SEVERIDADES).catch('medium'),
   descripcion: cap(1200),
@@ -46,21 +46,21 @@ const HallazgoDraftSchema = z.object({
   fixPropuesto: cap(800),
   confianza: conf(),
 });
-type HallazgoDraft = z.infer<typeof HallazgoDraftSchema>;
+export type HallazgoDraft = z.infer<typeof HallazgoDraftSchema>;
 
-const SpecialistOutputSchema = z.object({
+export const SpecialistOutputSchema = z.object({
   resumen: cap(600),
   hallazgos: z.array(HallazgoDraftSchema).max(12).default([]),
 });
 export type SpecialistOutput = z.infer<typeof SpecialistOutputSchema>;
 
-const VerificacionSchema = z.object({
+export const VerificacionSchema = z.object({
   veredicto: z.enum(['confirmado', 'falso-positivo', 'incierto']).catch('incierto'),
   razon: cap(600),
 });
 export type Verificacion = z.infer<typeof VerificacionSchema>;
 
-const SintesisSchema = z.object({
+export const SintesisSchema = z.object({
   resumenEjecutivo: cap(1500),
   topHallazgos: z
     .array(z.object({ titulo: cap(160), severidad: cap(20), porQueImporta: cap(300) }))
@@ -143,7 +143,7 @@ Formato: {"resumen":"...","hallazgos":[{"titulo":"...","severidad":"low|medium|h
   return r.isOk() ? r.value : null;
 }
 
-async function defaultRunVerifier(args: {
+export async function defaultRunVerifier(args: {
   subsistema: string;
   draft: HallazgoDraft;
   model: string;
@@ -168,7 +168,7 @@ EVIDENCIA QUE CITA: ${args.draft.evidencia || '(no citó evidencia concreta)'}
   return r.isOk() ? r.value : null;
 }
 
-async function defaultRunSynthesis(args: {
+export async function defaultRunSynthesis(args: {
   hallazgos: Hallazgo[];
   model: string;
 }): Promise<Sintesis | null> {
