@@ -5,6 +5,7 @@ import { renderMedia, selectComposition } from '@remotion/renderer';
 import type { PlanoFijoProps } from './compositions/PlanoFijo.js';
 import type { PlanoAnimadoProps } from './compositions/PlanoAnimado.js';
 import type { PlanoEscenasProps } from './compositions/PlanoEscenas.js';
+import type { ComposicionAvanzadaProps } from './compositions/ComposicionAvanzada.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -33,10 +34,16 @@ export interface RenderPlanoEscenasOptions extends RenderOptionsBase {
   inputProps: PlanoEscenasProps;
 }
 
+export interface RenderComposicionAvanzadaOptions extends RenderOptionsBase {
+  composition: 'ComposicionAvanzada';
+  inputProps: ComposicionAvanzadaProps;
+}
+
 export type RenderOptions =
   | RenderPlanoFijoOptions
   | RenderPlanoAnimadoOptions
-  | RenderPlanoEscenasOptions;
+  | RenderPlanoEscenasOptions
+  | RenderComposicionAvanzadaOptions;
 
 export interface RenderResult {
   outputPath: string;
