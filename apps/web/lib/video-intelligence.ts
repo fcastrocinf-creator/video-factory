@@ -16,6 +16,7 @@ import { analyzeAd } from './ad-analyzer';
 import type { AdAnalysis } from '@video-factory/contracts';
 import { buildMotionMap, type MotionMap } from './motion-map';
 import { KB_DIR, recordEvent, type KbSubsistema } from './kb/record';
+import { planTimelineFromFormat, type FormatTimelinePlan } from './format-to-timeline';
 
 export interface VideoIntelligenceReport {
   videoPath: string;
@@ -28,6 +29,8 @@ export interface VideoIntelligenceReport {
     cuts: number[];
     segments: MotionMap['segments'];
   };
+  /** Plan de edición (reproducción) deducido del formato aprendido. */
+  timelinePlan: FormatTimelinePlan;
   ts: string;
 }
 
@@ -65,6 +68,7 @@ export async function analyzeVideoDeep(
     durationSec: analysis.totalDurationSeconds,
     analysis,
     motion,
+    timelinePlan: planTimelineFromFormat(analysis),
     ts: new Date().toISOString(),
   };
 

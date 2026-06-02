@@ -17,6 +17,7 @@ try {
 } catch {}
 
 import { analyzeVideoDeep, formatVideoIntelligence } from '../apps/web/lib/video-intelligence';
+import { formatTimelinePlan } from '../apps/web/lib/format-to-timeline';
 
 async function main(): Promise<void> {
   const v = process.argv[2];
@@ -28,6 +29,7 @@ async function main(): Promise<void> {
   const t0 = Date.now();
   const report = await analyzeVideoDeep({ videoPath: v });
   console.log(formatVideoIntelligence(report));
+  console.log('\n' + formatTimelinePlan(report.timelinePlan));
   console.log(`\n(${((Date.now() - t0) / 1000).toFixed(0)}s · guardado en storage/kb/formatos/)`);
 }
 void main();
