@@ -159,6 +159,65 @@ export const CORE_INVARIANTS: Array<Omit<Invariant, 'ts'>> = [
     fuente:
       'apps/web/lib/video-understander.ts (keyframes → extender a motion); frame-diff (mapa de movimiento); apps/web/lib/kb/format-audit.ts (panel multi-agente — nuevo especialista de animación); packages/blocks/compositor-remotion (reproducción animado+estático+timing)',
   },
+  {
+    id: 'persona-ruta-ugc',
+    categoria: 'producto',
+    titulo: 'Personas = ruta UGC (video real en escena), NUNCA animar foto sobre verde',
+    regla:
+      'Las PERSONAS de un ad se generan por la RUTA UGC: un video real en una escena real (ej. Veo/Higgsfield image-to-video desde una imagen de escena real, estilo selfie). NUNCA animar una foto/headshot estático sobre fondo verde: eso produce "una persona que solo se mueve" (defecto tipo HeyGen talking_photo), no UGC creíble. El recorte/PiP se resuelve DESPUÉS y aparte (matting IA o caja PiP). NUNCA dejar que la necesidad de edición (recortar) fuerce la generación (ej. generar sobre verde): primero la persona bien, el recorte después.',
+    porQue:
+      'jun-2026: generar al médico como retrato sobre verde y animarlo salía rígido/falso; generarlo como UGC real en su consulta (Veo) lo dejó creíble. El error de raíz fue dejar que el recorte mandara sobre la generación.',
+    fuente: 'docs/analisis_videos_ugc.md; investigacion/RUTA-IGUALAR-ESTILO.md; apps/web/lib/scene-animator.ts (routing UGC); route-profiles.ts',
+  },
+  {
+    id: 'lipsync-voz-nativa',
+    categoria: 'producto',
+    titulo: 'Lipsync = voz NATIVA del clip + escenas cortas (no superponer TTS)',
+    regla:
+      'El lipsync debe venir de la VOZ NATIVA del clip generado (el modelo genera voz y labios juntos, ej. Seedance audio-driven o Veo con diálogo) y se usa ESE audio. NO superponer un TTS aparte sobre un video muteado: patina (desfase entre audio y labios). Además, escenas CORTAS = mejor lipsync (los modelos se confunden en clips largos): trocear los segmentos largos.',
+    porQue:
+      'jun-2026: al montar el TTS encima de los clips el lipsync no calzaba. La voz nativa del clip (sincronizada a sí misma) + clips cortos resuelve.',
+    fuente: 'apps/web/lib/scene-animator.ts; compositor (audioSrc); Seedance/Veo audio',
+  },
+  {
+    id: 'anotaciones-ancladas-sincronizadas',
+    categoria: 'producto',
+    titulo: 'Anotaciones: ancladas a la zona + sincronizadas a la narración (nunca arbitrarias)',
+    regla:
+      'Los círculos/flechas de anotación deben (a) anclarse a la ZONA exacta del rasgo (cara/región, idealmente con detección de cara) y (b) aparecer SINCRONIZADOS al momento en que la narración menciona ese rasgo (ej. el círculo en ojeras/papada aparece cuando se dicen esas palabras). NUNCA poner anotaciones arbitrarias o sin relación con lo que se dice o se ve.',
+    porQue:
+      'jun-2026: el owner marcó que poner círculos rojos sin sentido (sin sincronía ni zona correcta) se ve "estúpido". La anotación solo aporta si tiene sentido temporal y espacial.',
+    fuente: 'packages/blocks/compositor-remotion (kind annotation, startSeconds/endSeconds); pendiente: detección de cara para anclar la zona',
+  },
+  {
+    id: 'sin-subtitulos-salvo-pedido',
+    categoria: 'decision',
+    titulo: 'No poner subtítulos salvo que el usuario los pida',
+    regla:
+      'NO agregar subtítulos/captions a un video salvo que el owner/usuario los pida EXPLÍCITAMENTE.',
+    porQue: 'jun-2026: el owner rechazó subtítulos agregados sin pedirlos ("eso no te lo pedí, recuérdalo").',
+    fuente: 'owner',
+  },
+  {
+    id: 'usuaria-antes-hinchada-progresion',
+    categoria: 'producto',
+    titulo: 'Antes/después: "antes" = hinchada (no golpeada) + progresión de mejora',
+    regla:
+      'En ads de antes/después, la persona en el estado "antes" debe verse HINCHADA/inflamada (retención de líquido): mejillas y párpados hinchados, papada blanda, cara pesada; pero con tono de piel SANO y SIN moretones ni ojeras tipo golpe. Y debe MEJORAR progresivamente a lo largo del ad (antes → intermedio → después) a medida que usa el producto. Generar los estados como una progresión coherente de la MISMA persona.',
+    porQue:
+      'jun-2026: la usuaria salía "golpeada" (ojeras tipo moretón) en vez de hinchada; y el original muestra mejora progresiva con el uso del producto, que hay que reproducir.',
+    fuente: 'docs/formato-supercalm-doctor-split.md; prompts de generación de la usuaria',
+  },
+  {
+    id: 'validators-detectan-y-usuario-corrige',
+    categoria: 'producto',
+    titulo: 'Los validators detectan defectos y los proponen al usuario (autonomía)',
+    regla:
+      'Los validators (format-audit + jueces de imagen) deben CORRER sobre lo CREADO (no solo al aprender) y detectar solos: persona golpeada-vs-hinchada, lipsync flojo, PiP estático, producto ilegible, anotación desincronizada, recorte sucio, etc. Esos hallazgos se surfacean al usuario como RECOMENDACIONES aplicables en el editor y/o vía el Copilot. El objetivo es que la herramienta perfeccione el video SOLA (con aprobación del usuario), sin depender de que el owner corrija a mano.',
+    porQue:
+      'jun-2026: el owner exige que estos aprendizajes los aplique la herramienta sin depender de que hablemos; las correcciones deben recomendarse al usuario in-app.',
+    fuente: 'apps/web/lib/kb/format-audit.ts; /admin Consejo; editor + apps/web/lib/claude-chat-discuss.ts (Copilot); pendiente: surfacear hallazgos en el editor',
+  },
 ];
 
 async function readRaw(): Promise<Invariant[]> {

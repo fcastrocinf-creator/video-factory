@@ -8,7 +8,10 @@
 // Auth: header X-Api-Key (HEYGEN_API_KEY del .env). Estados: pending→processing→completed|failed.
 // NOTA DE COSTO: cada generación gasta créditos (~$1/min). Generar SOLO clips cortos hasta validar.
 
+import { readFile } from 'node:fs/promises';
+
 const HEYGEN_BASE = 'https://api.heygen.com';
+const HEYGEN_UPLOAD = 'https://upload.heygen.com';
 
 export interface HeyGenGenerateOptions {
   /** Avatar stock (avatar_id) — usa esto O talkingPhotoId. */
@@ -87,4 +90,49 @@ export async function generateHeyGenVideoAndWait(
     if (st.status === 'failed') throw new Error(`HeyGen falló: ${JSON.stringify(st.error)}`);
   }
   throw new Error(`HeyGen timeout tras ${maxWait}s (video_id ${videoId})`);
+}
+
+/**
+ * Sube una FOTO propia a HeyGen → devuelve talking_photo_id (para animar una cara
+ * propia, ej. el médico generado). Endpoint de upload con bytes crudos.
+ */
+export async function uploadTalkingPhoto(imagePath: string, opts?: { apiKey?: string }): Promise<string> {
+  const bytes = await readFile(imagePath);
+  const lower = imagePath.toLowerCase();
+  const contentType = lower.endsWith('.jpg') || lower.endsWith('.jpeg') ? 'image/jpeg' : 'image/png';
+  const resp = await fetch(`${HEYGEN_UPLOAD}/v1/talking_photo`, {
+    method: 'POST',
+    headers: { 'X-Api-Key': key(opts), 'Content-Type': contentType },
+    body: bytes,
+  });
+  const json = (await resp.json().catch(() => ({}))) as {
+    data?: { talking_photo_id?: string; id?: string };
+    message?: string;
+  };
+  if (!resp.ok) throw new Error(`HeyGen upload ${resp.status}: ${JSON.stringify(json)}`);
+  const id = json.data?.talking_photo_id ?? json.data?.id;
+  if (!id) throw new Error(`HeyGen upload sin talking_photo_id: ${JSON.stringify(json)}`);
+  return id;
+}
+
+export interface HeyGenVoice {
+  voiceId: string;
+  language: string;
+  gender: string;
+  name: string;
+}
+
+/** Lista las voces disponibles (para elegir, ej. una voz ES masculina). */
+export async function listHeyGenVoices(opts?: { apiKey?: string }): Promise<HeyGenVoice[]> {
+  const resp = await fetch(`${HEYGEN_BASE}/v2/voices`, { headers: { 'X-Api-Key': key(opts) } });
+  const json = (await resp.json().catch(() => ({}))) as {
+    data?: { voices?: Array<{ voice_id: string; language?: string; gender?: string; name?: string }> };
+  };
+  if (!resp.ok) throw new Error(`HeyGen voices ${resp.status}: ${JSON.stringify(json)}`);
+  return (json.data?.voices ?? []).map((v) => ({
+    voiceId: v.voice_id,
+    language: v.language ?? '',
+    gender: v.gender ?? '',
+    name: v.name ?? '',
+  }));
 }

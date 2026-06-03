@@ -110,6 +110,9 @@ export class CompositorRemotionBlock implements Block<RenderJob, RenderJob> {
                     imageSrc: el.imagePath ? basename(el.imagePath) : undefined,
                     videoSrc: el.videoPath ? basename(el.videoPath) : undefined,
                     text: el.text,
+                    // Sin esto el render descarta el color y las captions amarillas
+                    // (CapCut) salen blancas en silencio.
+                    textColor: el.textColor,
                     rect: el.rect,
                     rotationDeg: el.rotationDeg,
                     opacity: el.opacity,

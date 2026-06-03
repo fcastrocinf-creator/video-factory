@@ -39,6 +39,7 @@ export interface CompositeElementVisual {
   imageSrc?: string; // basename
   videoSrc?: string; // basename
   text?: string;
+  textColor?: string; // color del texto (kind='text'); default blanco. Captions amarillos CapCut.
   rect: { xPct: number; yPct: number; widthPct: number; heightPct: number };
   rotationDeg?: number;
   opacity?: number;
@@ -801,7 +802,7 @@ const FreeformElement: React.FC<{ element: CompositeElementVisual }> = ({ elemen
             fontFamily: 'Inter, system-ui, sans-serif',
             fontWeight: 900,
             fontSize: textFontSize,
-            color: '#FFFFFF',
+            color: element.textColor ?? '#FFFFFF',
             textAlign: 'center',
             lineHeight: 1.1,
             padding: '4%',

@@ -11,6 +11,7 @@
     "typecheck": "turbo run typecheck",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/migrate.ts",
+    "gate": "tsx scripts/run-quality-gate.ts",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\""
   },
   "engines": {

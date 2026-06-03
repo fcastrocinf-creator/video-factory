@@ -2285,6 +2285,33 @@ export async function runPipeline(
         summary: `Editor IA marcó avisos en el run ${runId.slice(0, 8)}`,
       });
     }
+
+    // COMPUERTA DE CALIDAD (OPT-IN: VF_GATE_ON_RENDER=1). Corre el panel multi-agente
+    // con visión (+ el juez Gemini video+audio si VF_GATE_USE_GEMINI=1) sobre el
+    // final.mp4 YA producido, deriva un veredicto pass/revisar/fail y lo PERSISTE
+    // (writeQualityGateReport, legible en /admin). Best-effort, fire-and-forget:
+    // NUNCA bloquea ni rompe el run (igual que M5/M6 — solo observa/propone, invariante
+    // "nada se auto-aplica"). Si es un rip, compara contra el original (referenceVideoPath).
+    if (process.env['VF_GATE_ON_RENDER'] === '1' || process.env['VF_GATE_ON_RENDER'] === 'true') {
+      void (async () => {
+        try {
+          const { runQualityGate } = await import('./kb/quality-gate');
+          const gate = await runQualityGate({
+            runId,
+            renderVideoPath: outputPath,
+            originalVideoPath: overrides.referenceVideoPath ?? undefined,
+            label: `Compuerta run ${runId.slice(0, 8)}`,
+          });
+          logger.info(
+            { runId, veredicto: gate.veredicto, bloqueantes: gate.bloqueantes.length },
+            'pipeline:quality_gate',
+          );
+        } catch (e) {
+          logger.warn({ runId, err: (e as Error).message }, 'pipeline:quality_gate_failed');
+        }
+      })();
+    }
+
     // Disparar el análisis continuo agrupado del Consejo. Fire-and-forget.
     void (async () => {
       try {

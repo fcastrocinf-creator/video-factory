@@ -3,7 +3,41 @@
 > Documento de traspaso entre conversaciones de Claude Code.
 > Para continuar: abre un chat nuevo en este proyecto y di **"lee HANDOFF.md y seguimos"**.
 > 💡 Backlog de ideas futuras (para barrer e implementar): **`IDEAS.md`**.
-> Última actualización: 2026-06-01 (Versión 5).
+> Última actualización: 2026-06-03 (Versión 6).
+
+---
+
+## 🚀 VERSIÓN 6 — 03-06-2026 (Compuerta de calidad video+audio + "Estilo CapCut" + manual de activaciones)
+
+> **Foco de la sesión:** aprender/reproducir formatos de video complejos (ej. ad del médico SuperCalm) y, sobre todo, que la herramienta **se autocritique antes de entregar**.
+
+### 1. 🛡️ Compuerta de calidad (LO GRANDE — el "norte" de esta sesión)
+Antes, el único recurso que VE+OYE video (Gemini, `ad-analyzer`) se usaba solo para APRENDER, nunca para juzgar lo generado → el lipsync/realismo malos se colaban. Se construyó la **compuerta**:
+- `apps/web/lib/kb/quality-gate.ts` — `runQualityGate`: corre el panel `format-audit` + (opt-in) el **juez Gemini video+audio** sobre el render, deriva veredicto **determinista** `pass/revisar/fail` (`decideGateVerdict`, función pura) + **fail-closed** (si el juez AV no evalúa, NO aprueba a ciegas). Deriva una **rúbrica del formato** (`deriveRubric`) con las invariantes como criterios. Persiste (`writeQualityGateReport` en `findings.ts`).
+- `apps/web/lib/render-quality-judge.ts` + `apps/web/lib/gemini-video-transport.ts` — el **juez que VE+OYE** el render (8 dims: realismo, **lipsync**, fidelidad, ritmo, producto, **hinchada-vs-golpeada**, recorte, anotación). Transporte = el de `ad-analyzer` generalizado (inline/File API/GCS, fallbacks).
+- **Enganchada a la pipeline** (`pipeline.ts`, best-effort, no bloquea) con **`VF_GATE_ON_RENDER=1`**. CLI: `scripts/run-quality-gate.ts` (exit 0/1/2). Juez Gemini: `VF_GATE_USE_GEMINI=1`.
+- **Verificado:** 13 tests (`node:test`, `pnpm tsx --test apps/web/lib/kb/quality-gate.test.ts`) + `pnpm -r typecheck` verde + **probado end-to-end: reprobó un render malo** y cazó lipsync/grotesco/producto/narración.
+- **Pendiente:** (a) mostrar el veredicto en la **UI del run** (hoy persiste+loggea), (b) **bucle de auto-reparación** (interfaz `RepairLoop` diseñada, NO implementada — fase 2).
+
+### 2. 📋 Manual de activaciones (para el manual de usuario)
+`docs/manual-activaciones.md` — registro de TODO lo activable que se puede olvidar: flags `VF_*`, keys requeridas, capacidades NO enganchadas (compuerta/format-audit), opt-in por preset, pasos manuales. ⚠️ **Ojo:** hay UNA excepción real a "nada se auto-aplica" → `apps/web/lib/auto-fix.ts` puede escribir código `.ts` si `confidence≥85` y se procesa la cola (OFF por defecto). Revisar con el owner.
+
+### 3. 🧠 6 invariantes nuevas (en `CORE_INVARIANTS` + sync a CLAUDE.md)
+`persona-ruta-ugc` (personas = video UGC real, NUNCA animar foto sobre verde), `lipsync-voz-nativa` (voz nativa del clip + escenas cortas, no TTS encima), `anotaciones-ancladas-sincronizadas`, `sin-subtitulos-salvo-pedido`, `usuaria-antes-hinchada-progresion`, `validators-detectan-y-usuario-corrige`.
+
+### 4. 🎬 "Estilo CapCut" / reproducir formatos
+- VISUAL = **ruta UGC** (Higgsfield/Veo, escena real; `docs/analisis_videos_ugc.md`, `investigacion/RUTA-IGUALAR-ESTILO.md`). NO animar retratos sobre verde. El recorte/PiP = matting o caja (aparte, después).
+- TÉCNICO (edición) = compositor Remotion (`FreeformComposite`): PiP, recorte chroma→webm alpha, anotaciones, captions (`textColor` nuevo en `CompositeElementVisual`), 2 voces. Protos: `proto-sc20.ts`, `proto-ugc-edit.ts`, `proto-supercalm.ts`. Scripts: `tts-supercalm`, `prep-*`, `detect-cuts` (micro-escenas/cortes), `extract-frame`.
+- Formato aprendido: `docs/formato-supercalm-doctor-split.md` + receta `docs/supercalm-doctor-receta-ejecucion.md`.
+
+### 5. ▶️ Próximo paso inmediato (el video SuperCalm)
+Reproducir bien los ~20-30s del ad del médico. La compuerta ya marcó qué arreglar: **(a)** sección "**después**" de Rosa (progresión de mejora), **(b)** **producto legible**, **(c)** **lipsync** (audio nativo del clip + escenas cortas), **(d)** **anotaciones sincronizadas** a la palabra. Iterar: generar → compuerta verifica → corregir lo que falla. *(Assets en `storage/proto-*`, gitignored.)*
+
+### 6. Reglas reforzadas del owner (esta sesión)
+- ⛔ **NO subtítulos** salvo que el owner los pida.
+- Personas SIEMPRE por la **ruta UGC** (no retrato animado).
+- **Honestidad:** no decir "listo" si no está bien; verificar (ver+oír) antes de entregar.
+- **Cuidar créditos de Higgsfield** (generar lo mínimo hasta liberar).
 
 ---
 

@@ -234,3 +234,75 @@ export async function readFormatAuditReport(scope?: string): Promise<FormatAudit
     return null;
   }
 }
+
+// ─── Veredictos de la COMPUERTA DE CALIDAD (video+audio sobre el render) ──────
+// La compuerta corre el panel (runFormatAudit) sobre un render YA producido y
+// deriva un veredicto DETERMINISTA pass/revisar/fail. Su informe vive aparte de
+// los del Auditor de formato: en hallazgos/quality-gates/, scoped por run/path.
+// NO pisa _latest.json del Auditor. La persistencia de hallazgos + el reflejo a
+// la KB ya los hizo runFormatAudit; aquí solo guardamos el veredicto auditable.
+
+const QUALITY_GATES_DIR = resolve(HALLAZGOS_DIR, 'quality-gates');
+
+export type GateVeredicto = 'pass' | 'revisar' | 'fail';
+
+/** Un hallazgo que justifica el veredicto (espejo legible del Hallazgo subyacente). */
+export interface GateBlocker {
+  /** Especialista/subsistema que lo emitió (la "dimensión" del formato). */
+  dimension: string;
+  severidad: HallazgoSeveridad;
+  estado: HallazgoEstado;
+  titulo: string;
+  /** Recomendación accionable. NUNCA se aplica sola (invariante "nada se auto-aplica"). */
+  fixPropuesto: string;
+  confianza: number;
+}
+
+/** Política DETERMINISTA con la que se decidió el veredicto (auditable). */
+export interface GatePolicyRecord {
+  failOn: 'high' | 'critical';
+  reviewOn: 'medium' | 'high';
+  reviewOnMediumCount: number;
+  countUnverified: boolean;
+}
+
+export interface QualityGateReport {
+  schemaVersion: 1;
+  gateId: string; // 'quality-gate/<fecha>/<uuid8>'
+  scope: string; // 'gate:<runId>' o 'gate:<hash-de-path>'
+  label: string;
+  ts: string;
+  codeVersion: string;
+  veredicto: GateVeredicto; // DECISIÓN de la compuerta (determinista)
+  comparedWithOriginal: boolean;
+  resumen: string; // 1-2 frases en español neutro
+  bloqueantes: GateBlocker[]; // justifican fail/revisar (ordenados por severidad)
+  recomendaciones: GateBlocker[]; // low/medium no bloqueantes (surface-only)
+  auditId: string; // ref al FormatAuditResult subyacente
+  policy: GatePolicyRecord; // política efectiva usada
+  especialistasAuditados: string[];
+  especialistasSalteados: string[];
+  errores: string[];
+}
+
+/** Guarda el veredicto de la compuerta (scoped) + actualiza _latest.json. Best-effort. */
+export async function writeQualityGateReport(r: QualityGateReport): Promise<void> {
+  try {
+    await mkdir(QUALITY_GATES_DIR, { recursive: true });
+    const json = JSON.stringify(r);
+    await writeFile(resolve(QUALITY_GATES_DIR, `${safeScopeKey(r.scope)}.json`), json, 'utf-8');
+    await writeFile(resolve(QUALITY_GATES_DIR, '_latest.json'), json, 'utf-8');
+  } catch {
+    // best-effort
+  }
+}
+
+/** Lee el veredicto de un scope (o el último si no se pasa scope). */
+export async function readQualityGateReport(scope?: string): Promise<QualityGateReport | null> {
+  try {
+    const file = resolve(QUALITY_GATES_DIR, scope ? `${safeScopeKey(scope)}.json` : '_latest.json');
+    return JSON.parse(await readFile(file, 'utf-8')) as QualityGateReport;
+  } catch {
+    return null;
+  }
+}

@@ -181,6 +181,33 @@ export interface FormatAuditDeps {
     model: string;
   }) => Promise<Verificacion | null>;
   runSynthesis?: (args: { hallazgos: Hallazgo[]; model: string }) => Promise<Sintesis | null>;
+  /**
+   * Especialistas EXTRA que NO miran keyframes (los provee el caller). Se usan
+   * para enchufar jueces que necesitan otra entrada — p.ej. el juez Gemini
+   * video+audio (render-quality-judge), que mira el video temporal completo.
+   * Reciben el contextText resuelto (incluye motion-map) y devuelven hallazgos en
+   * el mismo formato que un especialista. Sus drafts pasan por el verificador,
+   * la persistencia y el reflejo a la KB IGUAL que los demás. Opcional.
+   */
+  extraSpecialists?: Array<{
+    especialista: string;
+    run: (args: { contextText: string; model: string }) => Promise<SpecialistOutput | null>;
+    /**
+     * Verificador PROPIO para los hallazgos de este especialista (opcional). El
+     * verificador por defecto (defaultRunVerifier) es SOLO-TEXTO y CIEGO: no ve el
+     * video. Un hallazgo AV legítimo (p.ej. "los labios se desfasan en el segundo
+     * 4") es justo lo que un verificador ciego marcaría 'incierto'/'falso-positivo'
+     * → se descartaría ANTES del conteo, dejando que un juez que NO ve+oye vete a
+     * uno que SÍ ve+oye. Si se provee `verify`, se usa EN LUGAR del verificador
+     * ciego para los drafts de este especialista (p.ej. un passthrough que no
+     * refuta sin evidencia AV). Si se omite, se usa el verificador por defecto.
+     */
+    verify?: (args: {
+      subsistema: string;
+      draft: HallazgoDraft;
+      model: string;
+    }) => Promise<Verificacion | null>;
+  }>;
 }
 
 // ─── API pública ───────────────────────────────────────────────────────────────
@@ -283,7 +310,14 @@ export async function runFormatAudit(input: FormatAuditInput): Promise<FormatAud
   const requested = input.specialists ?? Object.keys(FORMAT_SPECIALISTS);
   const auditados: string[] = [];
   const salteados: string[] = [];
-  const drafts: Array<{ especialista: string; draft: HallazgoDraft }> = [];
+  // `verify` opcional por draft: lo llevan los hallazgos de un extraSpecialist con
+  // verificador propio (p.ej. el juez AV), para no pasar por el verificador ciego.
+  type VerifierFn = (args: {
+    subsistema: string;
+    draft: HallazgoDraft;
+    model: string;
+  }) => Promise<Verificacion | null>;
+  const drafts: Array<{ especialista: string; draft: HallazgoDraft; verify?: VerifierFn }> = [];
 
   for (const esp of requested) {
     const cfg = FORMAT_SPECIALISTS[esp];
@@ -309,6 +343,22 @@ export async function runFormatAudit(input: FormatAuditInput): Promise<FormatAud
     }
   }
 
+  // 2b) Especialistas EXTRA inyectados por el caller (no miran keyframes; p.ej. el
+  //     juez Gemini video+audio). Sus drafts entran al MISMO flujo (verificación,
+  //     persistencia, reflejo a la KB) que los del panel.
+  for (const extra of input.deps?.extraSpecialists ?? []) {
+    auditados.push(extra.especialista);
+    try {
+      const out = await extra.run({ contextText, model });
+      llamadas += 1;
+      if (out)
+        for (const d of out.hallazgos)
+          drafts.push({ especialista: extra.especialista, draft: d, verify: extra.verify });
+    } catch (e) {
+      errores.push(`especialista ${extra.especialista}: ${(e as Error).message}`);
+    }
+  }
+
   // 3) Verificación adversarial de high/critical + persistencia de hallazgos.
   const maxVer = input.maxVerificaciones ?? 8;
   const persistidos: Hallazgo[] = [];
@@ -316,15 +366,18 @@ export async function runFormatAudit(input: FormatAuditInput): Promise<FormatAud
   let descartados = 0;
   let verCount = 0;
 
-  for (const { especialista, draft } of drafts) {
+  for (const { especialista, draft, verify } of drafts) {
     let estado: Hallazgo['estado'] = 'abierto';
     let verificacion: Hallazgo['verificacion'];
+    // Verificador AV-aware: si el especialista trajo el suyo (juez que ve+oye), se
+    // usa ESE; si no, el verificador adversarial por defecto (solo-texto).
+    const verifier = verify ?? runVerifier;
     const needsVerify =
       (draft.severidad === 'high' || draft.severidad === 'critical') && verCount < maxVer;
     if (needsVerify) {
       verCount += 1;
       try {
-        const v = await runVerifier({ subsistema: especialista, draft, model });
+        const v = await verifier({ subsistema: especialista, draft, model });
         llamadas += 1;
         if (v) {
           verificacion = { veredicto: v.veredicto, razon: v.razon };

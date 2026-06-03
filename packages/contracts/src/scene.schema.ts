@@ -104,6 +104,9 @@ export const CompositeElementSchema = z.object({
   videoPath: z.string().optional(),
   // Contenido textual cuando kind='text'. Se renderiza como texto vectorial.
   text: z.string().optional(),
+  // Color del texto (kind='text'). Opcional; default blanco. Para captions
+  // amarillos estilo UGC/CapCut sin tocar el color por defecto del resto.
+  textColor: z.string().optional(),
   // GEOMETRÍA LIBRE: caja del elemento en porcentaje del frame 9:16 (0-100).
   // xPct/yPct = esquina superior izquierda. Habilita cualquier collage / overlay
   // / PiP / disposición irregular — esta es la diferencia clave vs. los layouts
