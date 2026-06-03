@@ -1,9 +1,23 @@
-import { resolve } from 'node:path';
+import { resolve, dirname } from 'node:path';
+import { existsSync } from 'node:fs';
 
-// El cwd cuando Next.js corre es la carpeta de apps/web (next dev lo invoca desde ahí
-// vía turbo). Subimos dos niveles hasta la raíz del monorepo para llegar a packages/,
-// storage/, db/, etc.
-export const REPO_ROOT = resolve(process.cwd(), '..', '..');
+// Raíz del monorepo. ROBUSTO sin importar desde dónde se invoque: next dev corre con
+// cwd=apps/web, pero un SCRIPT (tsx) puede correr desde la raíz o desde un paquete, y
+// entonces "subir 2 niveles" daba una ruta FUERA del repo (split-brain: el storage se
+// escribía en C:\Users\<user>\storage). Subimos desde el cwd hasta hallar el marcador
+// pnpm-workspace.yaml; fallback al comportamiento histórico (cwd=apps/web).
+function findRepoRoot(): string {
+  let dir = process.cwd();
+  for (let i = 0; i < 8; i++) {
+    if (existsSync(resolve(dir, 'pnpm-workspace.yaml'))) return dir;
+    const parent = dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return resolve(process.cwd(), '..', '..');
+}
+
+export const REPO_ROOT = findRepoRoot();
 
 export const BRANDS_DIR = resolve(REPO_ROOT, 'packages', 'brands');
 export const PRESETS_DIR = resolve(REPO_ROOT, 'packages', 'presets');

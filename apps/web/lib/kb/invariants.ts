@@ -162,22 +162,22 @@ export const CORE_INVARIANTS: Array<Omit<Invariant, 'ts'>> = [
   {
     id: 'persona-ruta-ugc',
     categoria: 'producto',
-    titulo: 'Personas = ruta UGC (video real en escena), NUNCA animar foto sobre verde',
+    titulo: 'Personas = ruta UGC con soul_2 + VERIFICAR la cara (no alien), NUNCA animar foto sobre verde',
     regla:
-      'Las PERSONAS de un ad se generan por la RUTA UGC: un video real en una escena real (ej. Veo/Higgsfield image-to-video desde una imagen de escena real, estilo selfie). NUNCA animar una foto/headshot estático sobre fondo verde: eso produce "una persona que solo se mueve" (defecto tipo HeyGen talking_photo), no UGC creíble. El recorte/PiP se resuelve DESPUÉS y aparte (matting IA o caja PiP). NUNCA dejar que la necesidad de edición (recortar) fuerce la generación (ej. generar sobre verde): primero la persona bien, el recorte después.',
+      'Las PERSONAS de un ad se generan por la RUTA UGC: un video/foto real en escena real, estilo selfie. Para GENERAR la cara usar Higgsfield SOUL (soul_2) — da humanos creíbles con piel real (poros, textura, imperfecciones); los modelos genéricos (nano_banana, etc.) salen con look "AI liso / alien". Para mantener la MISMA persona (antes/después, identidad) pasar la imagen base como referencia (medias role image en soul_2, o reference-element para otros modelos). SIEMPRE VERIFICAR la cara con ojo crítico (¿parece humano real o alien/avejentado/grotesco?) ANTES de usarla o animarla — nunca asumir que "técnicamente funciona" = "se ve bien". Si una cara que habla en cámara sale fea/uncanny, mejor FOTO fija (o b-roll) + voz en off que un clip malo. NUNCA animar headshot sobre verde (defecto HeyGen). El recorte/PiP se resuelve DESPUÉS y aparte. Nota: el enhancer de soul_2 tiende a neutralizar la expresión (no fuerza sonrisa en la foto) → la sonrisa se logra al ANIMAR.',
     porQue:
-      'jun-2026: generar al médico como retrato sobre verde y animarlo salía rígido/falso; generarlo como UGC real en su consulta (Veo) lo dejó creíble. El error de raíz fue dejar que el recorte mandara sobre la generación.',
-    fuente: 'docs/analisis_videos_ugc.md; investigacion/RUTA-IGUALAR-ESTILO.md; apps/web/lib/scene-animator.ts (routing UGC); route-profiles.ts',
+      'jun-2026: (1) el médico sobre verde salía rígido; como UGC real (Veo) quedó creíble. (2) Un "después" generado con nano_banana desde una fuente fea salió "alien/avejentado" y el owner lo cortó en seco ("la imagen está horrible, no te das cuenta?"); soul_2 con el "antes" como referencia dio una persona REAL (misma mujer, deshinchada, sana). Lección doble: soul_2 para humanos UGC + VERIFICAR la cara antes de seguir (no confundir "funciona" con "se ve bien").',
+    fuente: 'docs/analisis_videos_ugc.md; investigacion/RUTA-IGUALAR-ESTILO.md; apps/web/lib/scene-animator.ts (routing UGC); route-profiles.ts (perfil ugc-real); Higgsfield soul_2 (Soul 2.0) + reference-element para identidad',
   },
   {
     id: 'lipsync-voz-nativa',
     categoria: 'producto',
-    titulo: 'Lipsync = voz NATIVA del clip + escenas cortas (no superponer TTS)',
+    titulo: 'Lipsync = voz NATIVA del clip (controlar pronunciación) + escenas cortas; si no, b-roll + voz en off',
     regla:
-      'El lipsync debe venir de la VOZ NATIVA del clip generado (el modelo genera voz y labios juntos, ej. Seedance audio-driven o Veo con diálogo) y se usa ESE audio. NO superponer un TTS aparte sobre un video muteado: patina (desfase entre audio y labios). Además, escenas CORTAS = mejor lipsync (los modelos se confunden en clips largos): trocear los segmentos largos.',
+      'El lipsync debe venir de la VOZ NATIVA del clip generado (el modelo genera voz y labios juntos, ej. Seedance audio-driven o Veo con diálogo) y se usa ESE audio. NO superponer un TTS aparte sobre un video muteado: patina (desfase). PERO la voz nativa EXIGE controlar la PRONUNCIACIÓN y el TONO en el PROMPT de generación: escribir la línea hablada clara, en ES neutro, sin ambigüedad, y especificar tono/ritmo; luego VERIFICAR con la compuerta (Gemini OYE) porque puede salir una frase mal pronunciada o "sin sentido". Escenas CORTAS = mejor lipsync (trocear segmentos largos). Si una cara que habla NO se logra sincronizar/pronunciar bien, alternativa ROBUSTA: mostrarla como B-ROLL (sonriendo, sin hablar) + voz en off de otro hablante → se evita el lipsync por completo.',
     porQue:
-      'jun-2026: al montar el TTS encima de los clips el lipsync no calzaba. La voz nativa del clip (sincronizada a sí misma) + clips cortos resuelve.',
-    fuente: 'apps/web/lib/scene-animator.ts; compositor (audioSrc); Seedance/Veo audio',
+      'jun-2026: montar TTS encima patinaba. Validado por la compuerta: con audio nativo el lipsync dejó de ser bloqueante, PERO Gemini oyó la frase de apertura del médico "sin sentido" → la voz nativa NO es gratis, hay que controlar pronunciación/tono en el prompt y verificar oyendo. El owner ya lo anticipó ("mucho cuidado con cómo pronuncia palabras, el tono").',
+    fuente: 'apps/web/lib/scene-animator.ts; compositor (audioSrc = audio nativo del clip, no TTS); scripts/prep-key.ts (concat de audio nativo); Seedance/Veo audio; render-quality-judge.ts (dimensión lipsync, OYE)',
   },
   {
     id: 'anotaciones-ancladas-sincronizadas',

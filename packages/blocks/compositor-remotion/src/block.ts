@@ -113,6 +113,7 @@ export class CompositorRemotionBlock implements Block<RenderJob, RenderJob> {
                     // Sin esto el render descarta el color y las captions amarillas
                     // (CapCut) salen blancas en silencio.
                     textColor: el.textColor,
+                    backgroundColor: el.backgroundColor,
                     rect: el.rect,
                     rotationDeg: el.rotationDeg,
                     opacity: el.opacity,

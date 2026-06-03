@@ -3,7 +3,46 @@
 > Documento de traspaso entre conversaciones de Claude Code.
 > Para continuar: abre un chat nuevo en este proyecto y di **"lee HANDOFF.md y seguimos"**.
 > 💡 Backlog de ideas futuras (para barrer e implementar): **`IDEAS.md`**.
-> Última actualización: 2026-06-03 (Versión 6).
+> Última actualización: 2026-06-03 (Versión 7).
+
+---
+
+## 🚀 VERSIÓN 7 — 03-06-2026 (Tramo clave SuperCalm: lipsync por audio nativo · persona realista soul_2 · progresión antes/después · fix storage)
+
+> **Foco:** seguir el TRAMO CLAVE (~23s) del ad del médico SuperCalm. El owner pidió arreglar el **lipsync**; al iterar surgieron 2 cosas más: la **persona se veía "alien"** y el **"antes" y "después" no eran la misma mujer** (crítico del gate). Resueltos los 3.
+
+### 1. 🗣️ Lipsync — RESUELTO/MITIGADO (lo que pidió el owner)
+- **Causa raíz:** se montaba un **TTS aparte ENCIMA** del clip muteado → patinaba. **Fix:** usar el **audio NATIVO del clip** (el modelo genera voz+labios juntos). El médico (hook) habla en cámara con su voz nativa → el gate bajó su lipsync de **[high] → [medium]** (mejorable, ya no bloquea).
+- **Verdad cruda:** el lipsync de cabezas que hablan con Higgsfield/Seedance es **mediocre de por sí**. Ruta robusta = **minimizar habla-en-cámara**: para el testimonio de Rosa (su clip salía "uncanny + mal lipsync") la pusimos como **FOTO fija + médico en VOZ EN OFF** → **cero lipsync**. Rosa ya nunca habla en cámara.
+- Invariante `lipsync-voz-nativa` **actualizado** (voz nativa + cuidar pronunciación en el prompt + si la cara que habla sale fea → b-roll/foto + voz en off) y sincronizado a CLAUDE.md.
+
+### 2. 🧑 Persona realista (no "alien") — ruta UGC = soul_2 + VERIFICAR
+- nano_banana / modelos genéricos salen con look **"AI liso / alien"**. **Higgsfield SOUL (`soul_2`)** da humanos creíbles con **piel real** (poros, textura). El owner cortó en seco una cara fea ("la imagen está horrible, ¿no te das cuenta?") → lección: **VERIFICAR la cara con ojo crítico ANTES de usar/animar**; "funciona técnicamente" ≠ "se ve bien".
+- Invariante `persona-ruta-ugc` **actualizado** (usar soul_2 + verificar-no-alien; el enhancer de soul_2 neutraliza la expresión → la sonrisa se logra al animar) y sincronizado.
+
+### 3. 🔁 Continuidad antes/después (CRÍTICO del gate) — EDITAR > GENERAR
+- El gate marcaba **[critical] "inconsistencia de persona antes/después"**. Generar cada estado por separado fallaba (drift de identidad/edad + el enhancer de soul_2 ignora la hinchazón).
+- **Solución que funcionó (aprobada por el owner):** tomar UNA foto realista (`rosa-final.png`, soul_2 con `rosa-hinchada` como referencia de identidad) y **EDITARLA con `nano_banana_2` en modo edición** para variar SOLO la hinchazón → **3 estados de la MISMA persona**: `estado1_hinchada.png` → `estado2_media.png` → `estado3_renovada.png` (progresión "va mejorando"). Montaje `prog_comparativa.png`. **Aprendizaje:** para variar un mismo sujeto, **editar una foto base** (identidad garantizada + control) en vez de generar cada estado.
+
+### 4. 🏷️ `backgroundColor` en el compositor (etiqueta legible)
+- Nuevo campo opcional en `CompositeElementVisual` (kind `text`): fondo sólido → etiqueta de producto / lower-third que **TAPA el texto basura** del empaque generado. Cableado en `scene.schema.ts` → `PlanoEscenas.tsx` → `block.ts` → `proto-key.ts`. Typecheck verde. (El gate elogió la etiqueta: "bien ejecutado".)
+
+### 5. 🐛 BUG real de robustez arreglado — split-brain de storage
+- `apps/web/lib/paths.ts`: `REPO_ROOT` hacía `resolve(cwd,'..','..')` (asumía cwd=`apps/web`). Un **script corrido desde la raíz** escribía el storage en **`C:\Users\cmktc\storage`** (¡fuera del repo!) — por eso los reportes del gate "no aparecían". Ahora `findRepoRoot()` **sube hasta `pnpm-workspace.yaml`** → siempre dentro del repo, sin importar el cwd. Verificado (`STORAGE_DIR` resuelve dentro del repo). La app no cambia (usa `VF_STORAGE_DIR`).
+
+### 6. ⚠️ Gap pendiente (Fase 2) — el pipeline AUTOMÁTICO aún superpone TTS
+- La regla de audio nativo está **documentada** pero `pipeline.ts` todavía genera **UN solo `audio.mp3` (TTS)** y lo monta sobre clips muteados. Para que la herramienta aplique el lipsync nativo **sola** falta: audio nativo por segmento que habla (multi-voz) en `scene-animator`/`pipeline`. **Es el "bake-in" pendiente.**
+
+### 7. ▶️ Estado del video + PRÓXIMO PASO INMEDIATO
+- **Render actual:** `storage/proto-composite/supercalm-key6.mp4` (~15 MB, ~23s): médico hook (voz nativa) + teaser producto → Rosa ANTES (foto + círculos ojeras/papada + médico voz off) → Rosa DESPUÉS (foto realista + médico voz off) → producto con etiqueta.
+- **Gate:** **FALLA** pero **bajó de 7 → 3 bloqueantes**. Restantes: (1) **[crítico] persona inconsistente antes/después** → lo resuelven los **3 estados recién aprobados**; (2) **[alto] formato/dinamismo** → es **estructural**: un tramo de 24s NUNCA "pasa" comparado contra el ad COMPLETO de 72s (no es arreglable sin hacer el ad entero); (3) producto poco visible en un punto.
+- **HACER AHORA:** cablear en `proto-key.ts` los 3 estados como progresión real → **escena ANTES = `estado1_hinchada.png`**, añadir un beat **INTERMEDIO = `estado2_media.png`**, **DESPUÉS = `estado3_renovada.png`** (reemplaza `rosa-final.png`/`rosa-hinchada.png` para que TODO sea la misma mujer). Re-ajustar posición de círculos a la cara nueva del "antes". `npx tsx scripts/prep-key.ts` → render → `scripts/run-quality-gate.ts --render ... --original "...V2.mp4" --gemini`. *(El owner pidió "solo las imágenes" primero; ya están y aprobadas.)*
+- **Créditos Higgsfield:** ~27 de 4962 esta sesión (cuidar créditos sigue vigente — generar lo mínimo).
+
+### 8. Reglas reforzadas (esta sesión)
+- **VERIFICAR siempre lo VISUAL** (ver la cara/el frame) antes de seguir; el owner detecta "alien"/feo que el gate de texto no.
+- **soul_2** para humanos UGC; **editar foto** para variar un mismo sujeto.
+- Honestidad: el gate seguirá marcando "infidelidad de formato" en tramos parciales — decirlo, no esconderlo.
 
 ---
 

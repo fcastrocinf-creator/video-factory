@@ -40,6 +40,7 @@ export interface CompositeElementVisual {
   videoSrc?: string; // basename
   text?: string;
   textColor?: string; // color del texto (kind='text'); default blanco. Captions amarillos CapCut.
+  backgroundColor?: string; // fondo sólido del texto (kind='text'): etiqueta de producto / lower-third legible que TAPA texto basura del empaque.
   rect: { xPct: number; yPct: number; widthPct: number; heightPct: number };
   rotationDeg?: number;
   opacity?: number;
@@ -806,9 +807,19 @@ const FreeformElement: React.FC<{ element: CompositeElementVisual }> = ({ elemen
             textAlign: 'center',
             lineHeight: 1.1,
             padding: '4%',
-            // Contorno negro grueso + sombra (look UGC, aguanta cualquier fondo).
-            textShadow:
-              '4px 4px 0 #000, -4px -4px 0 #000, 4px -4px 0 #000, -4px 4px 0 #000, 0 0 4px #000, 0 5px 8px rgba(0,0,0,0.45)',
+            // Etiqueta sólida (backgroundColor): TAPA texto basura del empaque y queda
+            // perfectamente legible. Sin fondo → contorno negro grueso (look UGC).
+            ...(element.backgroundColor
+              ? {
+                  backgroundColor: element.backgroundColor,
+                  borderRadius: Math.round(textFontSize * 0.32),
+                  boxShadow: '0 6px 20px rgba(0,0,0,0.22)',
+                  textShadow: '0 1px 2px rgba(0,0,0,0.18)',
+                }
+              : {
+                  textShadow:
+                    '4px 4px 0 #000, -4px -4px 0 #000, 4px -4px 0 #000, -4px 4px 0 #000, 0 0 4px #000, 0 5px 8px rgba(0,0,0,0.45)',
+                }),
           }}
         >
           {element.text ?? ''}

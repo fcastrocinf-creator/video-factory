@@ -107,6 +107,9 @@ export const CompositeElementSchema = z.object({
   // Color del texto (kind='text'). Opcional; default blanco. Para captions
   // amarillos estilo UGC/CapCut sin tocar el color por defecto del resto.
   textColor: z.string().optional(),
+  // Fondo sólido del texto (kind='text'): etiqueta de producto / lower-third
+  // legible que TAPA texto basura del empaque generado. Opcional.
+  backgroundColor: z.string().optional(),
   // GEOMETRÍA LIBRE: caja del elemento en porcentaje del frame 9:16 (0-100).
   // xPct/yPct = esquina superior izquierda. Habilita cualquier collage / overlay
   // / PiP / disposición irregular — esta es la diferencia clave vs. los layouts
