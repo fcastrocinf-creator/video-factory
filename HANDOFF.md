@@ -3,7 +3,53 @@
 > Documento de traspaso entre conversaciones de Claude Code.
 > Para continuar: abre un chat nuevo en este proyecto y di **"lee HANDOFF.md y seguimos"**.
 > 💡 Backlog de ideas futuras (para barrer e implementar): **`IDEAS.md`**.
-> Última actualización: 2026-06-03 (Versión 7).
+> Última actualización: 2026-06-04 (Versión 8).
+
+---
+
+## 🚀 VERSIÓN 8 — 04-06-2026 (EL NORTE: cerrar el círculo "detectar → corregir SOLO" · diagnóstico del back-end · tramo SuperCalm key10)
+
+> **Cambio de foco (pedido por el owner):** dejar de PARCHAR a mano el proto del tramo y
+> trabajar en que la HERRAMIENTA detecte y CORRIJA sola. El owner: "es muy importante que
+> entiendas a profundidad la situación... esto debe quedar absolutamente impregnado en el sistema".
+
+> **🚦 ARRANQUE — LÉELO ANTES DE TOCAR NADA.** El NORTE es **cerrar el círculo del sistema**
+> (que la herramienta corrija sola, con OK del owner), **NO** pulir el video del médico a mano.
+> El error de la sesión pasada fue **parchar el proto pieza por pieza sin ver el sistema** — NO lo
+> repitas. Orden de lectura: (1) `CLAUDE.md` (invariantes, se auto-carga), (2) esta Versión 8
+> entera, (3) `docs/PLAN-CIERRE-CIRCULO.md`. **Entiende la TOTALIDAD y confirma el plan con el
+> owner ANTES de ejecutar.** Usa las herramientas IA del sistema (gate, panel `format-audit`,
+> `video-understander`), no scripts a mano. Verifica VIENDO **y OYENDO** (transcribe el audio).
+
+### 1. 🎯 DIAGNÓSTICO (verificado leyendo ~30 archivos del back-end con 3 agentes)
+Video Factory tiene un **círculo de 8 pasos** para perfeccionar videos, **partido por la mitad**:
+- ✅ **1-4 funcionan:** LEER (Gemini ve+oye), ENTENDER (panel 6 especialistas `kb/format-audit.ts`), DETECTAR (`kb/quality-gate.ts`), PROPONER el fix en la KB (`kb/findings.ts`).
+- ❌ **5-8 NO:** MOSTRAR el hallazgo en el editor · APLICAR la corrección · REGENERAR dirigido · APRENDER. El **`RepairLoop`** (`kb/quality-gate.ts`) está **solo tipado, sin implementar**.
+- **Trampa clave:** el **motor** (Remotion/`PlanoEscenas.tsx`) SOPORTA PiP/chroma/anotaciones/multi-voz, pero el **pipeline** (`pipeline.ts`) **NO los EMITE** → capacidad ≠ autonomía. Cada parche manual del proto es una pieza que el pipeline debería emitir solo.
+- Ceiling de automatización hoy: ~70% formatos simples, **~40% el ad del médico** (2 voces + PiP + antes/después + anotaciones).
+
+### 2. 🗺️ LA RUTA — `docs/PLAN-CIERRE-CIRCULO.md` (plan perfecto, por fases)
+Fase 0 **Impregnar** → 1 **Mostrar** (hallazgos al editor) → 2 **RepairLoop** (corregir con OK) → 3 **Auto-emit de composición** (anotaciones vía word-sync, PiP, multi-voz — automatizar lo que se hace a mano) → 4 **Regenerar + Aprender**. Se ejecuta **por fases verificadas** (typecheck + `/run` + gate); nada se auto-aplica.
+
+### 3. 🧠 PROGRESO: Fases 0, 1 y 2-parte1 HECHAS (el círculo ya gira hasta "decidir el arreglo")
+- **Fase 0 (Impregnar) ✅:** 3 invariantes (`circulo-leer-actuar`, `motor-soporta-vs-pipeline-emite`, `verificar-viendo-y-oyendo`) + sync a CLAUDE.md (21) + memoria del Claude + este HANDOFF + `docs/PLAN-CIERRE-CIRCULO.md`.
+- **Fase 1 (Mostrar) ✅ verificada:** los hallazgos del gate ya se VEN en la página del run. Nuevos: endpoint `apps/web/app/api/runs/[id]/gate/route.ts` (lee `readQualityGateReport('gate:<runId>')`), componente `apps/web/app/(app)/runs/[id]/GateFindings.tsx`, montado en `RunViewer.tsx`. Typecheck verde + endpoint probado con curl.
+- **Fase 2 (Aplicar) — parte 1 ✅ verificada:** `apps/web/lib/kb/repair-loop.ts` implementa `planRepairs` (+ `repair-loop.test.ts`, 4 tests pasan): traduce cada bloqueante → acción determinista por dimensión (`surface-to-editor` para edición / `escalate` para sistémico; `sceneIndex=null` por ahora). El endpoint /gate expone `repairs[]`; `GateFindings` muestra la "acción sugerida — con tu OK".
+- **➡️ SIGUIENTE (Fase 2 parte 2 — el "BRAZO"):** el EXECUTOR que APLICA la reparación (regenerar SOLO la escena/audio que falla, con OK del owner). Necesita: (a) enriquecer el `GateBlocker` con `sceneIndex`/timing en `kb/format-audit.ts` (hoy es solo texto+dimensión, por eso `planRepairs` aún no targetea escenas); (b) el executor que regenera dirigido (los tipos `RepairAction`/`RepairTarget` ya existen en `kb/quality-gate.ts`). Luego Fase 3 (auto-emit de composición: anotaciones vía word-sync, PiP, multi-voz) y Fase 4 (regenerar+aprender).
+
+### 4. ▶️ Estado del tramo SuperCalm (key10) — útil, pero con 2 errores REALES que cazó el owner
+- **Logrado y verificado:** 3 estados de la MISMA mujer (resolvió el crítico de persona inconsistente), **producto = packshot REAL** (`OneDrive/.../SuperCalm/Neuron_SuperCalm_Logo1.jpg.jpeg`, copiado a `storage/proto-composite/packshot.jpg`; reemplaza la imagen generada con texto basura), **círculos sincronizados a la palabra** (transcripción: "ojeras"@~12.4s, "papada"@~13.4s), **progresión acentuada** (`estado1b_var1`/`estado3b_var1` editados con `nano_banana_2`, más contraste, misma mujer). Gate: **5→4→3→2 bloqueantes**; los que cayeron eran los reales.
+- **2 errores que el Claude NO detectó y el owner SÍ (¡verificar OYENDO!):**
+  1. **Audio del médico sin sentido:** el clip dice "la cara EN CHAQUETA" (→ hinchada), "mucha TENSIÓN" (→ retención), "un EJERCICIO" (→ este caso). Confirmado por `scripts/transcribe-gemini.ts`. Hay que rehacer el audio del médico.
+  2. **Médico ausente en PiP** durante los planos de Rosa (el original lo tiene reaccionando en recuadro).
+- **Bloqueantes que PERSISTEN (estructurales, NO del tramo):** fidelidad de formato (necesita el ad completo) + "la marca debería ser Nello" (falso positivo: el owner adapta a su producto, no copia la marca ajena del ad de referencia).
+- **Marca elegida por el owner:** en el ad el producto se nombra **"SuperCalm"** a secas (no "Nello" ni "neuron").
+- Render más reciente: `storage/proto-composite/supercalm-key10.mp4`. Backups de las fotos base: `estado1_orig.png` / `estado3_orig.png`. Script nuevo: `scripts/transcribe-gemini.ts` (transcribe audio con timestamps vía Gemini; OpenAI Whisper quedó sin cuota).
+
+### 5. Reglas reforzadas (esta sesión, ya como invariantes)
+- **Verificar VIENDO y OYENDO** (transcribir el audio), no solo frames.
+- **No parchar protos a mano**: el valor es cerrar el círculo del sistema, usando sus herramientas IA.
+- Marca del producto en el ad = **"SuperCalm"** a secas.
 
 ---
 

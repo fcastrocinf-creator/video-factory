@@ -37,7 +37,11 @@ async function main(): Promise<void> {
     [resolve(SC, 'medico-zonas.mp3'), 'medico-zonas.mp3'],
     [resolve(SC, 'medico-despues.mp3'), 'medico-despues.mp3'], // voz en off del médico (después)
     [resolve(PC, 'rosa-hinchada.png'), 'rosa-hinchada.png'],
+    [resolve(PC, 'estado1_hinchada.png'), 'estado1_hinchada.png'], // ANTES (misma mujer, editada)
+    [resolve(PC, 'estado2_media.png'), 'estado2_media.png'],       // INTERMEDIO (va mejorando)
+    [resolve(PC, 'estado3_renovada.png'), 'estado3_renovada.png'], // DESPUÉS (renovada)
     [resolve(PC, 'producto.png'), 'producto.png'],
+    [resolve(PC, 'packshot.jpg'), 'packshot.jpg'], // PRODUCTO real (packshot de marca, marca legible)
   ] as [string, string][]) {
     if (existsSync(from)) copyFileSync(from, resolve(WORK, to));
     else console.log(`AVISO: falta ${from}`);

@@ -7,6 +7,7 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import { CorrectionPanel } from './CorrectionPanel';
+import { GateFindings } from './GateFindings';
 import { ValidationLog } from './ValidationLog';
 import { ZapCapSubtitles } from './ZapCapSubtitles';
 
@@ -202,6 +203,7 @@ export function RunViewer({ runId }: RunViewerProps) {
           </Link>
         </div>
         <ZapCapSubtitles runId={runId} />
+        <GateFindings runId={runId} />
         <ValidationLog runId={runId} />
         <CorrectionPanel runId={runId} />
       </div>
@@ -241,7 +243,8 @@ export function RunViewer({ runId }: RunViewerProps) {
             Volver a crear
           </Link>
         </div>
-        {/* Aún en run failed mostramos las validaciones IA si llegaron a generarse */}
+        {/* Aún en run failed mostramos las validaciones IA y el gate si llegaron a generarse */}
+        <GateFindings runId={runId} />
         <ValidationLog runId={runId} />
       </div>
     );

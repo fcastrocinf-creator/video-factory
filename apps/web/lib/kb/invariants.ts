@@ -218,6 +218,38 @@ export const CORE_INVARIANTS: Array<Omit<Invariant, 'ts'>> = [
       'jun-2026: el owner exige que estos aprendizajes los aplique la herramienta sin depender de que hablemos; las correcciones deben recomendarse al usuario in-app.',
     fuente: 'apps/web/lib/kb/format-audit.ts; /admin Consejo; editor + apps/web/lib/claude-chat-discuss.ts (Copilot); pendiente: surfacear hallazgos en el editor',
   },
+  {
+    id: 'circulo-leer-actuar',
+    categoria: 'producto',
+    titulo: 'El círculo de mejora: el sistema DETECTA bien, falta que ACTÚE (cerrar 5-8)',
+    regla:
+      'Video Factory tiene un círculo de 8 pasos para perfeccionar videos. Los pasos 1-4 FUNCIONAN: LEER (Gemini ve+oye), ENTENDER (panel de 6 especialistas), DETECTAR, PROPONER el fix en la KB. Los pasos 5-8 NO están cerrados: MOSTRAR el hallazgo en el editor, APLICAR la corrección dirigida, REGENERAR solo lo que falla, APRENDER para no repetir. El RepairLoop (kb/quality-gate.ts) está SOLO tipado sin implementar; los hallazgos no llegan a la UI; el aprendizaje es pasivo. El NORTE es CERRAR EL CÍRCULO: que la herramienta corrija sola (con OK del owner), no que el owner parche a mano. NO trabajar pieza-por-pieza en un proto manual; trabajar en que el SISTEMA lo haga.',
+    porQue:
+      'jun-2026: el owner señaló que yo no captaba la totalidad — estuve parchando un proto (proto-key.ts) a mano en vez de cerrar el círculo del sistema. El owner invirtió en percepción+detección; falta la ACCIÓN.',
+    fuente:
+      'docs/PLAN-CIERRE-CIRCULO.md; apps/web/lib/kb/quality-gate.ts (RepairLoop tipado sin implementar); apps/web/lib/kb/findings.ts (fixPropuesto)',
+  },
+  {
+    id: 'motor-soporta-vs-pipeline-emite',
+    categoria: 'arquitectura',
+    titulo: 'Capacidad del motor ≠ autonomía del pipeline (el motor SOPORTA, el pipeline no EMITE)',
+    regla:
+      'El motor de composición (Remotion/PlanoEscenas.tsx + scene.schema.ts) SOPORTA PiP, chroma/cutout, anotaciones con timing y multi-audio/multi-voz (el campo speakerId YA existe). PERO el pipeline automático (pipeline.ts) NO los EMITE: hoy genera escenas estáticas + 1 TTS único + animación cruda. Para automatizar un formato complejo hay que EXTENDER el pipeline para que EMITA esas composiciones (anotaciones sincronizadas vía word-sync, PiP, multi-voz por hablante), NO rebuildear el motor (que ya las aguanta).',
+    porQue:
+      'jun-2026: cada parche manual del proto SuperCalm (audio nativo, círculos sincronizados, antes/después) es una pieza que el motor soporta pero el pipeline no emite. Confundir "el motor puede" con "el sistema lo hace solo" llevó a trabajar a mano lo que falta automatizar.',
+    fuente:
+      'apps/web/lib/pipeline.ts (emite escenas + 1 TTS); packages/blocks/compositor-remotion/src/compositions/PlanoEscenas.tsx (soporta todo); packages/contracts/src/scene.schema.ts (speakerId, CompositeElement)',
+  },
+  {
+    id: 'verificar-viendo-y-oyendo',
+    categoria: 'producto',
+    titulo: 'Verificar un render VIENDO y OYENDO (transcribir el audio), no solo frames',
+    regla:
+      'Al validar un video generado, no basta mirar los frames: hay que OÍR el audio (transcribirlo, ej. scripts/transcribe-gemini.ts) y leer la transcripción. La voz nativa de los clips generados puede decir frases mal pronunciadas o sin sentido. Verificar VISUAL + AUDIO antes de decir que algo está bien.',
+    porQue:
+      'jun-2026: validé el tramo SuperCalm mirando solo los frames y lo di por bueno, pero el clip del médico decía "la cara EN CHAQUETA" (debía ser hinchada), "mucha TENSIÓN" (debía ser retención) y "un EJERCICIO" (debía ser este caso). El owner lo oyó, yo no. Verificar solo lo visual no alcanza.',
+    fuente: 'scripts/transcribe-gemini.ts; apps/web/lib/render-quality-judge.ts (Gemini OYE); owner',
+  },
 ];
 
 async function readRaw(): Promise<Invariant[]> {
