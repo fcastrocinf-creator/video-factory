@@ -39,8 +39,8 @@ El owner quiere **ripear un anuncio (más largo) por el flujo Ripear REAL** (no 
 - **Confirmar antes de gastar;** trabajar sobre el video activo del owner.
 - Español neutro siempre; **sin subtítulos** salvo que se pidan; **nunca git push** sin orden.
 
-### 7. 📦 Git / cambios SIN commit (HEAD `0bb982c`, main)
-Sin commit: `neutral-es.ts`(+test), `pipeline.ts`, `correction-pipeline.ts`, `quality-gate.ts`, `claude-chat-discuss.ts`, `invariants.ts`, `CLAUDE.md`, `PlanoEscenas.tsx`, `proto-key.ts`, `prep-key.ts`, `scene.schema.ts` + docs (ESTADO-VERIFICADO, ARQUITECTURA, manual-activaciones, CONTINUAR) + memoria del Claude. El owner decide commit (local, **SIN push**).
+### 7. 📦 Git / commit de la sesión (main, SIN push)
+Todo lo de hoy quedó commiteado en **`e4fa6da`** (local, **SIN push** — punto de retorno). 19 archivos: `neutral-es.ts`(+test), `pipeline.ts`, `correction-pipeline.ts`, `quality-gate.ts`, `claude-chat-discuss.ts`, `invariants.ts`, `CLAUDE.md`, `PlanoEscenas.tsx`, `proto-key.ts`, `prep-key.ts`, `scene.schema.ts`, `GateFindings.tsx`, `gate/route.ts` + docs (ESTADO-VERIFICADO, HANDOFF, ARQUITECTURA, manual-activaciones, CONTINUAR). La memoria del Claude (fuera del repo) también está actualizada. Excluidos a propósito: `.claude/skills/`, `apps/web/public/heygen_test.mp4` (scratch).
 
 ---
 
