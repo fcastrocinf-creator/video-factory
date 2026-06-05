@@ -3,7 +3,32 @@
 > Documento de traspaso entre conversaciones de Claude Code.
 > Para continuar: abre un chat nuevo en este proyecto y di **"lee HANDOFF.md y seguimos"**.
 > 💡 Backlog de ideas futuras (para barrer e implementar): **`IDEAS.md`**.
-> Última actualización: 2026-06-04 (Versión 10).
+> Última actualización: 2026-06-04 (Versión 11).
+> 🚦 **PRÓXIMO CHAT: LEE PRIMERO `docs/CONTINUAR-VIDEO-MEDICO.md`** — guía maestra de traspaso (estado del video, TODAS las herramientas, método, errores a no repetir, cómo avanzar).
+
+---
+
+## 🚀 VERSIÓN 11 — 04-06-2026 (Traspaso completo + candado de VALIDACIÓN SIEMPRE obligatoria + revisión a fondo del key15)
+
+> **🚦 ARRANQUE — LEE PRIMERO `docs/CONTINUAR-VIDEO-MEDICO.md`** (guía maestra: estado del video, TODAS las herramientas, método, errores a no repetir, cómo avanzar). Luego `CLAUDE.md` (invariantes, se auto-carga) y esta V11.
+
+### 1. 🔒 CANDADO: la validación corre SIEMPRE (no opt-in)
+La grieta histórica ("la validación no se usaba") era el DISEÑO: opt-in (flag) + best-effort silencioso. Cerrado:
+- La compuerta (Gemini ve+oye) es **OBLIGATORIA en CADA render** (`pipeline.ts`: `await runQualityGate({ useGemini:true })`; se eliminó `VF_GATE_ON_RENDER`).
+- El **estado final DEPENDE del veredicto**: `completed` SOLO si `pass`; si fail/revisar o no pudo validar → `completed-with-warnings` marcado "NO VERIFICADO" (fail-loud + fail-closed). Nunca "listo" a ciegas.
+- **Test guardián** `apps/web/lib/quality-gate-wiring.test.ts` ROMPE si alguien la desconecta (opt-in/fire-and-forget/desacopla estado). Demostrado fallando a propósito y volviendo a verde.
+- El juez (`render-quality-judge.ts`) ahora hace **AUDITORÍA FORENSE** de micro-errores (transiciones/audio/manos/oclusiones, con timestamp).
+- **Verificado EN VIVO con `/run`**: un video de prueba real corrió el gate solo → quedó `completed-with-warnings` con `🚪 Compuerta: FAIL`. Invariante `validacion-siempre-obligatoria`.
+
+### 2. 🔬 Revisión a FONDO del key15 (lo que pidió el owner)
+Se auditó `supercalm-key15.mp4` (Gemini ve+oye + frames densos + cada corte + audio forense + extremos). **~10 micro-errores pendientes** (transiciones/jump cuts, manos del médico, PiP que salta, packshot cortado, oclusiones, progresión de Rosa imperceptible, audio del empalme, fade/silencio) — listados con timestamp y CÓMO arreglarlos en `docs/CONTINUAR-VIDEO-MEDICO.md` §2 y §6. **AÚN sin arreglar** (varios son ajustes de `proto-key.ts` sin regenerar).
+
+### 3. 🧰 Por qué la validación no captaba esos micro-errores (y cómo se reforzó)
+Las piezas existían pero: (a) estaba apagada (opt-in) → encendida; (b) el panel muestrea keyframes RALOS que evitan extremos/cortes → pendiente densificar + muestrear en los cortes (usar el motion-map); (c) el juez pedía 8 dims generales → ahora hace auditoría forense. Ver §3 del doc maestro.
+
+### 4. 📦 Commit + estado
+- **Commit local `bb8c75d`** (main, SIN push): brazo Fase 2 + ad médico voz nativa Veo + candado validación + 23 invariantes + docs. Punto de retorno: `git reset --hard bb8c75d`.
+- Video bueno: `storage/proto-composite/supercalm-key15.mp4`. Siguiente: arreglar los micro-errores (§6 del doc maestro) y **Fase 3** (que el pipeline EMITA el formato solo, en vez de los scripts semi-manuales).
 
 ---
 
