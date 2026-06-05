@@ -36,6 +36,13 @@ export interface Hallazgo {
   fixPropuesto: string;
   confianza: number;
   verificacion?: { veredicto: string; razon: string };
+  /** Fase 2 (el "brazo"): localización del defecto para reparación dirigida.
+   *  startSec/endSec = ventana temporal en el render; sceneIndex = escena del
+   *  scene-plan.json que la cubre (lo resuelve la compuerta, que conoce el run).
+   *  Opcionales: solo presentes cuando se pudo localizar. */
+  startSec?: number | null;
+  endSec?: number | null;
+  sceneIndex?: number | null;
 }
 
 export type RecordHallazgoInput = Omit<Hallazgo, 'id' | 'ts'> & {
@@ -60,6 +67,9 @@ export async function recordHallazgo(input: RecordHallazgoInput): Promise<Hallaz
     fixPropuesto: input.fixPropuesto,
     confianza: input.confianza,
     verificacion: input.verificacion,
+    startSec: input.startSec ?? null,
+    endSec: input.endSec ?? null,
+    sceneIndex: input.sceneIndex ?? null,
   };
   try {
     await mkdir(HALLAZGOS_DIR, { recursive: true });
@@ -256,6 +266,13 @@ export interface GateBlocker {
   /** Recomendación accionable. NUNCA se aplica sola (invariante "nada se auto-aplica"). */
   fixPropuesto: string;
   confianza: number;
+  /** Fase 2 (el "brazo"): escena/tiempo del defecto para reparación dirigida. La
+   *  compuerta los resuelve desde el scene-plan.json del run. Si sceneIndex viene
+   *  definido, planRepairs puede targetear esa escena (regenerar/re-animar) en vez
+   *  de solo "surface-to-editor"/"escalate". */
+  sceneIndex?: number | null;
+  startSec?: number | null;
+  endSec?: number | null;
 }
 
 /** Política DETERMINISTA con la que se decidió el veredicto (auditable). */

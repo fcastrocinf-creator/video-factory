@@ -3,7 +3,74 @@
 > Documento de traspaso entre conversaciones de Claude Code.
 > Para continuar: abre un chat nuevo en este proyecto y di **"lee HANDOFF.md y seguimos"**.
 > 💡 Backlog de ideas futuras (para barrer e implementar): **`IDEAS.md`**.
-> Última actualización: 2026-06-04 (Versión 8).
+> Última actualización: 2026-06-04 (Versión 10).
+
+---
+
+## 🚀 VERSIÓN 10 — 04-06-2026 (Ad del médico RESUELTO: voz NATIVA Veo + PiP con movimiento + método impregnado en la herramienta)
+
+> **🚦 ARRANQUE.** Render bueno (aprobado por el owner "se ve mucho mejor"): `storage/proto-composite/supercalm-key15.mp4`. El método quedó GUARDADO en los **invariantes** (IA in-app) + la **receta** para que la herramienta lo aplique sola en videos de este tipo. El owner: *"que la herramienta pueda entenderlo cuando se necesiten videos de este tipo"*.
+
+### 1. ✅ Lo resuelto (render `supercalm-key15.mp4`)
+- **Voz del médico = NATIVA de Veo 3.1** (⛔ no ElevenLabs, ⛔ no HeyGen, ⛔ no Seedance). 2 clips Veo (hook + off, ≤8s c/u); su audio se concatena en `combined-key.mp3`; el compositor MUTEA los `<video>` → el **lipsync calza por construcción**. La compuerta dejó de marcar el lipsync.
+- **Médico en PiP con MOVIMIENTO** = el clip off recortado y posicionado ("corte y posición"), no foto fija.
+- Producto presente en el antes/después + cierre corto + círculos re-sincronizados a la voz nativa ("ojeras"@~1.8s, "papada"@~2.6s del off).
+- Verificado **VIENDO** (frames) **y OYENDO** (transcripción): el médico dice bien sus líneas.
+
+### 2. 🧠 Errores que se cazaron y corrigieron (en orden)
+- Médico como **FOTO fija** (hook 10s + PiP) → ESTÁTICO/muerto. El owner: *"sigue teniendo errores, no puedes verlos?"* → clip con movimiento.
+- **TTS de ElevenLabs** sobre clip Seedance → "lipsync inexistente" (la compuerta lo cazó). El owner: *"usas el narrador de Eleven, hazlo con el mismo higgsfield"* → Veo voz nativa.
+- (Sesión: al principio gasté en un VIDEO EQUIVOCADO probando infra — ver memoria `confirmar_video_activo.md`.)
+
+### 3. 🔒 Dónde quedó GUARDADO (para que la herramienta lo aplique solo)
+- **Invariantes** (`apps/web/lib/kb/invariants.ts` `CORE_INVARIANTS` → inyectados a la IA in-app + sync a `CLAUDE.md`, **22 invariantes**): actualizado **`lipsync-voz-nativa`** (Veo, nunca ElevenLabs/HeyGen/Seedance) + NUEVO **`pip-persona-corte-posicion`** (PiP = clip con movimiento).
+- **Receta del formato** (`docs/supercalm-doctor-receta-ejecucion.md`): sección **"✅ MÉTODO PROBADO (key15)"** como playbook; lo viejo (HeyGen/ElevenLabs) marcado SUPERADO.
+- **Memoria del Claude:** `voz_nativa_y_pip_movimiento.md`, `confirmar_video_activo.md`.
+
+### 4. 🛠️ Playbook (cómo se reproduce este formato)
+2 clips Veo del médico (foto soul_2 `medico-ugc.png` como `start_image` + la línea EN EL PROMPT, ≤8s, **verificar oyendo** con `transcribe-gemini.ts`) → `scripts/prep-key.ts` (concat del audio nativo → `combined-key.mp3` + `manifest-key.json`) → `pnpm tsx packages/blocks/compositor-remotion/src/proto-key.ts <workDir> <out>` (hook + Rosa antes/después + PiP médico clip + círculos + producto) → `scripts/run-quality-gate.ts --render <mp4> --gemini` (ve+oye). Assets en `storage/proto-key/` + `storage/proto-composite/` (gitignored). Scripts nuevos esta sesión: `extract-audio.ts`, `extract-frames-at.ts`, `tts-medico-hook.ts` (este último ya NO se usa — fue el intento ElevenLabs).
+
+### 5. ▶️ Siguiente
+- **NORTE pendiente:** que el PIPELINE EMITA este formato SOLO (Veo por hablante + PiP corte-y-posición + círculos por word-sync) en vez de armarlo con `prep-key.ts`/`proto-key.ts` a mano → invariante `motor-soporta-vs-pipeline-emite` + `docs/PLAN-CIERRE-CIRCULO.md` (Fase 3). El "brazo" de auto-reparación (V9) sigue disponible.
+- **Sin commit aún** (pedir al owner). Esta sesión también construyó el "brazo" Fase 2 (ver V9 abajo) — hay bastante sin commitear.
+
+---
+
+## 🚀 VERSIÓN 9 — 04-06-2026 (Fase 2 parte 2: EL "BRAZO" construido — auto-reparar la escena que falla, con tu OK)
+
+> **🚦 ARRANQUE.** El NORTE sigue: cerrar el círculo (que la herramienta CORRIJA sola, con OK del owner). Esta sesión construyó el **BRAZO** de la Fase 2 (pasos 6-7 del círculo): el sistema ya puede **localizar el defecto en una escena** y **regenerar SOLO esa escena con tu OK** (botón "🦾 Auto-reparar"). **Construido + verificado a nivel código (typecheck 19/19 + 15 tests); FALTA la 1ª prueba REAL (gasta créditos) → la disparas tú.** Lee la V8 (debajo) para el diagnóstico del círculo y el estado del tramo SuperCalm.
+
+### 1. 🦾 Lo que se construyó (3 sub-fases, todas verificadas SIN gastar créditos)
+- **2.2a — sceneIndex en los hallazgos (el pre-requisito que pediste):** antes el `GateBlocker` era solo texto+dimensión → `planRepairs` no podía targetear (`sceneIndex=null` siempre). Ahora:
+  - `HallazgoDraft` (schema compartido, `deep-audit.ts`) + `Hallazgo`/`GateBlocker` (`findings.ts`) ganan `startSec`/`sceneIndex`/`endSec` (opcionales, aditivos — NO rompen deepAudit).
+  - El **panel** (`format-audit.ts`) y el **juez Gemini** (`render-quality-judge.ts`) ahora reportan el SEGUNDO del defecto (`startSec`) — ya veían los frames rotulados `t=Xs`.
+  - **`runQualityGate`** (que conoce el runId) carga el `scene-plan.json` del run y **mapea segundo→escena** (`sceneAtSec`, conservador: si cae fuera de rango → SIN escena, no apunta a una equivocada). `toBlocker` copia el sceneIndex al bloqueante.
+  - **`planRepairs`/`routeByDimension`** (`repair-loop.ts`): con escena → `regenerate-image`/`reanimate` DIRIGIDO; sin escena (o edición/sistémico/audio-lipsync) → camino seguro `surface-to-editor`/`escalate`.
+- **2.2b — el executor (la "mano"):** `repair-plan.ts` (PURO: `RepairTarget`→`CorrectionParse`, testeable sin DB/IA) + `repair-executor.ts` (EFECTOS: forkea el run, dispara). **REUSA `applyCorrection`** (no se construyó motor nuevo, invariante de no duplicar) vía un **`parseOverride`** nuevo en `correction-pipeline.ts` que SALTA el parseo NL de Gemini → targeting determinista. El fork **preserva el original**.
+- **2.2c — el gatillo con tu OK:** `POST /api/runs/[id]/gate/repair` (re-deriva la reparación del reporte persistido; no confía en el cliente) + botón **"🦾 Auto-reparar"** en `GateFindings.tsx` (solo en acciones ejecutables; muestra "escena N" y enlaza al fork). **Nada se auto-aplica.**
+
+### 2. ✅ Verificación (sin gastar créditos)
+- `pnpm -r typecheck` → **19/19 paquetes verde** (incluido apps/web).
+- **15 tests** pasan (`repair-loop.test.ts` 9 + `repair-plan.test.ts` 6): routing dirigido vs seguro, lipsync→escalate, edición→editor, plan determinista, truncado a 150, no-ejecutables→null.
+- **NO se gastaron créditos** en el código (typecheck + tests con datos sintéticos).
+
+### 2b. ✅✅ PRUEBA REAL end-to-end — PASÓ (04-06-2026, el círculo cerró de verdad)
+Sobre el run real `568b8c8a` (vitaly, comic-sepia, 7 escenas):
+- Compuerta con Gemini → **FALLA, 8 bloqueantes**, y **mapeó cada uno a su ESCENA** (`sceneIndex` 0/4/6 reales en el reporte persistido — el corazón de 2.2a, validado con IA real, no solo en test).
+- `planRepairs` marcó 2 bloqueantes auto-reparables (render-av, escena 6); el resto a editor/escalar — correcto.
+- Disparé el endpoint REAL `POST /api/runs/568b8c8a/gate/repair {blockerIndex:3}` ("Personaje inconsistente en el CTA") con cookie `app_auth=valid` → fork `165f59b6`.
+- El log del server confirma: `correction:parsed fromOverride:true` (NO re-parseó con Gemini, usó el plan determinista), `affectedIndices:[6]`, regeneró imagen (Higgsfield, estilo sepia preservado), re-animó (Kling), re-renderizó, `correction:completed`.
+- **Verificado VIENDO y OYENDO:** escenas 0-5 con **hash MD5 idéntico** (preservadas) + `audio.mp3` **bit-idéntico** (transcripción coherente: drenaje linfático / gotas Vitaly); **solo la escena 6 cambió** (regenerada coherente: producto + flecha de CTA, sin "alien"). El original quedó **intacto** (fork).
+- Scripts de apoyo nuevos: `scripts/pick-run-for-repair.ts` (elige run reusable) + `scripts/inspect-repairs.ts` (ve qué propone planRepairs, sin gasto).
+
+### 3. ▶️ SIGUIENTE PASO
+- **El brazo está PROBADO end-to-end.** En la UI: run con `VF_GATE_ON_RENDER=1`+`VF_GATE_USE_GEMINI=1` → `/runs/[id]` muestra bloqueantes con "escena N" → botón "🦾 Auto-reparar" → fork. (En `.env` hoy `VF_GATE_ON_RENDER` falta y `VF_GATE_USE_GEMINI` está vacío → para auto-correr el gate al render, activarlos.)
+- **Límites honestos:** (a) la **re-animación automática** solo corre para formatos `b-roll-animated`/`voiceover-animated` (este run lo era → re-animó con Kling ✅); para clips UGC (Higgsfield) falta rutear la re-animación a Higgsfield (no Kling) — refinamiento. (b) El **"audio del médico sin sentido"** (TTS global) sigue siendo **Fase 3** (multi-voz/audio por escena). (c) El `sceneIndex` se calcula en el gate pero aún NO se persiste en el hallazgo (`findings.jsonl`) → Fase 4 (aprender).
+- Luego: **Fase 3** (auto-emit de composición: anotaciones por word-sync, PiP, multi-voz) y **Fase 4** (regenerar+aprender).
+
+### 4. 🗂️ Archivos tocados (sin commit aún — pedir al owner)
+- **Nuevos:** `apps/web/lib/repair-plan.ts`, `apps/web/lib/repair-executor.ts`, `apps/web/lib/repair-plan.test.ts`, `apps/web/app/api/runs/[id]/gate/repair/route.ts`.
+- **Editados:** `apps/web/lib/kb/{deep-audit,findings,format-audit,quality-gate,repair-loop,repair-loop.test}.ts`, `apps/web/lib/render-quality-judge.ts`, `apps/web/lib/correction-pipeline.ts`, `apps/web/app/(app)/runs/[id]/GateFindings.tsx`, `docs/PLAN-CIERRE-CIRCULO.md`.
 
 ---
 

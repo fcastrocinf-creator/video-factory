@@ -6,19 +6,29 @@
 // nada (invariante "nada se auto-aplica"): solo DECIDE qué haría falta, para que el
 // owner lo apruebe. La ejecución/regeneración real es un paso posterior (executor).
 //
-// Límite honesto de hoy: el GateBlocker NO trae sceneIndex/timing (el panel emite
-// texto + dimensión), así que todavía NO se puede targetear una escena concreta para
-// regenerar. Por eso:
-//   - dimensiones de EDICIÓN (recorte/anotación/captions/producto) → 'surface-to-editor'
-//   - dimensiones SISTÉMICAS (voces/fidelidad/formato/realismo)    → 'escalate'
-// Cuando el panel enriquezca los hallazgos con sceneIndex, routeByDimension podrá
-// emitir regenerate-image/reanimate dirigidos (ya tipados en RepairAction).
+// Targeting por ESCENA (Fase 2 "el brazo"): si el bloqueante trae sceneIndex (lo
+// resuelve la compuerta desde el scene-plan.json del run), la reparación es DIRIGIDA:
+//   - animación/movimiento → 'reanimate' SOLO esa escena
+//   - defecto visual de la escena (realismo/persona/…) → 'regenerate-image' SOLO esa
+// Si NO hay escena (o es de edición/sistémico), se mantiene el camino seguro:
+//   - EDICIÓN (recorte/anotación/captions/producto) → 'surface-to-editor'
+//   - SISTÉMICO (voces/fidelidad) o audio/lipsync    → 'escalate'
+// Nada se ejecuta aquí: planRepairs solo DECIDE; el executor aplica con OK del owner.
 
 import type { GateBlocker, QualityGateReport } from './findings';
 import type { RepairAction, RepairLoop, RepairTarget } from './quality-gate';
 
-/** Rutea una dimensión de hallazgo a (target, acción) de forma determinista. */
-export function routeByDimension(dimension: string): {
+/**
+ * Rutea un hallazgo a (target, acción) de forma determinista. Si se conoce la
+ * escena (sceneIndex), emite la reparación DIRIGIDA; si no, el camino seguro
+ * (editor/escalar). `fix` (el fixPropuesto del hallazgo) se usa como dirección
+ * correctiva del prompt cuando la acción regenera/re-anima.
+ */
+export function routeByDimension(
+  dimension: string,
+  sceneIndex: number | null = null,
+  fix = '',
+): {
   target: RepairTarget['target'];
   action: RepairAction;
 } {
@@ -26,8 +36,8 @@ export function routeByDimension(dimension: string): {
 
   // Capa de EDICIÓN: recorte/overlay, anotaciones, captions y legibilidad del
   // producto se arreglan moviendo/ajustando elementos en el editor (o el Copilot),
-  // no regenerando. El comentario de RepairAction ya marca recorte/caption/anotación
-  // como capa de edición (no auto).
+  // NO regenerando — aunque se conozca la escena. El comentario de RepairAction ya
+  // marca recorte/caption/anotación como capa de edición (no auto).
   if (
     d.includes('composicion') ||
     d.includes('recorte') ||
@@ -39,22 +49,46 @@ export function routeByDimension(dimension: string): {
     return { target: 'composite', action: { kind: 'surface-to-editor' } };
   }
 
-  // Animación/movimiento: en cuanto el hallazgo traiga la escena será 'reanimate';
-  // por ahora se surfacea al editor (donde se elige la escena a re-animar).
+  // Animación/movimiento: con escena conocida → re-animar SOLO esa; si no, se
+  // surfacea al editor (donde se elige la escena a re-animar).
   if (d.includes('animacion') || d.includes('movimiento')) {
+    if (typeof sceneIndex === 'number') {
+      return {
+        target: 'motion',
+        action: { kind: 'reanimate', sceneIndex, correctedMotionPrompt: fix },
+      };
+    }
     return { target: 'motion', action: { kind: 'surface-to-editor' } };
   }
 
-  // SISTÉMICO: voces/diarización (multi-voz, audio), fidelidad de formato,
-  // cobertura/realismo global (render-av) → revisión/regeneración mayor del owner.
+  // SISTÉMICO de verdad: voces/diarización (multi-voz) y fidelidad de formato NO se
+  // arreglan regenerando una sola escena → revisión/regeneración mayor del owner.
+  if (d.includes('voces') || d.includes('diariz') || d.includes('fidelidad')) {
+    return { target: 'systemic', action: { kind: 'escalate' } };
+  }
+
+  // RESTO (render-av: realismo/persona/cara, o cualquier defecto visual de una
+  // escena): con escena conocida → regenerar SOLO esa imagen, con el fix como
+  // dirección. EXCEPCIÓN: lipsync/ritmo/audio/voz NO se arreglan regenerando una
+  // imagen → escalar. Sin escena → escalar.
+  const esAudioOSync = /(lipsync|labio|sincron|ritmo|audio|voz|pronunci|sonido)/i.test(
+    `${d} ${fix}`,
+  );
+  if (typeof sceneIndex === 'number' && !esAudioOSync) {
+    return {
+      target: 'image',
+      action: { kind: 'regenerate-image', sceneIndex, correctedImagePrompt: fix },
+    };
+  }
   return { target: 'systemic', action: { kind: 'escalate' } };
 }
 
 /** Traduce los bloqueantes de un reporte a reparaciones dirigidas (sin ejecutar). */
 export function planRepairs(report: QualityGateReport): RepairTarget[] {
   return report.bloqueantes.map((blocker: GateBlocker): RepairTarget => {
-    const { target, action } = routeByDimension(blocker.dimension);
-    return { blocker, target, sceneIndex: null, action };
+    const sceneIndex = blocker.sceneIndex ?? null;
+    const { target, action } = routeByDimension(blocker.dimension, sceneIndex, blocker.fixPropuesto);
+    return { blocker, target, sceneIndex, action };
   });
 }
 

@@ -92,9 +92,10 @@ Reglas estrictas:
 - NO inventes problemas. Si no ves defectos en tu dimensión, devuelve pocos o cero hallazgos — es válido y honesto.
 - Un fix concreto por hallazgo (NUNCA se aplica solo; lo revisa el owner).
 - Severidad honesta: "critical" solo si rompe el ad o lo vuelve inservible para vender.
+- LOCALIZA el defecto: si lo ves en un frame concreto, pon "startSec" = el SEGUNDO de la etiqueta de ese frame (los frames vienen rotulados "[... t=Xs]"). Si es un problema general (no de un momento puntual), usa null. Esto permite regenerar SOLO la escena que falla.
 - Texto en español neutro (con "tú"). Responde SOLO JSON, sin markdown.
 
-Formato: {"resumen":"...","hallazgos":[{"titulo":"...","severidad":"low|medium|high|critical","descripcion":"...","evidencia":"qué se ve que lo sostiene","fixPropuesto":"...","confianza":0.0-1.0}]}`;
+Formato: {"resumen":"...","hallazgos":[{"titulo":"...","severidad":"low|medium|high|critical","descripcion":"...","evidencia":"qué se ve que lo sostiene","fixPropuesto":"...","confianza":0.0-1.0,"startSec":<segundo del frame o null>}]}`;
 
 // ─── Especialista por defecto: unifiedJudge multimodal sobre los keyframes ──────
 
@@ -395,6 +396,7 @@ export async function runFormatAudit(input: FormatAuditInput): Promise<FormatAud
               fixPropuesto: draft.fixPropuesto,
               confianza: draft.confianza,
               verificacion,
+              startSec: draft.startSec ?? null,
             });
             continue;
           }
@@ -417,6 +419,7 @@ export async function runFormatAudit(input: FormatAuditInput): Promise<FormatAud
       fixPropuesto: draft.fixPropuesto,
       confianza: draft.confianza,
       verificacion,
+      startSec: draft.startSec ?? null,
     });
     persistidos.push(h);
     reporteHallazgos.push({

@@ -45,6 +45,12 @@ export const HallazgoDraftSchema = z.object({
   evidencia: cap(800),
   fixPropuesto: cap(800),
   confianza: conf(),
+  // Fase 2 (el "brazo" del círculo): SEGUNDO del video donde se ve/oye el defecto
+  // (lo toman los especialistas CON visión temporal del label del frame "t=Xs" o del
+  // juez que ve+oye). Habilita mapear hallazgo → ESCENA para regenerar SOLO esa.
+  // Opcional + tolerante: deepAudit (auditoría de texto, sin frames) lo deja vacío;
+  // un valor inválido cae a null en vez de tumbar el hallazgo.
+  startSec: z.number().nonnegative().nullable().catch(null).optional(),
 });
 export type HallazgoDraft = z.infer<typeof HallazgoDraftSchema>;
 

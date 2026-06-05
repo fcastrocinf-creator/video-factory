@@ -1,6 +1,6 @@
 // Prep del TRAMO CLAVE — LIPSYNC CORRECTO: usa el AUDIO NATIVO de cada clip de Higgsfield
 // (sus labios calzan con su propio audio), NO un TTS superpuesto. Concatena:
-//   [audio nativo médico-hook] + [médico-zonas voz en off] + [audio nativo Rosa-después]
+//   [médico-hook VOZ EN OFF corregida] + [médico-zonas voz en off] + [médico-después voz en off]
 // + copia assets + manifest-key.json con las duraciones REALES de los clips.
 // Uso: npx tsx scripts/prep-key.ts
 import { spawn } from 'node:child_process';
@@ -42,30 +42,35 @@ async function main(): Promise<void> {
     [resolve(PC, 'estado3_renovada.png'), 'estado3_renovada.png'], // DESPUÉS (renovada)
     [resolve(PC, 'producto.png'), 'producto.png'],
     [resolve(PC, 'packshot.jpg'), 'packshot.jpg'], // PRODUCTO real (packshot de marca, marca legible)
+    [resolve(PC, 'medico-ugc.png'), 'medico-ugc.png'], // CARA del médico (hook foto + PiP), UGC real en consultorio
   ] as [string, string][]) {
     if (existsSync(from)) copyFileSync(from, resolve(WORK, to));
     else console.log(`AVISO: falta ${from}`);
   }
-  const hookClip = resolve(WORK, 'medico-hook.mp4');
-  const zonas = resolve(WORK, 'medico-zonas.mp3');
-  const despuesVo = resolve(WORK, 'medico-despues.mp3');
-  // hookDur = duración del clip del médico (voz nativa en cámara). La escena "después" es
-  // una FOTO fija → dura lo que la voz en off del médico + un respiro.
-  const [hookDur, zonasDur, despuesVoDur] = await Promise.all([
-    dur(ffmpeg, hookClip), dur(ffmpeg, zonas), dur(ffmpeg, despuesVo),
+  // VOZ NATIVA del clip (regla del owner): la voz del médico sale del MISMO modelo que
+  // genera el video (Veo 3.1 genera voz + labios JUNTOS = lipsync real). El HOOK usa el
+  // AUDIO NATIVO del clip Veo (medico-hook-veo.mp4) — NUNCA un TTS de ElevenLabs encima
+  // (eso patina/desfasa). Las voces zonas/después siguen como voz en off del médico
+  // (van sobre fotos de Rosa, sin su cara → no hay lipsync que romper).
+  // VOZ NATIVA del médico de PUNTA A PUNTA (regla del owner): 2 clips Veo del médico —
+  // hook ("Sientes la cara hinchada...") + off ("Aquí observamos ojeras y papada... en
+  // pocas semanas más firme"). Ambas voces salen del MISMO modelo (Veo) → consistentes y
+  // con lipsync. Ya NO se usan los TTS de ElevenLabs (medico-zonas/medico-despues).
+  const hookClip = resolve(WORK, 'medico-hook-veo.mp4');
+  const offClip = resolve(WORK, 'medico-off-veo.mp4');
+  const [hookDur, offDur] = await Promise.all([
+    dur(ffmpeg, hookClip), dur(ffmpeg, offClip),
   ]);
-  const despuesDur = +(despuesVoDur + 0.6).toFixed(3);
-  // Pista de audio = SIEMPRE el médico: su voz NATIVA en cámara (hook) + 2 voces en off
-  // (zonas sobre Rosa-antes, después sobre el b-roll de Rosa). Rosa NUNCA habla → sin lipsync.
+  // Pista de audio = audio nativo del hook clip ([0:a]) + audio nativo del off clip ([1:a]).
   await run(ffmpeg, [
-    '-y', '-i', hookClip, '-i', zonas, '-i', despuesVo,
-    '-filter_complex', '[0:a][1:a][2:a]concat=n=3:v=0:a=1[out]',
+    '-y', '-i', hookClip, '-i', offClip,
+    '-filter_complex', '[0:a][1:a]concat=n=2:v=0:a=1[out]',
     '-map', '[out]', '-c:a', 'libmp3lame', resolve(WORK, 'combined-key.mp3'),
   ]);
   writeFileSync(
     resolve(WORK, 'manifest-key.json'),
-    JSON.stringify({ hookDur: +hookDur.toFixed(3), zonasDur: +zonasDur.toFixed(3), despuesDur: +despuesDur.toFixed(3) }, null, 2),
+    JSON.stringify({ hookDur: +hookDur.toFixed(3), offDur: +offDur.toFixed(3) }, null, 2),
   );
-  console.log(`OK proto-key (audio nativo) · hook=${hookDur.toFixed(2)} zonas=${zonasDur.toFixed(2)} despues=${despuesDur.toFixed(2)}`);
+  console.log(`OK proto-key (voz nativa Veo, hook+off) · hook=${hookDur.toFixed(2)} off=${offDur.toFixed(2)}`);
 }
 void main();

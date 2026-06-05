@@ -2136,12 +2136,55 @@ export async function runPipeline(
     }
 
     const costSummary = costTracker.summary;
-    // v3.2 #105: si el editor IA emitió advisory, usamos status nuevo en lugar
-    // de 'completed' simple. El video SÍ se entrega, pero el owner sabe que
-    // hay advisories que revisar.
-    const finalStatus: 'completed' | 'completed-with-warnings' = editorAdvisoryMessage
-      ? 'completed-with-warnings'
-      : 'completed';
+
+    // ─── CANDADO: VALIDACIÓN OBLIGATORIA (SIEMPRE, no opt-in) ────────────────────
+    // Invariante `validacion-siempre-obligatoria`: NINGÚN video se marca "listo"
+    // (completed) sin pasar por la compuerta que VE+OYE (Gemini). Ya NO es una flag
+    // opt-in (esa era la grieta por la que históricamente "no se usaba"): corre
+    // SIEMPRE, con AWAIT (no fire-and-forget), Gemini activado, y el ESTADO FINAL
+    // DEPENDE de su veredicto. Si no pudo validar (sin Gemini/cuota/error) → el run
+    // queda 'completed-with-warnings' marcado "NO VERIFICADO" (fail-loud + fail-closed),
+    // NUNCA 'completed' a ciegas. El video SÍ se entrega; el estado dice la verdad.
+    await updateRun(runId, { currentStep: 'quality-gate', progress: 96 });
+    let gateVeredicto: 'pass' | 'revisar' | 'fail' | 'no-verificado' = 'no-verificado';
+    let gateResumen =
+      'La compuerta no se pudo ejecutar (revisa credenciales/cuota de Gemini). Video NO verificado.';
+    try {
+      const { runQualityGate } = await import('./kb/quality-gate');
+      const gate = await runQualityGate({
+        runId,
+        renderVideoPath: outputPath,
+        originalVideoPath: overrides.referenceVideoPath ?? undefined,
+        label: `Compuerta run ${runId.slice(0, 8)}`,
+        useGemini: true, // SIEMPRE ve+oye (no depende de VF_GATE_USE_GEMINI)
+      });
+      gateVeredicto = gate.veredicto;
+      gateResumen = gate.resumen;
+      logger.info(
+        { runId, veredicto: gate.veredicto, bloqueantes: gate.bloqueantes.length },
+        'pipeline:quality_gate',
+      );
+    } catch (e) {
+      logger.warn({ runId, err: (e as Error).message }, 'pipeline:quality_gate_failed');
+      // gateVeredicto se queda 'no-verificado' → fail-loud abajo.
+    }
+
+    // v3.2 #105 + candado: el estado refleja la VERDAD. 'completed' SOLO si la
+    // compuerta dio 'pass' y el editor IA no dejó avisos; cualquier otra cosa
+    // (fail/revisar/no-verificado, o advisory del editor) → 'completed-with-warnings'.
+    // El video SÍ se entrega; el estado + errorMessage dicen qué revisar.
+    const gateAdvisory =
+      gateVeredicto === 'no-verificado'
+        ? `⚠️ NO VERIFICADO — ${gateResumen}`
+        : gateVeredicto !== 'pass'
+          ? `🚪 Compuerta: ${gateVeredicto.toUpperCase()} — ${gateResumen}`
+          : '';
+    const combinedAdvisory =
+      [editorAdvisoryMessage, gateAdvisory].filter(Boolean).join(' · ') || undefined;
+    const finalStatus: 'completed' | 'completed-with-warnings' =
+      gateVeredicto === 'pass' && !editorAdvisoryMessage
+        ? 'completed'
+        : 'completed-with-warnings';
     await updateRun(runId, {
       status: finalStatus,
       currentStep: null,
@@ -2151,8 +2194,8 @@ export async function runPipeline(
       estimatedCostUsd: costSummary.totalUsd,
       imageCount: costSummary.imageCount,
       ttsCharsBilled: costSummary.ttsChars,
-      // Persistir el advisory en errorMessage (sin perderlo). El owner lo verá.
-      ...(editorAdvisoryMessage ? { errorMessage: editorAdvisoryMessage } : {}),
+      // Persistir el advisory (editor + compuerta) en errorMessage. El owner lo verá.
+      ...(combinedAdvisory ? { errorMessage: combinedAdvisory } : {}),
       completedAt: new Date(),
     });
 
@@ -2286,31 +2329,9 @@ export async function runPipeline(
       });
     }
 
-    // COMPUERTA DE CALIDAD (OPT-IN: VF_GATE_ON_RENDER=1). Corre el panel multi-agente
-    // con visión (+ el juez Gemini video+audio si VF_GATE_USE_GEMINI=1) sobre el
-    // final.mp4 YA producido, deriva un veredicto pass/revisar/fail y lo PERSISTE
-    // (writeQualityGateReport, legible en /admin). Best-effort, fire-and-forget:
-    // NUNCA bloquea ni rompe el run (igual que M5/M6 — solo observa/propone, invariante
-    // "nada se auto-aplica"). Si es un rip, compara contra el original (referenceVideoPath).
-    if (process.env['VF_GATE_ON_RENDER'] === '1' || process.env['VF_GATE_ON_RENDER'] === 'true') {
-      void (async () => {
-        try {
-          const { runQualityGate } = await import('./kb/quality-gate');
-          const gate = await runQualityGate({
-            runId,
-            renderVideoPath: outputPath,
-            originalVideoPath: overrides.referenceVideoPath ?? undefined,
-            label: `Compuerta run ${runId.slice(0, 8)}`,
-          });
-          logger.info(
-            { runId, veredicto: gate.veredicto, bloqueantes: gate.bloqueantes.length },
-            'pipeline:quality_gate',
-          );
-        } catch (e) {
-          logger.warn({ runId, err: (e as Error).message }, 'pipeline:quality_gate_failed');
-        }
-      })();
-    }
+    // NOTA: la COMPUERTA DE CALIDAD ya corrió ARRIBA de forma OBLIGATORIA (await, antes
+    // de fijar el estado final) — ya NO es opt-in ni fire-and-forget. Ver el "CANDADO:
+    // VALIDACIÓN OBLIGATORIA". No re-ejecutar aquí.
 
     // Disparar el análisis continuo agrupado del Consejo. Fire-and-forget.
     void (async () => {

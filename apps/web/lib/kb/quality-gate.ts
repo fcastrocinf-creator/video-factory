@@ -21,9 +21,10 @@
 // español neutro en toda salida. Inyección de `deps` para testear SIN IA/ffmpeg.
 
 import { randomUUID, createHash } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { RUNS_DIR } from '../paths';
-import type { AdAnalysis } from '@video-factory/contracts';
+import { SceneTrackSchema, type AdAnalysis } from '@video-factory/contracts';
 import { planTimelineFromFormat, type FormatTimelinePlan } from '../format-to-timeline';
 import {
   runFormatAudit,
@@ -455,7 +456,52 @@ function toBlocker(h: Hallazgo): GateBlocker {
     titulo: tituloLimpio(h),
     fixPropuesto: h.fixPropuesto,
     confianza: h.confianza,
+    // Fase 2 ("el brazo"): localización del defecto (la resolvió runQualityGate desde
+    // el scene-plan.json del run). Si sceneIndex viene, planRepairs puede targetear.
+    sceneIndex: h.sceneIndex ?? null,
+    startSec: h.startSec ?? null,
+    endSec: h.endSec ?? null,
   };
+}
+
+// ─── Localización hallazgo → ESCENA (Fase 2: habilita la reparación dirigida) ──
+// La compuerta conoce el runId, así que puede leer el scene-plan.json del run y
+// mapear el SEGUNDO que reportó el especialista/juez (startSec) a la escena que lo
+// cubre. Determinista, best-effort: sin scene-plan o sin startSec → sin escena.
+
+interface SceneTiming {
+  index: number;
+  startSec: number;
+  endSec: number;
+}
+
+/** Lee las escenas del scene-plan.json del run (best-effort; [] si no hay/!runId). */
+async function loadRunSceneTimings(runId: string | undefined): Promise<SceneTiming[]> {
+  if (!runId) return [];
+  try {
+    const raw = await readFile(resolve(RUNS_DIR, runId, 'scene-plan.json'), 'utf-8');
+    const parsed = SceneTrackSchema.safeParse(JSON.parse(raw));
+    if (!parsed.success) return [];
+    return parsed.data.scenes.map((s) => ({
+      index: s.index,
+      startSec: s.startTimeSeconds,
+      endSec: s.endTimeSeconds,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+/** Escena cuyo rango [startSec, endSec) contiene `sec`. Conservador: si cae fuera de
+ *  todo rango (salvo el borde final del video) devuelve null → el hallazgo NO se
+ *  targetea (cae a editor/escalar) en vez de apuntar a una escena equivocada. */
+function sceneAtSec(sec: number, scenes: SceneTiming[]): SceneTiming | null {
+  if (scenes.length === 0) return null;
+  const hit = scenes.find((s) => sec >= s.startSec && sec < s.endSec);
+  if (hit) return hit;
+  const last = scenes[scenes.length - 1];
+  if (last && sec >= last.endSec && sec <= last.endSec + 0.5) return last;
+  return null;
 }
 
 /** Ordena por severidad (desc) y luego por confianza (desc). */
@@ -646,6 +692,24 @@ export async function runQualityGate(input: QualityGateInput): Promise<QualityGa
     depth: input.depth,
     deps,
   });
+
+  // 5b) FASE 2 ("el brazo"): LOCALIZAR cada hallazgo en una escena del run. La
+  //     compuerta conoce el runId → lee el scene-plan.json y mapea el startSec que
+  //     reportó el especialista/juez a la escena que lo cubre. Así los GateBlocker
+  //     (vía toBlocker) llevan sceneIndex y planRepairs puede targetear la
+  //     regeneración. Best-effort: sin scene-plan o sin startSec → queda sin escena.
+  const sceneTimings = await loadRunSceneTimings(input.runId);
+  if (sceneTimings.length > 0) {
+    for (const h of result.hallazgos) {
+      if (typeof h.startSec === 'number') {
+        const sc = sceneAtSec(h.startSec, sceneTimings);
+        if (sc) {
+          h.sceneIndex = sc.index;
+          if (h.endSec == null) h.endSec = sc.endSec;
+        }
+      }
+    }
+  }
 
   // 6) Veredicto DETERMINISTA.
   const decision = decideGateVerdict(result, policy);

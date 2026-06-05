@@ -87,6 +87,11 @@ médico SuperCalm** (2 voces + PiP + antes/después + anotaciones).
 ## Estado
 - [x] **Fase 0 — Impregnar** ✅ (invariantes + CLAUDE.md + HANDOFF V8 + memoria + este plan)
 - [x] **Fase 1 — Mostrar** ✅ (endpoint `/api/runs/[id]/gate` + `GateFindings.tsx` + `RunViewer`)
-- [~] **Fase 2 — Aplicar (RepairLoop):** parte 1 ✅ (`repair-loop.ts` `planRepairs` + tests + UI muestra la acción); **FALTA el executor ("brazo")** + enriquecer hallazgos con `sceneIndex`
-- [ ] Fase 3 — Auto-emit de composición
-- [ ] Fase 4 — Regenerar + Aprender
+- [x] **Fase 2 — Aplicar (RepairLoop):** parte 1 ✅ (`planRepairs`) **+ parte 2 ✅ el "brazo"** (construido + verificado a nivel código; falta 1ª prueba real que gasta créditos):
+  - **2.2a — sceneIndex en los hallazgos:** `HallazgoDraft`/`Hallazgo`/`GateBlocker` ganan `startSec`/`sceneIndex`; el panel (`format-audit`) y el juez (`render-quality-judge`) reportan el SEGUNDO del defecto; `runQualityGate` carga el `scene-plan.json` del run y mapea segundo→escena. `planRepairs` ahora emite `regenerate-image`/`reanimate` DIRIGIDOS cuando hay escena (camino seguro editor/escalar si no).
+  - **2.2b — executor:** `repair-plan.ts` (puro: hallazgo→`CorrectionParse`) + `repair-executor.ts` (efectos: forkea + dispara). REUSA `applyCorrection` vía un `parseOverride` nuevo (salta el parseo NL de Gemini, targeting determinista). Cero motores paralelos.
+  - **2.2c — gatillo con OK:** `POST /api/runs/[id]/gate/repair` (re-deriva del reporte persistido) + botón "🦾 Auto-reparar (con tu OK)" en `GateFindings`. Preserva el original (fork).
+  - **Verificado:** `pnpm -r typecheck` 19/19 verde + 15 tests (`repair-loop` + `repair-plan`). **+ PRUEBA REAL end-to-end PASÓ** (run `568b8c8a`): gate con Gemini → 8 bloqueantes con `sceneIndex` real → endpoint `gate/repair` → fork `165f59b6` que regeneró SOLO la escena 6 (imagen+animación) y preservó el resto (hash MD5 idéntico) + audio bit-idéntico. Verificado viendo y oyendo.
+  - **Límite honesto:** el brazo regenera la IMAGEN dirigida y re-renderiza; la re-animación automática solo corre para formatos `b-roll-animated`/`voiceover-animated` (heredado de `correction-pipeline`). Para clips UGC animados, regenera la imagen pero NO re-anima solo → refinamiento siguiente. El "audio del médico sin sentido" (TTS global) sigue siendo Fase 3 (multi-voz).
+- [ ] Fase 3 — Auto-emit de composición (anotaciones vía word-sync, PiP, multi-voz/audio por escena)
+- [ ] Fase 4 — Regenerar + Aprender (persistir `sceneIndex` en el hallazgo + `detectSystemicPatterns`)

@@ -172,12 +172,23 @@ export const CORE_INVARIANTS: Array<Omit<Invariant, 'ts'>> = [
   {
     id: 'lipsync-voz-nativa',
     categoria: 'producto',
-    titulo: 'Lipsync = voz NATIVA del clip (controlar pronunciación) + escenas cortas; si no, b-roll + voz en off',
+    titulo: 'Lipsync = voz NATIVA del MISMO modelo (Veo), NUNCA TTS de ElevenLabs encima',
     regla:
-      'El lipsync debe venir de la VOZ NATIVA del clip generado (el modelo genera voz y labios juntos, ej. Seedance audio-driven o Veo con diálogo) y se usa ESE audio. NO superponer un TTS aparte sobre un video muteado: patina (desfase). PERO la voz nativa EXIGE controlar la PRONUNCIACIÓN y el TONO en el PROMPT de generación: escribir la línea hablada clara, en ES neutro, sin ambigüedad, y especificar tono/ritmo; luego VERIFICAR con la compuerta (Gemini OYE) porque puede salir una frase mal pronunciada o "sin sentido". Escenas CORTAS = mejor lipsync (trocear segmentos largos). Si una cara que habla NO se logra sincronizar/pronunciar bien, alternativa ROBUSTA: mostrarla como B-ROLL (sonriendo, sin hablar) + voz en off de otro hablante → se evita el lipsync por completo.',
+      'El lipsync de una cara que HABLA debe venir de la VOZ NATIVA del MISMO modelo que genera el video (genera voz y labios JUNTOS). Modelo correcto y PROBADO = Veo 3.1 (talking-head con diálogo nativo, vía el MCP de generación de Higgsfield): se le pasa la foto (start_image) + la LÍNEA hablada en el prompt y devuelve a la persona diciéndola con lipsync real. ⛔ NUNCA superpongas un TTS aparte (ElevenLabs) sobre el clip muteado: la boca no coincide con la voz ajena → la compuerta lo caza como "lipsync inexistente". ⛔ Seedance audio-driven NO sirve para lipsync (es reference-driven), y Higgsfield DoP NO genera voz (solo movimiento). La voz nativa EXIGE controlar la PRONUNCIACIÓN en el prompt (línea clara, ES neutro) + VERIFICAR OYENDO (transcribir; el modelo puede pronunciar mal, ej. "cara en chaqueta"). Para CONSISTENCIA de voz, usa clips del MISMO modelo para TODA la voz del personaje (hook + voz en off), no mezcles con ElevenLabs. Escenas CORTAS (Veo ≤8s) = mejor lipsync y ritmo. Montaje: el compositor MUTEA los <video>; el audio sale de la pista combinada (audio nativo EXTRAÍDO de los clips, concatenado) → el lipsync calza por construcción. Si aun así una cara hablando no se logra, alternativa robusta: b-roll (sin hablar) + voz en off.',
     porQue:
-      'jun-2026: montar TTS encima patinaba. Validado por la compuerta: con audio nativo el lipsync dejó de ser bloqueante, PERO Gemini oyó la frase de apertura del médico "sin sentido" → la voz nativa NO es gratis, hay que controlar pronunciación/tono en el prompt y verificar oyendo. El owner ya lo anticipó ("mucho cuidado con cómo pronuncia palabras, el tono").',
-    fuente: 'apps/web/lib/scene-animator.ts; compositor (audioSrc = audio nativo del clip, no TTS); scripts/prep-key.ts (concat de audio nativo); Seedance/Veo audio; render-quality-judge.ts (dimensión lipsync, OYE)',
+      'jun-2026 (ad del médico SuperCalm): generé el clip con Seedance y monté un TTS de ElevenLabs encima → la compuerta cazó "lipsync inexistente". El owner corrigió: "el problema es que usas el narrador de Eleven; tienes que hacerlo con el mismo higgsfield". Regenerar al médico con Veo 3.1 (voz nativa, la línea en el prompt) + extraer su audio para la pista → el lipsync dejó de ser bloqueante. Verificar oyendo es clave (Veo también puede pronunciar mal).',
+    fuente: 'scripts/prep-key.ts (concat del audio nativo de los clips → combined-key.mp3); packages/blocks/compositor-remotion/src/compositions/PlanoEscenas.tsx (FreeformElement video MUTED; audioSrc = combinado nativo); Veo 3.1 vía MCP de generación (talking-head con diálogo); scripts/transcribe-gemini.ts (verificar oyendo); render-quality-judge.ts (dimensión lipsync)',
+  },
+  {
+    id: 'pip-persona-corte-posicion',
+    categoria: 'producto',
+    titulo: 'PiP/overlay de una persona = CLIP con movimiento (corte y posición), nunca foto fija',
+    regla:
+      'Cuando una persona aparece en un PiP/recuadro (ej. el médico "reaccionando" arriba mientras se ven los planos del usuario), o como hook de varios segundos, debe tener MOVIMIENTO: es un CLIP recortado y posicionado en el recuadro (edición de "CORTE Y POSICIÓN", estilo CapCut), NUNCA una foto fija. Una persona en foto fija (PiP o hook) se ve muerta/estática y el owner la RECHAZA (es la "persona que no se mueve" tipo HeyGen). Reutiliza el MISMO clip de la persona (el de su voz nativa) recortándolo/posicionándolo en el PiP; la voz nativa de ese clip sirve además como la voz en off de ese tramo. El compositor ya soporta video en FreeformElement (rect = corte y posición, muted).',
+    porQue:
+      'jun-2026: puse al médico como FOTO fija en el hook (10s) y en el PiP → la compuerta y el owner lo marcaron estático/muerto ("sigue teniendo errores, no puedes verlos?"). El owner: "el médico cuando está arriba tiene que tener movimiento, es una edición de corte y posición como habíamos hablado, apréndelo". Con el clip Veo recortado en el PiP dejó de ser estático.',
+    fuente:
+      'packages/blocks/compositor-remotion/src/proto-key.ts (medico-pip = video recortado); packages/blocks/compositor-remotion/src/compositions/PlanoEscenas.tsx (FreeformElement video, rect = corte y posición); owner',
   },
   {
     id: 'anotaciones-ancladas-sincronizadas',
@@ -217,6 +228,17 @@ export const CORE_INVARIANTS: Array<Omit<Invariant, 'ts'>> = [
     porQue:
       'jun-2026: el owner exige que estos aprendizajes los aplique la herramienta sin depender de que hablemos; las correcciones deben recomendarse al usuario in-app.',
     fuente: 'apps/web/lib/kb/format-audit.ts; /admin Consejo; editor + apps/web/lib/claude-chat-discuss.ts (Copilot); pendiente: surfacear hallazgos en el editor',
+  },
+  {
+    id: 'validacion-siempre-obligatoria',
+    categoria: 'arquitectura',
+    titulo: 'La validación de calidad corre SIEMPRE (no opt-in): un video no se declara listo sin validar',
+    regla:
+      'La compuerta que VE+OYE (Gemini: render-quality-judge + panel format-audit) corre de forma OBLIGATORIA al terminar CADA render — NO detrás de una flag opt-in (VF_GATE_ON_RENDER quedó ELIMINADO) ni fire-and-forget. Se ejecuta con AWAIT y useGemini:true, y el ESTADO FINAL del run DEPENDE de su veredicto: "completed" SOLO si pasó (pass); si dio fail/revisar o NO pudo validar (sin Gemini/cuota/error) → "completed-with-warnings" marcado "NO VERIFICADO" (fail-loud + fail-closed). JAMÁS se marca un video "listo" a ciegas. Un TEST GUARDIÁN (quality-gate-wiring.test.ts) lee el pipeline y ROMPE si alguien revierte esto (lo vuelve opt-in/fire-and-forget o desacopla el estado). El juez hace una AUDITORÍA FORENSE (transiciones/cortes, empalmes de audio, manos/anatomía, oclusiones, estabilidad de overlays, legibilidad) con timestamp, no solo dimensiones de alto nivel.',
+    porQue:
+      'jun-2026: el owner llevaba MUCHOS intentos de que la validación se usara SIEMPRE y nunca se mantenía, porque cada vez quedaba OPT-IN (flag apagada) + best-effort SILENCIOSO → un video se declaraba "listo" sin validar y nadie se enteraba. La grieta era el DISEÑO, no la capacidad. Se cierra: obligatoria + fail-loud + test guardián que impide desconectarla en silencio. El owner exigió "certeza absoluta de que después no será un problema".',
+    fuente:
+      'apps/web/lib/pipeline.ts (CANDADO: VALIDACIÓN OBLIGATORIA — await runQualityGate, finalStatus depende de gateVeredicto); apps/web/lib/render-quality-judge.ts (AUDITORÍA FORENSE); apps/web/lib/quality-gate-wiring.test.ts (guardián)',
   },
   {
     id: 'circulo-leer-actuar',

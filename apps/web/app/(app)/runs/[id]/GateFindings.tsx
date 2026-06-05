@@ -65,6 +65,14 @@ const ACTION_LABEL: Record<RepairActionKind, string> = {
   'trim-duration': '⏱️ Recortar duración',
 };
 
+// Acciones que el "brazo" puede EJECUTAR (regeneran una escena, con OK del owner).
+// Las demás (editor/escalar) solo se muestran: se resuelven a mano o por revisión.
+const EXECUTABLE_ACTIONS = new Set<RepairActionKind>([
+  'regenerate-image',
+  'reanimate',
+  'regenerate-scene',
+]);
+
 interface GateFindingsProps {
   runId: string;
 }
@@ -91,23 +99,90 @@ const VERDICTO_STYLE: Record<string, string> = {
   fail: 'bg-red-500/20 text-red-700 dark:text-red-300 border-red-500/40',
 };
 
-function FindingCard({ f, action }: { f: GateBlocker; action?: { kind: RepairActionKind } }) {
+function FindingCard({
+  f,
+  action,
+  sceneIndex,
+  runId,
+  blockerIndex,
+}: {
+  f: GateBlocker;
+  action?: { kind: RepairActionKind };
+  sceneIndex?: number | null;
+  /** runId + blockerIndex solo se pasan en BLOQUEANTES → habilitan "Auto-reparar". */
+  runId?: string;
+  blockerIndex?: number;
+}) {
+  const [repairing, setRepairing] = useState(false);
+  const [newRunId, setNewRunId] = useState('');
+  const [repairErr, setRepairErr] = useState('');
+
+  const canRepair =
+    !!action &&
+    EXECUTABLE_ACTIONS.has(action.kind) &&
+    typeof runId === 'string' &&
+    typeof blockerIndex === 'number';
+
+  async function autoRepair() {
+    if (!runId || typeof blockerIndex !== 'number') return;
+    setRepairing(true);
+    setRepairErr('');
+    try {
+      const r = await fetch(`/api/runs/${runId}/gate/repair`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ blockerIndex }),
+      });
+      const d = (await r.json()) as { ok?: boolean; newRunId?: string; error?: string };
+      if (!r.ok || !d.ok || !d.newRunId) throw new Error(d.error || `Error ${r.status}`);
+      setNewRunId(d.newRunId);
+    } catch (e) {
+      setRepairErr(e instanceof Error ? e.message : 'Error de red');
+    } finally {
+      setRepairing(false);
+    }
+  }
+
   return (
     <div className="space-y-1 rounded border border-border/50 bg-background p-2">
       <div className="flex items-center gap-2">
         <SeverityChip severidad={f.severidad} />
         <span className="text-xs font-medium text-muted-foreground">{f.dimension}</span>
+        {typeof sceneIndex === 'number' && (
+          <span className="rounded bg-violet-500/15 px-1.5 py-0.5 text-[10px] font-medium text-violet-700 dark:text-violet-300">
+            escena {sceneIndex}
+          </span>
+        )}
       </div>
       <p className="text-xs font-medium">{f.titulo}</p>
       <p className="text-xs text-muted-foreground">💡 {f.fixPropuesto}</p>
       {action && (
-        <div className="flex items-center gap-2 pt-1">
+        <div className="flex flex-wrap items-center gap-2 pt-1">
           <span className="rounded border border-border bg-muted/50 px-2 py-0.5 text-xs font-medium">
             {ACTION_LABEL[action.kind]}
           </span>
           <span className="text-xs text-muted-foreground">— con tu OK</span>
+          {canRepair && !newRunId && (
+            <button
+              type="button"
+              onClick={autoRepair}
+              disabled={repairing}
+              className="rounded bg-violet-600 px-2 py-0.5 text-xs font-medium text-white hover:bg-violet-700 disabled:opacity-50"
+            >
+              {repairing ? 'Reparando…' : '🦾 Auto-reparar'}
+            </button>
+          )}
+          {newRunId && (
+            <a
+              href={`/runs/${newRunId}`}
+              className="rounded border border-violet-500/40 bg-violet-500/10 px-2 py-0.5 text-xs font-medium text-violet-700 hover:bg-violet-500/20 dark:text-violet-300"
+            >
+              Ver reparación →
+            </a>
+          )}
         </div>
       )}
+      {repairErr && <p className="text-xs text-red-600">No se pudo reparar: {repairErr}</p>}
     </div>
   );
 }
@@ -176,7 +251,14 @@ export function GateFindings({ runId }: GateFindingsProps) {
               Bloqueantes ({gate.bloqueantes.length})
             </h4>
             {gate.bloqueantes.map((f, i) => (
-              <FindingCard key={i} f={f} action={data.repairs?.[i]?.action} />
+              <FindingCard
+                key={i}
+                f={f}
+                action={data.repairs?.[i]?.action}
+                sceneIndex={data.repairs?.[i]?.sceneIndex ?? null}
+                runId={runId}
+                blockerIndex={i}
+              />
             ))}
           </div>
         )}

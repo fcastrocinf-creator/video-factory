@@ -5,7 +5,39 @@ Base del formato: `docs/formato-supercalm-doctor-split.md` (72.47s · 13 escenas
 
 ---
 
-## 0) Componentes a producir (3)
+## ✅ MÉTODO PROBADO Y VERIFICADO (jun-2026, render `supercalm-key15.mp4`) — USAR ESTE
+
+> Lo de más abajo (HeyGen / ElevenLabs) quedó **SUPERADO**. El owner aprobó este flujo. Invariantes: `lipsync-voz-nativa`, `pip-persona-corte-posicion`, `persona-ruta-ugc`, `verificar-viendo-y-oyendo`.
+
+**Voz + cara que habla = Veo 3.1 (voz NATIVA). ⛔ NO HeyGen, ⛔ NO ElevenLabs, ⛔ NO Seedance.**
+- El médico se genera con **Veo 3.1** (talking-head con diálogo nativo, vía el MCP de generación de Higgsfield): foto del médico (`medico-ugc.png` — UGC real en consultorio, soul_2) como `start_image` + la LÍNEA hablada EN EL PROMPT → devuelve al médico diciéndola con **lipsync real** (voz y labios del mismo modelo).
+- ⛔ NUNCA un TTS de ElevenLabs encima del clip muteado (patina → la compuerta lo caza como "lipsync inexistente"). ⛔ Seedance audio-driven NO da lipsync (reference-driven). ⛔ Higgsfield DoP NO genera voz (solo movimiento).
+- **2 clips Veo** (cada uno ≤8s; escenas cortas = mejor lipsync y ritmo):
+  1. **Hook** (`medico-hook-veo.mp4`): *"Sientes la cara hinchada, con una papada marcada y mucha retención. Tienes que ver este caso."*
+  2. **Off/explica** (`medico-off-veo.mp4`): *"Aquí observamos sus ojeras y su papada marcada. En pocas semanas, su rostro se ve más firme y definido."*
+- **VERIFICAR OYENDO** cada clip (`scripts/transcribe-gemini.ts`) ANTES de montar — Veo también puede pronunciar mal.
+
+**PiP del médico = CLIP con movimiento ("corte y posición"), NO foto fija.**
+- El médico en el recuadro (mientras se ven los planos de Rosa) es el **clip OFF recortado y posicionado** (`rect` en `FreeformElement` video, muted). Tiene movimiento + lipsync a su voz nativa. Una foto fija (PiP o hook) = estático = el owner la rechaza.
+
+**Audio = voz nativa concatenada (sin TTS externo).**
+- `scripts/prep-key.ts` extrae el audio nativo de los clips Veo (`[hook][off]`) → `combined-key.mp3`. El compositor MUTEA los `<video>` y usa `combined-key.mp3` → el lipsync calza por construcción. Usar clips del MISMO modelo para TODA la voz del médico (consistencia de timbre).
+
+**Montaje** (`packages/blocks/compositor-remotion/src/proto-key.ts`):
+- Hook = clip Veo hook (full) + teaser del producto en esquina.
+- Rosa ANTES (`estado1_hinchada`) → INTERMEDIO (`estado2_media`) → DESPUÉS (`estado3_renovada`), MISMA mujer (EDITAR una foto base, no generar cada estado por separado).
+- Médico en **PiP** (clip off) durante TODO el tramo de Rosa.
+- **Círculos** rojos en ojeras/papada SINCRONIZADOS a la voz del off (transcribir el off → "ojeras"@~1.8s, "papada"@~2.6s del clip).
+- **Producto** (packshot REAL `packshot.jpg`) en esquina durante los resultados + cierre full CORTO (sin silencio largo).
+- Sin subtítulos (regla del owner).
+
+**Disparo:** 2 clips Veo (verificar oyendo) → `prep-key.ts` (audio nativo) → render `proto-key.ts` → **compuerta** (`scripts/run-quality-gate.ts --render <mp4> --gemini`, ve+oye) → iterar. Verificar VIENDO **y** OYENDO antes de dar por bueno.
+
+> **Falta automatizar (cierra el círculo):** hoy esto se arma con `prep-key.ts`/`proto-key.ts` semi-a-mano. El siguiente paso es que el pipeline EMITA este formato solo (Veo por hablante + PiP corte-y-posición + círculos por word-sync) — ver `motor-soporta-vs-pipeline-emite` y `docs/PLAN-CIERRE-CIRCULO.md`.
+
+---
+
+## 0) Componentes a producir (3) — ⚠️ HISTÓRICO (HeyGen/ElevenLabs SUPERADO por el método de arriba)
 
 | # | Componente | Cómo se genera | Costo |
 |---|------------|----------------|-------|

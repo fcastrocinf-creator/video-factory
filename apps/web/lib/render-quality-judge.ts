@@ -38,7 +38,7 @@ POSTURA: ADVERSARIAL pero HONESTA. Busca defectos activamente, pero NO inventes 
 
 IDIOMA: español neutro (formas con "tú"). PROHIBIDO el voseo y los regionalismos (sos/tenés/podés/mirá/dale/acá).
 
-ANCLA TEMPORAL (anti-alucinación): la duración EXACTA del render se te da medida. TODO tiempo DEBE caer dentro de [0, duraciónReal]. Falla global → sin marca de tiempo.
+ANCLA TEMPORAL (anti-alucinación): la duración EXACTA del render se te da medida. TODO tiempo DEBE caer dentro de [0, duraciónReal]. Falla global → sin marca de tiempo. Además, en cada hallazgo pon "startSec" = el segundo donde EMPIEZA el defecto (dentro de [0, duraciónReal]) para poder regenerar SOLO esa escena; usa null si es una falla global sin un momento puntual.
 
 DIMENSIONES (solo las que la rúbrica marque activas):
 1. realismo — ¿se ve creíble y NO "de IA"? caras/manos deformes, morphing, texturas plásticas, flicker, "uncanny valley".
@@ -50,8 +50,17 @@ DIMENSIONES (solo las que la rúbrica marque activas):
 7. recorte-composicion — SOLO si hay recortes/PiP. figura translúcida o con halo/fleco verde, bordes sucios, recorte "pegado", escala/posición antinatural.
 8. anotacion-sincronizada — SOLO si hay anotaciones. deben (a) anclarse a la ZONA exacta y (b) aparecer SINCRONIZADAS al momento en que la narración menciona ese rasgo. FALLA si caen en vacío, señalan zona equivocada o van desfasadas.
 
+AUDITORÍA FORENSE DE MICRO-ERRORES (revísala SIEMPRE, además de las dimensiones; sé MINUCIOSO, momento a momento):
+- TRANSICIONES/CORTES: en CADA corte entre escenas evalúa si hay (a) "jump cut" — la imagen BRINCA de posición/escala porque empalmas 2 tomas distintas; (b) crossfade SUCIO — una escena se transparenta/fantasmea sobre la otra; (c) corte en mitad de un PARPADEO o gesto; (d) un overlay/PiP/producto/anotación que APARECE o DESAPARECE de golpe (sin entrada/salida); (e) fade-in/out oscuro o raro al INICIO o al FINAL.
+- AUDIO (empalmes): clicks/pops, cambios de VOLUMEN o de ruido de fondo/AMBIENTE entre tramos (señal de 2 clips pegados), respiraciones audibles, sibilancia (eses agudas), o corte de audio abrupto sin fade; silencios/tiempos muertos.
+- ANATOMÍA/artefactos: manos o DEDOS deformes/fusionados, morphing facial, ojos o dientes raros, flicker.
+- OCLUSIONES: algún overlay (PiP, producto, texto) que TAPE la cara del protagonista o algo importante.
+- ESTABILIDAD de overlays: un PiP/overlay que SALTA de tamaño o posición entre momentos (encuadre inestable).
+- LEGIBILIDAD: texto del producto/packaging cortado por el borde de su recuadro o ilegible en móvil.
+Reporta CADA micro-error como un hallazgo independiente con su "startSec".
+
 Devuelve EXCLUSIVAMENTE este JSON (sin markdown):
-{"resumen":"...","hallazgos":[{"titulo":"...","severidad":"low|medium|high|critical","descripcion":"qué está mal y en qué segundo","evidencia":"qué se ve/oye que lo prueba","fixPropuesto":"corrección accionable","confianza":0.0-1.0}]}`;
+{"resumen":"...","hallazgos":[{"titulo":"...","severidad":"low|medium|high|critical","descripcion":"qué está mal y en qué segundo","evidencia":"qué se ve/oye que lo prueba","fixPropuesto":"corrección accionable","confianza":0.0-1.0,"startSec":<segundo donde empieza el defecto o null>}]}`;
 
 /** Mapa dimensión-de-rúbrica → nombre de dimensión del juez (para el userText). */
 const RUBRIC_TO_JUDGE_DIM: Record<RubricDimension, string[]> = {

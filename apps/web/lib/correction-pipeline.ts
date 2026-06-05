@@ -76,9 +76,16 @@ export interface ApplyCorrectionOptions {
   correctionMessage: string;
   uploadedAssetPath: string | null;
   uploadedAssetIsVideo: boolean;
+  /**
+   * Fase 2 (el "brazo"): plan de corrección DETERMINISTA. Si se pasa, se SALTA el
+   * parseo NL con Gemini y se usa este plan tal cual. Lo arma el executor del gate
+   * desde un hallazgo ya LOCALIZADO en su escena (sceneIndex), evitando re-derivar
+   * la escena con IA. El flujo conversacional (sin override) queda intacto.
+   */
+  parseOverride?: CorrectionParse;
 }
 
-interface CorrectionParse {
+export interface CorrectionParse {
   startSec: number;
   endSec: number;
   // Si el mensaje menciona índices de escena directamente (ej "escena 5, 7, 10"),
@@ -254,14 +261,18 @@ export async function applyCorrection(opts: ApplyCorrectionOptions): Promise<voi
     const lang = brand.language.split('-')[0] ?? 'es';
     let subtitleTrack = await loadOriginalSubtitles(originalWorkDir, lang);
 
-    // 3. Parsear el mensaje del usuario
-    const parsed = await parseCorrectionMessage(
-      correctionMessage,
-      originalSceneTrack,
-      uploadedAssetPath !== null,
-      uploadedAssetIsVideo,
-    );
-    logger.info({ parsed }, 'correction:parsed');
+    // 3. Plan de corrección: del override DETERMINISTA (Fase 2 "el brazo": el
+    //    executor del gate ya localizó la escena, no hace falta re-derivarla con IA)
+    //    o, si no, parseando el mensaje del usuario con Gemini (flujo conversacional).
+    const parsed =
+      opts.parseOverride ??
+      (await parseCorrectionMessage(
+        correctionMessage,
+        originalSceneTrack,
+        uploadedAssetPath !== null,
+        uploadedAssetIsVideo,
+      ));
+    logger.info({ parsed, fromOverride: !!opts.parseOverride }, 'correction:parsed');
 
     const affected = pickAffectedScenes(originalSceneTrack, parsed);
     if (affected.length === 0) {
