@@ -1,5 +1,11 @@
 # ARQUITECTURA — Video Factory
 
+> ⚠️ **PARCIALMENTE STALE (fechado 2026-05-23).** Partes de este doc quedaron atrás: la **cascada
+> multi-provider de imágenes YA está arreglada** (Bug1+Bug2), y NO menciona el **círculo de mejora**,
+> la **compuerta de calidad obligatoria** ni el **brazo de auto-reparación** (todo ya construido a
+> nivel código, jun-2026). Para el estado REAL verificado del sistema, lee primero
+> **`docs/ESTADO-VERIFICADO-2026-06-05.md`**.
+
 > **Documento maestro de la herramienta.** Si retomas trabajo o sos un Claude entrando fresco: léelo entero antes de tocar nada. Te da el modelo mental completo del sistema sin necesidad de contexto adicional.
 >
 > **Relación con otros docs:**

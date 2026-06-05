@@ -3,8 +3,44 @@
 > Documento de traspaso entre conversaciones de Claude Code.
 > Para continuar: abre un chat nuevo en este proyecto y di **"lee HANDOFF.md y seguimos"**.
 > 💡 Backlog de ideas futuras (para barrer e implementar): **`IDEAS.md`**.
-> Última actualización: 2026-06-04 (Versión 11).
-> 🚦 **PRÓXIMO CHAT: LEE PRIMERO `docs/CONTINUAR-VIDEO-MEDICO.md`** — guía maestra de traspaso (estado del video, TODAS las herramientas, método, errores a no repetir, cómo avanzar).
+> Última actualización: 2026-06-05 (Versión 12).
+> 🚦 **PRÓXIMO CHAT: LEE PRIMERO `docs/ESTADO-VERIFICADO-2026-06-05.md`** (estado REAL del sistema por subsistema, verificado por 2 rondas de comprensión total) + la **VERSIÓN 12** (abajo). `docs/CONTINUAR-VIDEO-MEDICO.md` solo si se retoma el estilo médico (pausado).
+
+---
+
+## 🚀 VERSIÓN 12 — 05-06-2026 (Comprensión TOTAL verificada · voseo cazado · grieta UGC arreglada · objetivo: ripear video más largo)
+
+> **🚦 ARRANQUE — LEE PRIMERO `docs/ESTADO-VERIFICADO-2026-06-05.md`**: estado REAL por subsistema (qué funciona, huecos, y qué docs están STALE — ARQUITECTURA.md y manual-activaciones.md tienen partes desactualizadas). Luego `CLAUDE.md` (invariantes) y esta V12. NOTA: la sección "Continuidad" de CLAUDE.md todavía dice "lee primero ARQUITECTURA.md" — ese doc está stale; la fuente de verdad del estado es ESTADO-VERIFICADO.
+
+### 1. 🔎 Comprensión TOTAL (2 rondas, 30 subagentes, crítico independiente = COMPLETO)
+Se mapearon los 16 subsistemas + se leyeron a fondo los archivos gigantes (validador chat IA 2830 líneas, pipeline 2688, compuerta, motor freeform, ad-analyzer, scene-animator, correction-pipeline, KB). **Fuente de verdad: `docs/ESTADO-VERIFICADO-2026-06-05.md`.** Hallazgo grande: **los docs subestimaban lo construido** — el **brazo de auto-reparación (Fase 2, pasos 5-7) YA está cerrado a código** (planRepairs + executeGateRepair + UI GateFindings + endpoint /gate/repair, con prueba real). Falta: paso 8 (APRENDER) y **Fase 3** = que el pipeline EMITA composiciones complejas (PiP/multivoz/anotaciones); el motor las soporta, el pipeline no las emite.
+
+### 2. ✅ Hecho hoy (05-jun · SIN commit)
+- **Voseo cazado (español neutro):** nuevo `apps/web/lib/neutral-es.ts` (toNeutralSpanish + detectVoseo, lista ampliada: acá/sentís/entendés/pensás/etc.) → aplicado al guion ANTES del TTS (pipeline.ts ~213) + **guardián BLOQUEANTE** en la compuerta (quality-gate.ts) + el chat reusa el mismo util. Tests: neutral-es.test.ts + 23 verdes. Invariante `idioma-neutro` actualizado.
+- **Grieta UGC ARREGLADA:** el gate `isAnimatedFormat` ahora incluye `ugc-broll`/`ugc-testimony` (pipeline.ts:420 + correction-pipeline.ts:580/717) → los UGC ENTRAN al animador y se animan con Higgsfield (antes salían FOTO FIJA). Memoria: `video_factory_grieta_ugc_animacion`.
+- **Motor de fundidos por elemento** en PlanoEscenas.tsx (fadeInFrames/fadeOutFrames + no abrir en negro) — del trabajo del médico.
+- **Docs a la verdad:** ESTADO-VERIFICADO-2026-06-05.md (nuevo) + banners STALE en ARQUITECTURA.md/manual-activaciones.md + puntero en CONTINUAR-VIDEO-MEDICO.md.
+
+### 3. 🧪 Prueba UGC (run `ecb51af2`) — la ruta UGC YA ANIMA, falta control de la persona
+Ripeamos un UGC y generamos uno nuevo de 12.4s ($0.67). VERIFICADO viendo+oyendo: **las 8 escenas se animaron** (grieta-fix ✅, ya no foto fija) PERO salieron **mujeres distintas** (no el hombre pedido) y **sin consistencia de identidad**. Causa: `narratorGenderOverride` solo mueve la VOZ; falta (a) anclar identidad (consistentCharacter/character-anchor) y (b) forzar el género en el VISUAL (characterCard). Son ajustes de preset/config, no bugs del motor. (Se hizo por "Crear con guion literal" — un atajo, NO el flujo Ripear.)
+
+### 4. ⏸️ Pausado
+Estilo de ads **antes/después con persona** (médico SuperCalm) — pausado por el owner (no retomar sin que lo pida). Video bueno: `storage/proto-composite/supercalm-key18.mp4`. Doc: `docs/CONTINUAR-VIDEO-MEDICO.md`.
+
+### 5. ▶️ OBJETIVO INMEDIATO: ripear un video MÁS LARGO por la HERRAMIENTA
+El owner quiere **ripear un anuncio (más largo) por el flujo Ripear REAL** (no atajos) y que **salga bien**. Estándar acordado: mejor pasada + **verificar viendo+oyendo** + **reparar con el brazo** lo que falle, iterando hasta publicable — NO "perfecto al primer tiro" (la herramienta no lo garantiza; hoy quedó demostrado).
+- **PENDIENTE del owner:** el VIDEO a ripear + la marca/producto destino (en el sistema solo existe `vitaly`).
+- **Para superar lo de la prueba UGC:** activar consistencia de identidad (character-anchor / preset con `consistentCharacter`) + forzar la persona/género correctos en el VISUAL (no solo la voz).
+- **Cómo (flujo Ripear):** dev `pnpm --filter @video-factory/web dev`; cookie `app_auth=valid` para curl. (1) `POST /api/rip/upload` (campo `video`, multipart, mime video/mp4) → `ripId`; (2) pollear `GET /api/rip/[id]` hasta `analyzed`; (3) `POST /api/rip/[id]/build-preset` (destila preset) o elegir uno; (4) `POST /api/rip/[id]/rip {brandId,presetId,productId,fidelityMode}`. O por la UI en `localhost:3000`. `fidelityMode='high'` → rip-fidelity-aligner (más fiel, más caro/lento).
+
+### 6. 🚫 Reglas reforzadas
+- Verificar **VIENDO** (frame a frame, en CADA corte + extremos) y **OYENDO** — la compuerta muestrea ralo y se salta micro-errores (frame negro, etc.).
+- **NO sobre-prometer "perfecto";** decir la verdad cruda tras verificar.
+- **Confirmar antes de gastar;** trabajar sobre el video activo del owner.
+- Español neutro siempre; **sin subtítulos** salvo que se pidan; **nunca git push** sin orden.
+
+### 7. 📦 Git / cambios SIN commit (HEAD `0bb982c`, main)
+Sin commit: `neutral-es.ts`(+test), `pipeline.ts`, `correction-pipeline.ts`, `quality-gate.ts`, `claude-chat-discuss.ts`, `invariants.ts`, `CLAUDE.md`, `PlanoEscenas.tsx`, `proto-key.ts`, `prep-key.ts`, `scene.schema.ts` + docs (ESTADO-VERIFICADO, ARQUITECTURA, manual-activaciones, CONTINUAR) + memoria del Claude. El owner decide commit (local, **SIN push**).
 
 ---
 

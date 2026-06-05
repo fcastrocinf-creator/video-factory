@@ -47,8 +47,9 @@ export const CORE_INVARIANTS: Array<Omit<Invariant, 'ts'>> = [
     regla:
       'Toda salida (UI, chat, prompts, código, commits) en español neutro con "tú". PROHIBIDO el voseo argentino (sos/tenés/podés/hacé/mirá/decí/dale) y "acá" (usar "aquí").',
     porQue:
-      'Regla crítica del owner. El chat tiene un normalizador, pero los prompts deben estar limpios en origen.',
-    fuente: 'CLAUDE.md; apps/web/lib/claude-chat-discuss.ts (normalizeNeutralSpanish)',
+      'Regla crítica del owner. La normalización (toNeutralSpanish, en apps/web/lib/neutral-es.ts) se aplica al CHAT, al GUION del video (antes del TTS) y la COMPUERTA bloquea (critical) si queda voseo. Límite: los imperativos voseo homógrafos del pretérito (descubrí/salí/sentí sin -s) NO se corrigen solos sin contexto.',
+    fuente:
+      'CLAUDE.md; apps/web/lib/neutral-es.ts (toNeutralSpanish/detectVoseo, lista única compartida); apps/web/lib/pipeline.ts (normaliza el guion antes del TTS); apps/web/lib/kb/quality-gate.ts (guardián de voseo, bloqueante)',
   },
   {
     id: 'nada-auto-aplica',
@@ -243,13 +244,13 @@ export const CORE_INVARIANTS: Array<Omit<Invariant, 'ts'>> = [
   {
     id: 'circulo-leer-actuar',
     categoria: 'producto',
-    titulo: 'El círculo de mejora: el sistema DETECTA bien, falta que ACTÚE (cerrar 5-8)',
+    titulo: 'El círculo de mejora: DETECTA bien y ya ACTÚA (5-7 hechos); falta cerrar APRENDER (8)',
     regla:
-      'Video Factory tiene un círculo de 8 pasos para perfeccionar videos. Los pasos 1-4 FUNCIONAN: LEER (Gemini ve+oye), ENTENDER (panel de 6 especialistas), DETECTAR, PROPONER el fix en la KB. Los pasos 5-8 NO están cerrados: MOSTRAR el hallazgo en el editor, APLICAR la corrección dirigida, REGENERAR solo lo que falla, APRENDER para no repetir. El RepairLoop (kb/quality-gate.ts) está SOLO tipado sin implementar; los hallazgos no llegan a la UI; el aprendizaje es pasivo. El NORTE es CERRAR EL CÍRCULO: que la herramienta corrija sola (con OK del owner), no que el owner parche a mano. NO trabajar pieza-por-pieza en un proto manual; trabajar en que el SISTEMA lo haga.',
+      'Video Factory tiene un círculo de 8 pasos para perfeccionar videos. Los pasos 1-4 FUNCIONAN: LEER (Gemini ve+oye), ENTENDER (panel de 6 especialistas), DETECTAR, PROPONER el fix en la KB. Los pasos 5-7 YA están IMPLEMENTADOS (Fase 2 cerrada a nivel código): MOSTRAR el hallazgo en la UI (GateFindings en RunViewer + GET /api/runs/[id]/gate), APLICAR la corrección dirigida y REGENERAR solo la escena que falla — planRepairs (kb/repair-loop.ts) DECIDE la reparación de forma determinista y executeGateRepair (repair-executor.ts) la EJECUTA con OK del owner (POST /api/runs/[id]/gate/repair → forkea el run vía applyCorrection y regenera SOLO esa escena). Falta cerrar el paso 8: APRENDER para no repetir (el aprendizaje sigue siendo pasivo). El NORTE es CERRAR EL CÍRCULO: que la herramienta corrija sola (con OK del owner), no que el owner parche a mano. NO trabajar pieza-por-pieza en un proto manual; trabajar en que el SISTEMA lo haga.',
     porQue:
-      'jun-2026: el owner señaló que yo no captaba la totalidad — estuve parchando un proto (proto-key.ts) a mano en vez de cerrar el círculo del sistema. El owner invirtió en percepción+detección; falta la ACCIÓN.',
+      'jun-2026: el owner señaló que yo no captaba la totalidad — estuve parchando un proto (proto-key.ts) a mano en vez de cerrar el círculo del sistema. El owner invirtió en percepción+detección; la ACCIÓN (mostrar/aplicar/regenerar dirigido) se construyó después (Fase 2, verificada a nivel código). Queda pendiente que el sistema APRENDA del resultado para no repetir.',
     fuente:
-      'docs/PLAN-CIERRE-CIRCULO.md; apps/web/lib/kb/quality-gate.ts (RepairLoop tipado sin implementar); apps/web/lib/kb/findings.ts (fixPropuesto)',
+      'docs/PLAN-CIERRE-CIRCULO.md; apps/web/lib/kb/repair-loop.ts (planRepairs — decide); apps/web/lib/repair-executor.ts (executeGateRepair — ejecuta con OK del owner); apps/web/app/(app)/runs/[id]/GateFindings.tsx (surfacea en RunViewer); apps/web/lib/kb/findings.ts (fixPropuesto)',
   },
   {
     id: 'motor-soporta-vs-pipeline-emite',

@@ -13,8 +13,9 @@
 //      a pass/revisar/fail según la GatePolicy.
 //   3. deriveRubric: contexto DETERMINISTA (hermano de planTimelineFromFormat) que
 //      afina los briefs del panel con los criterios del formato aprendido.
-//   4. RepairLoop: interfaz tipada (FASE 2, no implementada) para la reparación
-//      dirigida de artefactos del run.
+//   4. RepairLoop: contrato tipado de la reparación dirigida. Su implementación YA
+//      existe (Fase 2 cerrada a nivel código): planRepairs vive en repair-loop.ts
+//      (DECIDE) y executeGateRepair en repair-executor.ts (EJECUTA con OK del owner).
 //
 // Invariantes respetados: NADA se auto-aplica (solo PROPONE); storage vía paths.ts
 // (nunca process.cwd()); NO agrega emisores paralelos a la KB (lo hace el panel);
@@ -26,6 +27,7 @@ import { resolve } from 'node:path';
 import { RUNS_DIR } from '../paths';
 import { SceneTrackSchema, type AdAnalysis } from '@video-factory/contracts';
 import { planTimelineFromFormat, type FormatTimelinePlan } from '../format-to-timeline';
+import { detectVoseo } from '../neutral-es';
 import {
   runFormatAudit,
   formatAuditEnabled,
@@ -744,6 +746,27 @@ export async function runQualityGate(input: QualityGateInput): Promise<QualityGa
     } otro(s) punto(s)); no se puede aprobar a ciegas. Reintenta la compuerta antes de publicar.`;
   }
 
+  // 6c) GUARDIÁN de ESPAÑOL NEUTRO (regla dura del owner). Si el guion/audio trae
+  //     voseo/regionalismos, es BLOQUEANTE: no se publica con voseo. El pipeline ya
+  //     normaliza el guion antes del TTS (neutral-es); esto es la red anti-regresión
+  //     (caza lo que la normalización no cubra, o si alguien la desconecta).
+  const voseoFormas = input.contextText ? detectVoseo(input.contextText) : [];
+  if (voseoFormas.length > 0) {
+    const formas = voseoFormas.slice(0, 6).join(', ');
+    const voseoBlocker: GateBlocker = {
+      dimension: 'idioma-neutro',
+      severidad: 'critical',
+      estado: 'confirmado',
+      titulo: `El guion/audio no está en español neutro (voseo: ${formas})`,
+      fixPropuesto:
+        'Reescribe esas formas a español neutro con "tú" (toNeutralSpanish cubre las inequívocas) y regenera el audio. Regla dura del owner: jamás voseo.',
+      confianza: 1,
+    };
+    veredicto = 'fail';
+    bloqueantes = [voseoBlocker, ...bloqueantes];
+    resumen = `FALLA: el guion/audio no está en español neutro (voseo: ${formas}). ${resumen}`;
+  }
+
   // 7) Ensamblar + persistir el veredicto (best-effort, scoped).
   const policyRecord: GatePolicyRecord = {
     failOn: policy.failOn,
@@ -774,11 +797,15 @@ export async function runQualityGate(input: QualityGateInput): Promise<QualityGa
   return report;
 }
 
-// ─── Bucle de reparación dirigida (Lente C) — FASE 2, solo interfaz tipada ─────
-// Fase 1 NO repara: la compuerta DECIDE y PROPONE (invariante "nada se auto-aplica").
-// El bucle se entrega como interfaz para que fase 2 lo implemente sin reabrir el
-// diseño. Reparar un ARTEFACTO del run (output efímero) = permitido; cambiar el
-// sistema (prompt/preset/config) = JAMÁS sin owner.
+// ─── Bucle de reparación dirigida (Lente C) — tipos del contrato ──────────────
+// Esta sección declara SOLO los tipos del bucle (RepairAction/RepairTarget/
+// RepairLoop). La IMPLEMENTACIÓN ya existe (Fase 2 cerrada a nivel código):
+//   - planRepairs() en repair-loop.ts: DECIDE las reparaciones (determinista, sin IA).
+//   - executeGateRepair() en repair-executor.ts: las EJECUTA con OK del owner
+//     (forkea el run vía applyCorrection y regenera SOLO la escena afectada).
+// La compuerta DECIDE y PROPONE; nada se auto-aplica al SISTEMA (invariante). Reparar
+// un ARTEFACTO del run (output efímero) = permitido; cambiar el sistema
+// (prompt/preset/config) = JAMÁS sin owner.
 
 export type RepairAction =
   | { kind: 'regenerate-image'; sceneIndex: number; correctedImagePrompt: string }
@@ -796,10 +823,11 @@ export interface RepairTarget {
 }
 
 /**
- * FASE 2: traduce los bloqueantes del veredicto a reparaciones dirigidas, sin
- * re-llamar IA (determinista, por la dimensión/especialista emisor). Localiza el
- * componente que falla → propone regenerar SOLO ese. La EJECUCIÓN la decide el
- * caller (executor inyectado), respetando "nada se auto-aplica" para el sistema.
+ * Contrato del plan de reparación. Su implementación (planRepairs en repair-loop.ts)
+ * traduce los bloqueantes del veredicto a reparaciones dirigidas, sin re-llamar IA
+ * (determinista, por la dimensión/especialista emisor). Localiza el componente que
+ * falla → propone regenerar SOLO ese. La EJECUCIÓN la hace el executor
+ * (executeGateRepair en repair-executor.ts), respetando "nada se auto-aplica" para el sistema.
  */
 export interface RepairLoop {
   planRepairs(report: QualityGateReport): RepairTarget[];

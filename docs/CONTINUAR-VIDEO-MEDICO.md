@@ -1,5 +1,7 @@
 # 🎬 CONTINUAR AQUÍ — Guía maestra para el próximo chat (Video Factory · ad del médico SuperCalm)
 
+> 🔎 **Estado REAL del CÓDIGO (verificado el 5-jun-2026 con 2 rondas de comprensión total): `docs/ESTADO-VERIFICADO-2026-06-05.md`.** Léelo para el mapa del sistema (qué funciona de verdad, huecos reales, qué docs están stale). Nota: el owner **pausó** el estilo de ads "antes/después con persona" (médico) — este doc sigue como referencia del formato, no como tarea activa salvo que el owner lo retome.
+
 > **Para el próximo Claude Code:** lee ESTE documento entero ANTES de tocar nada. Es el
 > traspaso completo: el norte, el estado real del video, TODAS las herramientas, cómo se
 > hizo, los errores que NO debes repetir, y cómo avanzar con lo que falta. Después lee

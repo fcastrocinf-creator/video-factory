@@ -134,6 +134,11 @@ export const CompositeElementSchema = z.object({
   // undefined, la pieza dura toda la escena.
   startSeconds: z.number().nonnegative().optional(),
   endSeconds: z.number().nonnegative().optional(),
+  // Fundido por elemento (frames): fadeIn default 5 (suave); fadeOut default 0
+  // (sin desvanecido de salida, histórico). Habilita transiciones limpias por
+  // pieza (entrada/salida) — usado por el tramo del médico y, a futuro, el pipeline.
+  fadeInFrames: z.number().nonnegative().optional(),
+  fadeOutFrames: z.number().nonnegative().optional(),
   // TextOverlay vectorial propio (para piezas image/video que necesitan label).
   textOverlay: TextOverlaySchema.optional(),
   // RECORTE por chroma key: si está, al componer se elimina el fondo del color

@@ -49,6 +49,10 @@ export interface CompositeElementVisual {
   cornerRadiusPct?: number;
   startSeconds?: number;
   endSeconds?: number;
+  // Fundido por elemento (frames). fadeIn default 5 (suave, como siempre);
+  // fadeOut default 0 (sin desvanecido de salida — comportamiento histórico).
+  fadeInFrames?: number;
+  fadeOutFrames?: number;
   textOverlay?: TextOverlay;
   // Recorte por chroma key (elimina el fondo verde → sujeto "sin fondo").
   chromaKey?: { color?: 'green' | 'blue'; similarity?: number };
@@ -95,6 +99,10 @@ export interface PlanoEscenasProps {
   // por escena. Trade-off: la imagen base sigue siendo estática, pero la
   // composición agrega vida.
   animatedScenes?: boolean;
+  // Si false, desactiva el fundido de ENTRADA de cada escena (apertura desde
+  // negro / crossfade entre escenas). Default true (como siempre). Se apaga para
+  // tramos de 1 sola escena que NO deben abrir en negro.
+  sceneTransitions?: boolean;
 }
 
 export const PlanoEscenas: React.FC<PlanoEscenasProps> = ({
@@ -105,6 +113,7 @@ export const PlanoEscenas: React.FC<PlanoEscenasProps> = ({
   kenBurnsZoomEnd = 1.0,
   kenBurns = false,
   animatedScenes = false,
+  sceneTransitions = true,
 }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -135,6 +144,7 @@ export const PlanoEscenas: React.FC<PlanoEscenasProps> = ({
                   elements={scene.composition!}
                   durationInFrames={durationInFrames}
                   animatedScenes={animatedScenes}
+                  sceneTransitions={sceneTransitions}
                 />
               ) : isComposite ? (
                 <CompositeFrame
@@ -653,11 +663,12 @@ const FreeformComposite: React.FC<{
   elements: CompositeElementVisual[];
   durationInFrames: number;
   animatedScenes: boolean;
-}> = ({ elements, durationInFrames, animatedScenes }) => {
+  sceneTransitions?: boolean;
+}> = ({ elements, durationInFrames, animatedScenes, sceneTransitions = true }) => {
   const localFrame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const FADE_FRAMES = animatedScenes ? 6 : 4;
-  const fillOpacity = Math.min(1, localFrame / FADE_FRAMES);
+  const fillOpacity = sceneTransitions ? Math.min(1, localFrame / FADE_FRAMES) : 1;
 
   // zIndex ascendente: el mayor se pinta último (queda al frente).
   const ordered = [...elements].sort((a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0));
@@ -684,11 +695,11 @@ const FreeformComposite: React.FC<{
               name={key}
               layout="none"
             >
-              <FreeformElement element={el} />
+              <FreeformElement element={el} durationInFrames={seqDuration} />
             </Sequence>
           );
         }
-        return <FreeformElement key={key} element={el} />;
+        return <FreeformElement key={key} element={el} durationInFrames={durationInFrames} />;
       })}
     </AbsoluteFill>
   );
@@ -696,9 +707,13 @@ const FreeformComposite: React.FC<{
 
 // Un elemento individual de la composición libre, posicionado en coordenadas
 // arbitrarias (% del frame) con rotación, opacidad, recorte y bordes propios.
-const FreeformElement: React.FC<{ element: CompositeElementVisual }> = ({ element }) => {
+const FreeformElement: React.FC<{ element: CompositeElementVisual; durationInFrames?: number }> = ({
+  element,
+  durationInFrames,
+}) => {
   const localFrame = useCurrentFrame();
   const { width, height } = useVideoConfig();
+  const fadeOut = element.fadeOutFrames ?? 0;
   // Anotación: capa full-frame (círculo + flecha), no usa la caja del rect.
   if (element.kind === 'annotation' && element.annotation) {
     return (
@@ -708,11 +723,19 @@ const FreeformElement: React.FC<{ element: CompositeElementVisual }> = ({ elemen
         frame={localFrame}
         width={width}
         height={height}
+        durationInFrames={durationInFrames}
+        fadeOutFrames={fadeOut}
       />
     );
   }
-  const FADE = 5;
-  const enterOpacity = Math.min(1, localFrame / FADE);
+  // Fundido por elemento: entrada (default 5 frames) + salida OPCIONAL (default 0
+  // = sin desvanecido, histórico). El de salida necesita la duración del clip.
+  const fadeIn = element.fadeInFrames ?? 5;
+  const enterOpacity = fadeIn > 0 ? Math.min(1, localFrame / fadeIn) : 1;
+  const exitOpacity =
+    fadeOut > 0 && durationInFrames
+      ? Math.min(1, Math.max(0, (durationInFrames - localFrame) / fadeOut))
+      : 1;
   const { rect } = element;
   const fit = element.fit ?? 'cover';
 
@@ -724,9 +747,15 @@ const FreeformElement: React.FC<{ element: CompositeElementVisual }> = ({ elemen
     height: `${rect.heightPct}%`,
     transform: `rotate(${element.rotationDeg ?? 0}deg)`,
     transformOrigin: 'center center',
-    opacity: (element.opacity ?? 1) * enterOpacity,
+    opacity: (element.opacity ?? 1) * enterOpacity * exitOpacity,
     overflow: 'hidden',
     borderRadius: element.cornerRadiusPct ? `${element.cornerRadiusPct}%` : '0',
+    // Fondo de la caja (rellena las barras de fit:'contain' → packshot completo
+    // sin recortar y sin que se cuele el fondo de Rosa). Solo no-texto (el texto
+    // ya maneja su propio backgroundColor).
+    ...(element.backgroundColor && element.kind !== 'text'
+      ? { backgroundColor: element.backgroundColor }
+      : {}),
   };
 
   // fontSize del texto puro: relativo a la altura de la caja del elemento.
@@ -839,7 +868,9 @@ const AnnotationLayer: React.FC<{
   frame: number;
   width: number;
   height: number;
-}> = ({ rect, ann, frame, width, height }) => {
+  durationInFrames?: number;
+  fadeOutFrames?: number;
+}> = ({ rect, ann, frame, width, height, durationInFrames, fadeOutFrames }) => {
   const color = ann.color ?? '#FF3B30';
   const cx = ((rect.xPct + rect.widthPct / 2) / 100) * width;
   const cy = ((rect.yPct + rect.heightPct / 2) / 100) * height;
@@ -852,12 +883,17 @@ const AnnotationLayer: React.FC<{
   });
   const showCircle = ann.shape !== 'arrow';
   const showArrow = ann.shape !== 'circle' && ann.fromXPct !== undefined && ann.fromYPct !== undefined;
+  // Desvanecido de SALIDA opcional (evita que el círculo desaparezca "de golpe").
+  const exitOpacity =
+    fadeOutFrames && fadeOutFrames > 0 && durationInFrames
+      ? Math.min(1, Math.max(0, (durationInFrames - frame) / fadeOutFrames))
+      : 1;
   return (
     <svg
       width={width}
       height={height}
       viewBox={`0 0 ${width} ${height}`}
-      style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }}
+      style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none', opacity: exitOpacity }}
     >
       {showCircle && (
         <ellipse

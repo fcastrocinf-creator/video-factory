@@ -1,5 +1,10 @@
 # Registro de ACTIVACIONES — Video Factory (base del manual de usuario)
 
+> ⚠️ **PUNTO STALE:** donde este doc diga que la compuerta de calidad es opt-in (`VF_GATE_ON_RENDER`)
+> o "solo corre por CLI / falta exponer en UI" — es FALSO desde jun-2026: la compuerta corre **SIEMPRE
+> y OBLIGATORIA** en cada render (con `await runQualityGate({useGemini:true})`), tiene UI (`GateFindings`)
+> y `VF_GATE_ON_RENDER` fue **ELIMINADO**. Estado real: `docs/ESTADO-VERIFICADO-2026-06-05.md`.
+
 Todo lo que **NO está encendido automáticamente** y que se puede olvidar activar. Es la fuente para el manual de usuario.
 
 > **Mecánica base (CRÍTICA):** `apps/web/next.config.mjs` lee el `.env` de la **raíz** del monorepo y sobreescribe `process.env` al arrancar. → Toda variable nueva va al **`.env` raíz** (no a `apps/web/.env`), y hay que **reiniciar `pnpm dev`** para que tome cambios. Verificar con `curl http://localhost:3000/api/debug/env-check`.

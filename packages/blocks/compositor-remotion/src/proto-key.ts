@@ -29,9 +29,12 @@ async function main(): Promise<void> {
   // El OFF dice "ojeras/papada" al inicio y "en pocas semanas más firme" después → cortes:
   const ANTES_END = HOOK_END + 3.7;       // Rosa ANTES (hinchada), mientras menciona ojeras/papada
   const INTER_END = HOOK_END + 5.2;       // breve INTERMEDIO (transición de mejora)
-  const OJERAS_T = HOOK_END + 1.78;       // "ojeras" se dice a 1.78s del off
-  const PAPADA_T = HOOK_END + 2.58;       // "papada" se dice a 2.58s del off
-  const PRODUCT = 1.0;                    // cierre MUY corto (mínimo silencio tras la narración)
+  // Sincronía REAL (transcripción del off): "ojeras"@9.53s y "papada"@10.32s
+  // absolutos → el círculo aparece JUSTO cuando se nombra el rasgo (antes llegaba ~0.25s tarde).
+  const OJERAS_T = HOOK_END + 1.53;       // 9.53s
+  const PAPADA_T = HOOK_END + 2.32;       // 10.32s
+  const XFADE = 0.4;                      // solape entre estados de Rosa → crossfade (no jump cut)
+  const PRODUCT = 0.7;                    // cierre corto (menos silencio final)
   const TOTAL = ROSA_END + PRODUCT;
   const fps = 30;
 
@@ -52,28 +55,45 @@ async function main(): Promise<void> {
           imageSrc: 'estado1_hinchada.png',
           durationSeconds: TOTAL,
           composition: [
-            { id: 'bg', kind: 'image', imageSrc: 'estado1_hinchada.png', rect: { xPct: 0, yPct: 0, widthPct: 100, heightPct: 100 }, zIndex: 0, fit: 'cover', rotationDeg: 0, opacity: 1, cornerRadiusPct: 0 },
+            // Fondo (cara base). Termina en ROSA_END para NO quedar debajo del packshot
+            // de cierre (eso causaba el "destello fantasma" de Rosa sobre el producto, #4).
+            { id: 'bg', kind: 'image', imageSrc: 'estado1_hinchada.png', rect: { xPct: 0, yPct: 0, widthPct: 100, heightPct: 100 }, zIndex: 0, fit: 'cover', rotationDeg: 0, opacity: 1, cornerRadiusPct: 0, startSeconds: 0, endSeconds: ROSA_END, fadeInFrames: 0 },
             // 1) médico HOOK = clip Veo (voz NATIVA, lipsync real). Muteado por el compositor;
             //    su voz sale de combined-key.mp3 (primer tramo) → lipsync calza.
-            { id: 'medico-hook', kind: 'video', videoSrc: 'medico-hook-veo.mp4', rect: { xPct: 0, yPct: 0, widthPct: 100, heightPct: 100 }, zIndex: 1, fit: 'cover', rotationDeg: 0, opacity: 1, cornerRadiusPct: 0, startSeconds: 0, endSeconds: HOOK_END },
+            // médico HOOK: arranca SIN fundido (fadeIn 0 → no abre en negro, #10) y se
+            // DESVANECE hacia Rosa (fadeOut 8) para suavizar el corte y tapar el parpadeo (#1).
+            { id: 'medico-hook', kind: 'video', videoSrc: 'medico-hook-veo.mp4', rect: { xPct: 0, yPct: 0, widthPct: 100, heightPct: 100 }, zIndex: 1, fit: 'cover', rotationDeg: 0, opacity: 1, cornerRadiusPct: 0, startSeconds: 0, endSeconds: HOOK_END, fadeInFrames: 0, fadeOutFrames: 8 },
             // teaser del PRODUCTO temprano (callout en esquina) mientras el médico habla.
-            { id: 'prod-teaser', kind: 'image', imageSrc: 'packshot.jpg', rect: { xPct: 53, yPct: 54, widthPct: 45, heightPct: 38 }, zIndex: 3, fit: 'cover', rotationDeg: 0, opacity: 1, cornerRadiusPct: 10, startSeconds: 2.2, endSeconds: HOOK_END },
+            // teaser del PRODUCTO (callout): fit 'contain' + fondo blanco → packshot
+            // COMPLETO sin recortar los claims (#7). Se desvanece al terminar el hook.
+            { id: 'prod-teaser', kind: 'image', imageSrc: 'packshot.jpg', rect: { xPct: 53, yPct: 54, widthPct: 45, heightPct: 38 }, zIndex: 3, fit: 'contain', backgroundColor: '#ffffff', rotationDeg: 0, opacity: 1, cornerRadiusPct: 10, startSeconds: 2.2, endSeconds: HOOK_END, fadeOutFrames: 6 },
             // 2) Rosa ANTES (still, hinchada) + círculos sincronizados a la voz nativa del OFF.
-            { id: 'rosa-antes', kind: 'image', imageSrc: 'estado1_hinchada.png', rect: { xPct: 0, yPct: 0, widthPct: 100, heightPct: 100 }, zIndex: 1, fit: 'cover', rotationDeg: 0, opacity: 1, cornerRadiusPct: 0, startSeconds: HOOK_END, endSeconds: ANTES_END },
-            { id: 'ann-ojeras', kind: 'annotation', rect: { xPct: 25, yPct: 35, widthPct: 50, heightPct: 9 }, annotation: { shape: 'circle', color: '#FF3B30' }, zIndex: 4, rotationDeg: 0, opacity: 1, cornerRadiusPct: 0, startSeconds: OJERAS_T, endSeconds: ANTES_END },
-            { id: 'ann-papada', kind: 'annotation', rect: { xPct: 33, yPct: 71, widthPct: 34, heightPct: 9 }, annotation: { shape: 'circle', color: '#FF3B30' }, zIndex: 4, rotationDeg: 0, opacity: 1, cornerRadiusPct: 0, startSeconds: PAPADA_T, endSeconds: ANTES_END },
+            { id: 'rosa-antes', kind: 'image', imageSrc: 'estado1_hinchada.png', rect: { xPct: 0, yPct: 0, widthPct: 100, heightPct: 100 }, zIndex: 1, fit: 'cover', rotationDeg: 0, opacity: 1, cornerRadiusPct: 0, startSeconds: HOOK_END, endSeconds: ANTES_END + XFADE },
+            { id: 'ann-ojeras', kind: 'annotation', rect: { xPct: 25, yPct: 35, widthPct: 50, heightPct: 9 }, annotation: { shape: 'circle', color: '#FF3B30' }, zIndex: 4, rotationDeg: 0, opacity: 1, cornerRadiusPct: 0, startSeconds: OJERAS_T, endSeconds: ANTES_END, fadeOutFrames: 8 },
+            { id: 'ann-papada', kind: 'annotation', rect: { xPct: 33, yPct: 71, widthPct: 34, heightPct: 9 }, annotation: { shape: 'circle', color: '#FF3B30' }, zIndex: 4, rotationDeg: 0, opacity: 1, cornerRadiusPct: 0, startSeconds: PAPADA_T, endSeconds: ANTES_END, fadeOutFrames: 8 },
             // 3) PROGRESIÓN: intermedio (estado2) → renovada (estado3), MISMA mujer.
-            { id: 'rosa-intermedio', kind: 'image', imageSrc: 'estado2_media.png', rect: { xPct: 0, yPct: 0, widthPct: 100, heightPct: 100 }, zIndex: 1, fit: 'cover', rotationDeg: 0, opacity: 1, cornerRadiusPct: 0, startSeconds: ANTES_END, endSeconds: INTER_END },
-            { id: 'rosa-despues', kind: 'image', imageSrc: 'estado3_renovada.png', rect: { xPct: 0, yPct: 0, widthPct: 100, heightPct: 100 }, zIndex: 1, fit: 'cover', rotationDeg: 0, opacity: 1, cornerRadiusPct: 0, startSeconds: INTER_END, endSeconds: ROSA_END },
+            // Crossfade entre estados (fadeIn sobre el estado previo aún presente) → la
+            // cara MEJORA en transición suave en vez de BRINCAR (jump cut, #2/#3).
+            { id: 'rosa-intermedio', kind: 'image', imageSrc: 'estado2_media.png', rect: { xPct: 0, yPct: 0, widthPct: 100, heightPct: 100 }, zIndex: 1, fit: 'cover', rotationDeg: 0, opacity: 1, cornerRadiusPct: 0, startSeconds: ANTES_END, endSeconds: INTER_END + XFADE, fadeInFrames: 12 },
+            // Se EXTIENDE 0.4s más allá de ROSA_END para que el packshot haga crossfade
+            // ENCIMA de la cara mejorada (no sobre fondo negro) → sin frame negro al cerrar.
+            { id: 'rosa-despues', kind: 'image', imageSrc: 'estado3_renovada.png', rect: { xPct: 0, yPct: 0, widthPct: 100, heightPct: 100 }, zIndex: 1, fit: 'cover', rotationDeg: 0, opacity: 1, cornerRadiusPct: 0, startSeconds: INTER_END, endSeconds: ROSA_END + XFADE, fadeInFrames: 12 },
             // PiP del médico CON MOVIMIENTO (corte y posición): el clip OFF (su voz nativa +
             // lipsync) recortado y posicionado en el recuadro durante TODO el tramo de Rosa.
-            { id: 'medico-pip', kind: 'video', videoSrc: 'medico-off-veo.mp4', rect: { xPct: 64, yPct: 4, widthPct: 33, heightPct: 25 }, zIndex: 6, fit: 'cover', rotationDeg: 0, opacity: 1, cornerRadiusPct: 14, startSeconds: HOOK_END, endSeconds: ROSA_END },
+            // PiP del médico (corte y posición): algo más chico y más al borde para NO
+            // tapar la cara de Rosa (#8) y disimular el salto de pose (#6). Entra suave.
+            { id: 'medico-pip', kind: 'video', videoSrc: 'medico-off-veo.mp4', rect: { xPct: 68, yPct: 3, widthPct: 29, heightPct: 22 }, zIndex: 6, fit: 'cover', rotationDeg: 0, opacity: 1, cornerRadiusPct: 14, startSeconds: HOOK_END, endSeconds: ROSA_END, fadeInFrames: 10 },
             // PRODUCTO presente DURANTE el antes/después (ancla el resultado al producto, lo
             // pidió la compuerta): packshot chico en esquina inferior derecha — no tapa la
             // cara de Rosa (centro) ni el PiP del médico (arriba-derecha).
-            { id: 'prod-corner', kind: 'image', imageSrc: 'packshot.jpg', rect: { xPct: 66, yPct: 68, widthPct: 31, heightPct: 27 }, zIndex: 5, fit: 'cover', rotationDeg: 0, opacity: 1, cornerRadiusPct: 10, startSeconds: HOOK_END, endSeconds: ROSA_END },
+            // packshot en esquina inferior derecha: 'contain' + fondo blanco (packshot
+            // completo, #7) y algo más al borde para no comer la mejilla de Rosa (#8).
+            { id: 'prod-corner', kind: 'image', imageSrc: 'packshot.jpg', rect: { xPct: 68, yPct: 71, widthPct: 29, heightPct: 25 }, zIndex: 5, fit: 'contain', backgroundColor: '#ffffff', rotationDeg: 0, opacity: 1, cornerRadiusPct: 10, startSeconds: HOOK_END, endSeconds: ROSA_END, fadeInFrames: 10 },
             // 4) PRODUCTO (packshot real, marca legible) — cierre corto.
-            { id: 'producto', kind: 'image', imageSrc: 'packshot.jpg', rect: { xPct: 0, yPct: 0, widthPct: 100, heightPct: 100 }, zIndex: 1, fit: 'cover', rotationDeg: 0, opacity: 1, cornerRadiusPct: 0, startSeconds: ROSA_END, endSeconds: TOTAL },
+            // PRODUCTO (cierre): 'contain' + fondo blanco → packshot entero y legible.
+            // CORTE LIMPIO (fadeIn 0) ENCIMA de rosa-despues (que sigue 0.4s más) → ni frame
+            // negro ni la cara transparentándose sobre el producto (#4). Cierre nítido.
+            { id: 'producto', kind: 'image', imageSrc: 'packshot.jpg', rect: { xPct: 0, yPct: 0, widthPct: 100, heightPct: 100 }, zIndex: 1, fit: 'contain', backgroundColor: '#ffffff', rotationDeg: 0, opacity: 1, cornerRadiusPct: 0, startSeconds: ROSA_END, endSeconds: TOTAL, fadeInFrames: 0 },
           ],
         },
       ],

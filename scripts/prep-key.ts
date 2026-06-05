@@ -62,9 +62,19 @@ async function main(): Promise<void> {
     dur(ffmpeg, hookClip), dur(ffmpeg, offClip),
   ]);
   // Pista de audio = audio nativo del hook clip ([0:a]) + audio nativo del off clip ([1:a]).
+  // Suavizado de bordes SIN cambiar duraciones (la sincronía de cortes/círculos se mantiene
+  // porque hookDur/offDur no cambian): micro-fundido en el borde del empalme (#9, el corte
+  // SECO de room-tone entre los 2 clips) + cola al final (evita el corte abrupto tras
+  // "definido"). El cambio de AMBIENTE de fondo entre clips solo se va regenerando al médico
+  // como UN solo clip (eso gasta créditos → Grupo 3, pendiente de OK).
+  const EDGE = 0.15;
+  const TAIL = 0.35;
   await run(ffmpeg, [
     '-y', '-i', hookClip, '-i', offClip,
-    '-filter_complex', '[0:a][1:a]concat=n=2:v=0:a=1[out]',
+    '-filter_complex',
+      `[0:a]afade=t=out:st=${(hookDur - EDGE).toFixed(3)}:d=${EDGE}[a0];` +
+      `[1:a]afade=t=in:st=0:d=${EDGE},afade=t=out:st=${(offDur - TAIL).toFixed(3)}:d=${TAIL}[a1];` +
+      `[a0][a1]concat=n=2:v=0:a=1[out]`,
     '-map', '[out]', '-c:a', 'libmp3lame', resolve(WORK, 'combined-key.mp3'),
   ]);
   writeFileSync(

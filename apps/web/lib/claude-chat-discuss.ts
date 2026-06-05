@@ -12,6 +12,7 @@
 
 import { z } from 'zod';
 import { getSystemContextForPrompt } from './system-context';
+import { toNeutralSpanish } from './neutral-es';
 import { logSystemEvent } from './system-log';
 import { describeRouteProfiles } from './route-profiles';
 import { loadAllBrands, loadAllPresets } from './brand-preset-loader';
@@ -228,28 +229,9 @@ async function buildCopilotCatalog(): Promise<string> {
   }\n\nESTILOS / PRESETS:\n${presetList || '- (ninguno)'}`;
 }
 
-// Red de seguridad de español neutro: aunque el modelo se escape con voseo, lo
-// normalizamos a "tú" ANTES de mostrarlo. Solo formas inequívocamente voseo (las
-// acentuadas no existen en español neutro), así no rompemos texto válido.
-// SOLO formas voseo sin homógrafo en español neutro. Excluimos a propósito
-// salí/sentí/escribí/elegí/decí (= pretéritos válidos "yo salí, yo sentí…") y
-// "sos" (= sigla SOS), que un saneador ingenuo rompería.
-const VOSEO_MAP: Record<string, string> = {
-  mirá: 'mira', tenés: 'tienes', querés: 'quieres', podés: 'puedes',
-  hacé: 'haz', hacés: 'haces', decís: 'dices', vení: 'ven',
-  andá: 'anda', sabés: 'sabes', poné: 'pon', ponés: 'pones',
-  dejá: 'deja', dejás: 'dejas', fijate: 'fíjate',
-  agregá: 'agrega', probá: 'prueba',
-  contás: 'cuentas', usás: 'usas', mirás: 'miras',
-};
-function toNeutralSpanish(text: string): string {
-  return text.replace(/[A-Za-zÁÉÍÓÚáéíóúñÑ]+/g, (w) => {
-    const repl = VOSEO_MAP[w.toLowerCase()];
-    if (!repl) return w;
-    // Preservar la mayúscula inicial ("Mirá" → "Mira").
-    return w[0] === w[0]?.toUpperCase() ? repl[0]!.toUpperCase() + repl.slice(1) : repl;
-  });
-}
+// Red de seguridad de español neutro (voseo → "tú") ANTES de mostrar la respuesta
+// del modelo. La lógica vive en ./neutral-es, COMPARTIDA con el guion del pipeline
+// (antes del TTS) y la compuerta de calidad — única fuente de la lista de voseo.
 
 // ============================================================
 // API principal

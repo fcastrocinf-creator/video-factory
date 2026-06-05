@@ -42,6 +42,7 @@ import { refineSceneTrackWithIngredients } from './ingredients-vision-refiner';
 import { getVideoDurationSec } from './frame-extractor';
 import { generateSingleImageWithChain } from './single-image-fallback';
 import { animateScenes } from './scene-animator';
+import { toNeutralSpanish } from './neutral-es';
 import { addCaptions, isZapcapConfigured, DEFAULT_TEMPLATE_ID } from './zapcap';
 import { regenerateSingleScene } from './regenerate-single-scene';
 import { runHolisticReview } from './validator-chat-ia-holistic';
@@ -210,6 +211,14 @@ export async function runPipeline(
       { runId, narratorProfile: parsedScript.narratorProfile },
       'pipeline:narrator_resolved',
     );
+
+    // Español neutro OBLIGATORIO en el guion narrado (regla dura del owner):
+    // corregimos voseo/regionalismos ANTES del TTS → el audio, los subtítulos y
+    // las escenas (todos leen parsedScript.segments[].text) quedan en neutro.
+    parsedScript = {
+      ...parsedScript,
+      segments: parsedScript.segments.map((s) => ({ ...s, text: toNeutralSpanish(s.text) })),
+    };
 
     // B.2 — TTS con cache + fallback automático.
     //
@@ -408,8 +417,16 @@ export async function runPipeline(
     //   plano_fijo  + veo-*     → 1 imagen + Veo talking head (legacy)
     const usesMultiEscena = preset.estrategia === 'multi_escena';
     const wantsAnimation = preset.visualEngine.startsWith('veo-');
+    // UGC (ugc-broll/ugc-testimony) TAMBIÉN se anima: la ruta UGC = persona en CLIP con
+    // movimiento (regla del owner), nunca foto fija. Antes el gate solo dejaba pasar
+    // b-roll-animated/voiceover-animated → los UGC salían estáticos. Con esto entran al
+    // scene-animator y preferHiggsfield los rutea a Higgsfield DoP (realismo humano).
+    const fmtId = preset.format?.id;
     const isAnimatedFormat =
-      preset.format?.id === 'b-roll-animated' || preset.format?.id === 'voiceover-animated';
+      fmtId === 'b-roll-animated' ||
+      fmtId === 'voiceover-animated' ||
+      fmtId === 'ugc-broll' ||
+      fmtId === 'ugc-testimony';
     // El flujo legacy (plano_fijo) usa Veo solo cuando NO es multi-escena (1 imagen + animación).
     // Para multi-escena con animación, cada escena se anima en el compositor con motion fuerte.
     const usesVeo = wantsAnimation && !usesMultiEscena && overrides.disableAnimation !== true;
@@ -2157,6 +2174,8 @@ export async function runPipeline(
         originalVideoPath: overrides.referenceVideoPath ?? undefined,
         label: `Compuerta run ${runId.slice(0, 8)}`,
         useGemini: true, // SIEMPRE ve+oye (no depende de VF_GATE_USE_GEMINI)
+        // Guion narrado → el guardián de español neutro de la compuerta lo revisa.
+        contextText: parsedScript.segments.map((s) => s.text).join(' '),
       });
       gateVeredicto = gate.veredicto;
       gateResumen = gate.resumen;

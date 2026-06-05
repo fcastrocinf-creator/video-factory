@@ -1,10 +1,12 @@
 // GET /api/runs/[id]/gate
 //
-// Fase 1 del círculo de mejora ("Mostrar") — devuelve el reporte del quality gate
+// Paso "Mostrar" del círculo de mejora — devuelve el reporte del quality gate
 // (veredicto + bloqueantes + recomendaciones) que el pipeline produjo para este run,
-// para que la UI lo muestre en RunViewer. El gate se persiste en la KB scoped por
-// runId (scope = `gate:<runId>`). Si no existe (run viejo o sin VF_GATE_ON_RENDER),
-// se devuelve null — la UI lo gestiona silenciosamente.
+// más las reparaciones dirigidas que planRepairs deriva de los bloqueantes, para que
+// la UI las muestre en RunViewer (GateFindings). El gate se persiste en la KB scoped
+// por runId (scope = `gate:<runId>`). La compuerta corre SIEMPRE al renderizar (la
+// flag VF_GATE_ON_RENDER fue ELIMINADA), así que solo falta el reporte en runs viejos
+// previos a la compuerta: en ese caso se devuelve null y la UI lo gestiona en silencio.
 
 import { NextResponse } from 'next/server';
 import { eq } from 'drizzle-orm';

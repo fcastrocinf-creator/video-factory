@@ -6,7 +6,8 @@
 // storage/kb; ahora el operador VE qué está mal sin abrir el filesystem.
 //
 // Mismo patrón que ValidationLog: fetch único, silencioso si no hay reporte
-// (run viejo o sin VF_GATE_ON_RENDER), tipos definidos inline (componente cliente).
+// (la compuerta corre SIEMPRE al render, así que esto solo pasa en runs viejos
+// previos a la compuerta), tipos definidos inline (componente cliente).
 
 'use client';
 

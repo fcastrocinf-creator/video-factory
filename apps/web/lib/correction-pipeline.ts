@@ -577,8 +577,12 @@ export async function applyCorrection(opts: ApplyCorrectionOptions): Promise<voi
     // 5.5. Re-animar con Kling EN PARALELO las escenas afectadas que perdieron
     // videoPath (si el preset era animated). Pool 5 paralelo (Kling resource
     // pack típico). KlingClient internamente retry-with-backoff por 1303.
+    const wfid = preset.format?.id;
     const wasAnimatedFormat =
-      preset.format?.id === 'b-roll-animated' || preset.format?.id === 'voiceover-animated';
+      wfid === 'b-roll-animated' ||
+      wfid === 'voiceover-animated' ||
+      wfid === 'ugc-broll' ||
+      wfid === 'ugc-testimony';
     const klingAk = process.env['KLING_ACCESS_KEY'];
     const klingSk = process.env['KLING_SECRET_KEY'];
 
@@ -715,7 +719,10 @@ export async function applyCorrection(opts: ApplyCorrectionOptions): Promise<voi
       sceneTrack: newSceneTrack,
       // Si el preset original era animated, propagamos el flag al re-render
       animatedScenes:
-        preset.format?.id === 'b-roll-animated' || preset.format?.id === 'voiceover-animated',
+        preset.format?.id === 'b-roll-animated' ||
+        preset.format?.id === 'voiceover-animated' ||
+        preset.format?.id === 'ugc-broll' ||
+        preset.format?.id === 'ugc-testimony',
       outputPath,
       resolution: [1080, 1920],
       fps: 30,
