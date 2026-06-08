@@ -53,5 +53,6 @@ docs/sources/briefs/*.docx
 apps/web/public/heygen_test.mp4
 scripts/_tmp-*.cjs
 
-# Skills locales de Claude (tooling, no parte del proyecto)
-.claude/skills/
+# Skill generica de Claude (tooling externo, no parte del proyecto).
+# OJO: video-intelligence SI se versiona (es skill propia del proyecto).
+.claude/skills/frontend-design/
