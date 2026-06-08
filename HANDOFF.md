@@ -3,8 +3,52 @@
 > Documento de traspaso entre conversaciones de Claude Code.
 > Para continuar: abre un chat nuevo en este proyecto y di **"lee HANDOFF.md y seguimos"**.
 > 💡 Backlog de ideas futuras (para barrer e implementar): **`IDEAS.md`**.
-> Última actualización: 2026-06-05 (Versión 12).
-> 🚦 **PRÓXIMO CHAT: LEE PRIMERO `docs/ESTADO-VERIFICADO-2026-06-05.md`** (estado REAL del sistema por subsistema, verificado por 2 rondas de comprensión total) + la **VERSIÓN 12** (abajo). `docs/CONTINUAR-VIDEO-MEDICO.md` solo si se retoma el estilo médico (pausado).
+> Última actualización: 2026-06-08 (Versión 13).
+> 🚦 **PRÓXIMO CHAT: LEE PRIMERO `docs/ESTADO-VERIFICADO-2026-06-05.md`** (estado REAL por subsistema, verificado a fondo) + la **VERSIÓN 13** (abajo, lo más reciente) + **VERSIÓN 12**. `docs/CONTINUAR-VIDEO-MEDICO.md` solo si se retoma el estilo médico (pausado).
+
+---
+
+## 🚀 VERSIÓN 13 — 08-06-2026 (Sesión maratónica: fixes de voz/densidad/texto/lipsync/co-pilot · arrancar video NUEVO desde 0)
+
+> **🚦 ARRANQUE — entiende la herramienta a PROFUNDIDAD.** Lee EN ORDEN:
+> 1. ⭐ **`docs/REFERENCIA-COMPLETA-2026-06-08.md`** — referencia COMPLETA de TODA la herramienta (16 subsistemas + los 3 modos + lipsync), **verificada desde el código actual** (18 lectores + resolución de 22 huecos/contradicciones), con archivo:línea. Es el doc más completo y al día.
+> 2. `docs/ESTADO-VERIFICADO-2026-06-05.md` — mapa por subsistema (foto previa).
+> 3. `CLAUDE.md` (invariantes) + esta V13 + V12.
+> OJO: `ARQUITECTURA.md` y `docs/manual-activaciones.md` están STALE. Aun así, **VERIFICA en código lo que vayas a tocar** (la REFERENCIA da archivo:línea para hacerlo rápido). **Dile al owner tu comprensión + plan ANTES de gastar créditos.**
+
+### 0. La herramienta hace 3 MODOS (no solo ripea)
+- **Crear (desde 0):** guion/idea + marca + preset → genera el video SIN referencia. `POST /api/generate`, UI `/create`. Mismo pipeline pero **sin** rip-fidelity-aligner.
+- **Ripear:** adapta un ad de referencia → video nuevo. UI `/rip/[id]`. (5 pasos: upload→analizar→build-preset→rip→pipeline.)
+- **Aprender:** aprende un formato/estilo de un video → preset (`video-understander.ts` / `auto-learn-preset.ts`; 3 sub-flujos: one-shot, iterativo, trainStyle). UI `/aprendizaje/[id]`.
+- **Edición:** Editor de composición (`/runs/[id]/editor`, timeline FreeformComposite) + **Copilot** ("Discute cambios con Claude") + **Co-creación / Live co-pilot** (mode='collaborative', aprobar/rechazar escena por escena). Re-render sin regenerar: `POST /api/runs/[id]/rerender`.
+- **Pipeline común:** script-processor → (narrator) → TTS (ElevenLabs, fallback OpenAI) → scene-planner → [rip-fidelity-aligner si hay referencia] → image-gen-multi → scene-animator (Kling/Veo/Higgsfield) → compositor-remotion → **compuerta OBLIGATORIA** (Gemini ve+oye; el estado final depende del veredicto). Dev: `pnpm --filter @video-factory/web dev` (localhost:3000, cookie `app_auth=valid`).
+
+### 1. 🔧 FIXES de esta sesión (código LOCAL, SIN commit — ya aplicados; impactan Crear y Ripear)
+1. **Voz por género** (`apps/web/lib/pipeline.ts`): ahora se llama `selectVoiceForNarrator` ANTES del TTS y de la cache key. ANTES usaba siempre `brand.defaultVoice` → un narrador HOMBRE salía con **voz de MUJER** (y la cache reciclaba audio femenino). + `ad-ripper.ts` y `app/api/rip/[id]/rip/route.ts` aceptan `narratorGenderOverride` y `literalScript`.
+2. **Guion exacto** (`ad-ripper.ts`): opción `literalScript` → usa el texto del owner TAL CUAL (salta traducción/suavizado de Gemini).
+3. **Escenas densas** (`rip-fidelity-aligner.ts` + `image-gen-tools.ts`): cada escena del ripeo se genera con `generateImageWithReference` modo **`recreate`** (image-to-image desde el keyframe DENSO del original). ANTES nacía de texto pelado → "un personaje sobre fondo vacío".
+4. **Sin texto/subtítulos quemados**: `pipeline.ts` quita `scene.textOverlays` del renderJob; `scene-reviewer.ts` exige `shouldHaveCleanBackground:true`; el aligner PENALIZA texto quemado al elegir el mejor frame. (El owner NO quiere texto en pantalla salvo que lo pida.)
+5. **Micro-escenas** (`pipeline.ts`): `plannerTargetSceneCount` sube los cortes en ripeos. OJO: demasiados (>~10 en 18s) SATURAN al animador → escenas estáticas; ~8-9 anima todas.
+6. **Reject del Co-pilot** (`scene-animator.ts`, 2 puntos): el rechazo regenera AUNQUE venga solo con COMENTARIO (deriva el prompt corregido del comentario). ANTES exigía `newImagePrompt` (que la UI no llenaba) → NO regeneraba.
+
+### 2. 🎙️ LIPSYNC — método (el pipeline NO lo hace solo)
+Lipsync real = modelo **`wan2_7`** del MCP de generación (`models_explore`): **imagen + audio → labios sincronizados**, CONSERVA la voz. Flujo manual probado: generar escena → Wan 2.7 (imagen de la escena + su segmento de audio) → reemplazar `scene_NN.mp4` → `POST /api/runs/[id]/rerender`. Solo escenas ≥2s; no es phoneme-perfect (al owner le sirve). **Pendiente real (Fase 3):** integrar Wan al pipeline (el cliente interno Higgsfield usa endpoint viejo sin audio).
+
+### 3. 🐞 BUGS / LÍMITES ABIERTOS
+- **Co-creación "Generar comentario completo" (pre-prompt) NO funciona** → hay que escribir la acotación en el campo de abajo. Y genera ~muchas escenas con aprobación una por una (granular).
+- La compuerta marca **lipsync FAIL siempre en animado** → se ignora (el owner decide; en animado no es crítico).
+- **Diagramas/PiP/infografías NO se emiten solos** (Fase 3 pendiente).
+- `correction-pipeline` re-anima UGC con Kling (no Higgsfield) y **NO re-valida** tras reparar.
+- **Costo de video Veo subestimado** (no se contabiliza en plano_fijo).
+- Cuota TTS: ElevenLabs ahora **Creator (~121k chars)**; OpenAI (fallback) se agota → un 429 de TTS = recargar o esperar reset.
+
+### 4. 📦 ESTADO
+- **Marca creada:** `biozentra` (`packages/brands/biozentra.brand.json`) · producto `biozentra_ceylon` · packshot `storage/brands/biozentra/packshot.png`. (También existe `vitaly`.)
+- **Mejor resultado:** run `babe252c` (ad Metformina→Canela: voz masculina + lipsync Wan + denso). Hay scripts temporales `scripts/_tmp-*.cjs` (vigilantes de previas) — borrables.
+- **Sin commit:** todos los fixes de §1 son cambios LOCALES sin commitear (no hacer `git push` sin orden).
+
+### 5. ▶️ OBJETIVO: video NUEVO desde 0
+El owner quiere arrancar **otro video desde 0** (Crear o Ripear). **Pídele:** qué video/idea + marca/producto destino. Respeta TODOS los gotchas de §1-§3. **Verifica VIENDO (frame a frame, cortes+extremos) y OYENDO (transcribe)**; confirma antes de gastar; sin texto en pantalla salvo pedido; español neutro siempre.
 
 ---
 

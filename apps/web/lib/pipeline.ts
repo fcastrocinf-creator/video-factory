@@ -6,7 +6,7 @@ import { createLogger, type BlockContext } from '@video-factory/core';
 import type { RenderJob, SceneTrack, VideoTrack } from '@video-factory/contracts';
 import { scriptProcessor } from '@video-factory/block-script-processor';
 import { narratorAnalyzer } from '@video-factory/block-narrator-analyzer';
-import { ttsElevenLabs } from '@video-factory/block-tts-elevenlabs';
+import { ttsElevenLabs, selectVoiceForNarrator } from '@video-factory/block-tts-elevenlabs';
 import { ttsOpenai } from '@video-factory/block-tts-openai';
 import { subtitlesGoogle } from '@video-factory/block-subtitles-google';
 // imageGenImagen legacy ya no se usa: el chain de single-image-fallback lo reemplaza.
@@ -230,6 +230,34 @@ export async function runPipeline(
     const costTracker = new CostTracker();
     await updateRun(runId, { currentStep: 'tts-elevenlabs', progress: 15 });
 
+    // FIX VOZ (crítico): el TTS y la cache key usaban SIEMPRE brand.defaultVoice
+    // (femenina en biozentra), ignorando el género del narrador → un villano HOMBRE
+    // salía con voz de MUJER y la cache (keyed por defaultVoice) reciclaba ese audio.
+    // Si no hubo voiceOverride explícito, elegimos AQUÍ la voz que matchea el género
+    // del narratorProfile (de voiceLibrary) y la fijamos como defaultVoice ANTES de la
+    // cache key y del bloque TTS, así el audio y la cache usan la voz correcta.
+    if (!overrides.voiceOverride && parsedScript.narratorProfile) {
+      const selectedVoice = selectVoiceForNarrator({
+        defaultVoice: brand.defaultVoice,
+        voiceLibrary: brand.voiceLibrary ?? [],
+        narratorProfile: parsedScript.narratorProfile,
+        logger,
+        runId,
+      });
+      if (selectedVoice.voiceId !== brand.defaultVoice.voiceId) {
+        brand = { ...brand, defaultVoice: selectedVoice };
+        logger.info(
+          {
+            runId,
+            voiceId: selectedVoice.voiceId,
+            label: selectedVoice.label,
+            narratorGender: parsedScript.narratorProfile.gender,
+          },
+          'pipeline:voice_selected_by_gender',
+        );
+      }
+    }
+
     const evVoice = brand.defaultVoice;
     const elevenlabsCacheKey = ttsCacheKeyFromScript(
       parsedScript,
@@ -372,6 +400,14 @@ export async function runPipeline(
     if (audioResult.isErr()) throw audioResult.error;
     const audioTrack = audioResult.value;
 
+    // MICRO-ESCENAS (ripeo): el original corta rápido. En ripeos subimos la
+    // densidad de cortes (más escenas y más cortas, ~1 corte cada 1.6s) para
+    // acercarnos al ritmo del referente, en vez del ~25/min genérico. Cap a 24
+    // para no disparar el costo en videos largos.
+    const plannerTargetSceneCount = overrides.referenceVideoPath
+      ? Math.min(14, Math.max(8, Math.round(audioTrack.durationSeconds / 2.2)))
+      : undefined;
+
     // B.3 — Subtitles
     //
     // DESACTIVADO 25-may-2026 por decisión del owner: los subtítulos
@@ -510,6 +546,7 @@ export async function runPipeline(
           );
           const planner = new ScenePlannerBlock({
             ownerPreferences: ownerPreferencesForPlanner || undefined,
+            targetSceneCount: plannerTargetSceneCount,
           });
           const planResult = await planner.run({ parsedScript, subtitleTrack }, ctx);
           if (planResult.isErr()) throw planResult.error;
@@ -556,6 +593,7 @@ export async function runPipeline(
           await updateRun(runId, { currentStep: 'scene-planner', progress: 40 });
           const planner = new ScenePlannerBlock({
             ownerPreferences: ownerPreferencesForPlanner || undefined,
+            targetSceneCount: plannerTargetSceneCount,
           });
           const planResult = await planner.run({ parsedScript, subtitleTrack }, ctx);
           if (planResult.isErr()) throw planResult.error;
@@ -565,6 +603,7 @@ export async function runPipeline(
         await updateRun(runId, { currentStep: 'scene-planner', progress: 40 });
         const planner = new ScenePlannerBlock({
           ownerPreferences: ownerPreferencesForPlanner || undefined,
+          targetSceneCount: plannerTargetSceneCount,
         });
         const planResult = await planner.run({ parsedScript, subtitleTrack }, ctx);
         if (planResult.isErr()) throw planResult.error;
@@ -1718,7 +1757,14 @@ export async function runPipeline(
         audioTrack,
         subtitleTrack,
         imagePath: sceneTrackWithImages.scenes[0]?.imagePath ?? '',
-        sceneTrack: sceneTrackWithImages,
+        // El owner NO quiere texto en pantalla (etiquetas/overlays tipo "METFORMINA",
+        // "B12") — parecen subtítulos. Regla dura: cero texto incrustado salvo que se
+        // pida explícitamente. Lo quitamos del render (el scene-plan.json conserva los
+        // overlays por si el editor manual los quiere reactivar a pedido).
+        sceneTrack: {
+          ...sceneTrackWithImages,
+          scenes: sceneTrackWithImages.scenes.map((s) => ({ ...s, textOverlays: [] })),
+        },
         animatedScenes: isAnimatedFormat,
         kenBurns: overrides.kenBurns ?? false,
         outputPath,

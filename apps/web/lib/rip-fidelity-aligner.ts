@@ -16,7 +16,7 @@
 // El pipeline.ts después de esto SALTA image-gen-multi (las imágenes ya están)
 // pero opcionalmente puede correr SceneValidatorV3 para verificación anatómica.
 
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, writeFile, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type {
   SceneTrack,
@@ -33,6 +33,7 @@ import { detectCompositeLayout } from './composite-layout-detector';
 import {
   buildImageProviderChain,
   generateImageWithChain,
+  generateImageWithReference,
   compareImagesWithVision,
   type ProviderStep,
 } from './image-gen-tools';
@@ -540,6 +541,15 @@ async function refineSceneUntilConverged(
 ): Promise<AlignScenesResult['perScene'][number]> {
   const basePrompt = scene.imagePrompt;
   let currentPrompt = basePrompt;
+  // Cargamos el keyframe del original como REFERENCIA de generación (image-to-image):
+  // así cada escena RECREA la composición DENSA del original, en vez de nacer de un
+  // prompt de texto pelado (que producía "un personaje sobre un fondo vacío").
+  let keyframeBuffer: Buffer | null = null;
+  try {
+    keyframeBuffer = await readFile(keyframe.filePath);
+  } catch {
+    keyframeBuffer = null;
+  }
   let bestBuffer: Buffer | null = null;
   let bestScore = 0;
   let attemptsUsed = 0;
@@ -547,7 +557,6 @@ async function refineSceneUntilConverged(
   // El reviewer chequea: idioma del texto burned-in, coherencia con narración,
   // duplicación con escena anterior, producto visible, glifos rotos, anatomía.
   let lastReviewResult: ReviewResult | null = null;
-  const hasTextOverlays = (scene.textOverlays?.length ?? 0) > 0;
   // Contador de attempts donde el generador alucinó un composite/grid. Si TODOS
   // los attempts fueron rechazados por composite, el worker escala la escena a
   // generación composite real (panel por panel).
@@ -557,7 +566,9 @@ async function refineSceneUntilConverged(
     attemptsUsed = attempt + 1;
     let buffer: Buffer;
     try {
-      const result = await generateImageWithChain(currentPrompt, providers);
+      const result = keyframeBuffer
+        ? await generateImageWithReference(currentPrompt, keyframeBuffer, providers, 'recreate')
+        : await generateImageWithChain(currentPrompt, providers);
       buffer = result.buffer;
     } catch (e) {
       logger?.warn(
@@ -586,9 +597,12 @@ async function refineSceneUntilConverged(
       break;
     }
 
-    if (score > bestScore) {
-      bestScore = score;
+    // La selección del MEJOR buffer se hace DESPUÉS del reviewer (más abajo) para
+    // poder PENALIZAR el texto quemado/subtítulos. Aquí solo garantizamos que
+    // siempre haya un buffer de respaldo aunque el reviewer caiga.
+    if (!bestBuffer) {
       bestBuffer = buffer;
+      bestScore = score;
     }
 
     // PASO 2: reviewer semántico (lenguaje + coherencia + burned-in text + duplicados)
@@ -601,7 +615,10 @@ async function refineSceneUntilConverged(
         narrationText: scene.text,
         targetLanguage,
         declaredStyle: styleBase,
-        shouldHaveCleanBackground: hasTextOverlays,
+        // SIEMPRE limpio: el owner NO quiere subtítulos/texto quemado. Cualquier
+        // texto va como overlay vectorial en post — así el reviewer rechaza texto
+        // que el generador incruste (p.ej. captions copiados del original).
+        shouldHaveCleanBackground: true,
         previousSceneImagePath,
         productName,
         // Si estamos en refineSceneUntilConverged, el detector ya clasificó la
@@ -634,6 +651,18 @@ async function refineSceneUntilConverged(
         'rip-aligner:review_failed',
       );
       // Si reviewer cayó, no bloqueamos — confiamos en el style score
+    }
+
+    // Selección del MEJOR buffer PENALIZANDO texto quemado (subtítulos/captions que el
+    // generador incrusta copiando el original). Preferimos imagen LIMPIA aunque tenga
+    // algo menos de score de estilo — el owner NO quiere subtítulos quemados.
+    {
+      const hasBurnedText = !!reviewResult?.burnedInText?.present;
+      const effectiveScore = hasBurnedText ? score - 50 : score;
+      if (effectiveScore > bestScore) {
+        bestScore = effectiveScore;
+        bestBuffer = buffer;
+      }
     }
 
     // PASO 3: decisión de convergencia

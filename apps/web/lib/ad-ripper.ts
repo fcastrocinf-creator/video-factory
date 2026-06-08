@@ -62,6 +62,16 @@ export interface RipAdOptions {
    * normal con image-gen-multi (default histórico).
    */
   referenceVideoPath?: string | null;
+  /**
+   * Si está, USA este guion EXACTO sin adaptarlo/traducirlo con Gemini (el owner
+   * quiere fidelidad literal al texto). Si null/undefined → adaptación normal.
+   */
+  literalScript?: string | null;
+  /**
+   * Fuerza el género de la voz del narrador ('male'|'female'). Si null/undefined,
+   * se infiere del análisis del original.
+   */
+  narratorGenderOverride?: 'male' | 'female' | null;
 }
 
 export interface RipAdResult {
@@ -91,10 +101,23 @@ export async function ripAd(opts: RipAdOptions): Promise<RipAdResult> {
     );
   }
 
-  // 1. Adaptar script con Gemini
-  const targetLang = opts.targetLanguage ?? opts.brand.language.split('-')[0] ?? 'es';
-  const client = new GeminiClient({ apiKey });
-  const userPrompt = `# REFERENCE NARRATION (original language: ${opts.analysis.language})
+  // 1. Obtener el guion. Si el owner pasó un guion LITERAL, lo usamos EXACTO (sin
+  //    adaptar/traducir con Gemini). Si no, adaptamos el original (traduce + cambia
+  //    el producto + ajusta tono cultural).
+  let adaptedScript: string;
+  let estimatedDurationSeconds: number;
+  let notes: string;
+
+  if (opts.literalScript && opts.literalScript.trim()) {
+    adaptedScript = opts.literalScript.trim();
+    // Estimación simple: ~2.6 palabras/seg en un VSL en español.
+    const words = adaptedScript.split(/\s+/).filter(Boolean).length;
+    estimatedDurationSeconds = Math.max(1, Math.round(words / 2.6));
+    notes = 'Guion literal del owner (sin adaptación de Gemini).';
+  } else {
+    const targetLang = opts.targetLanguage ?? opts.brand.language.split('-')[0] ?? 'es';
+    const client = new GeminiClient({ apiKey });
+    const userPrompt = `# REFERENCE NARRATION (original language: ${opts.analysis.language})
 
 """
 ${opts.analysis.fullNarration}
@@ -119,16 +142,19 @@ ${opts.analysis.editorialLine}
 # TASK
 Rewrite the narration in ${targetLang}, replacing the reference product with the user's product. Keep the same structure, beats, hook, and emotional arc.`;
 
-  const raw = await client.generateJson<unknown>({
-    prompt: userPrompt,
-    systemInstruction: RIPPER_SYSTEM,
-    model: RIPPER_MODEL,
-  });
-  const parsed = RippedScriptSchema.safeParse(raw);
-  if (!parsed.success) {
-    throw new Error(`ad-ripper: respuesta inválida. ${parsed.error.message.slice(0, 300)}`);
+    const raw = await client.generateJson<unknown>({
+      prompt: userPrompt,
+      systemInstruction: RIPPER_SYSTEM,
+      model: RIPPER_MODEL,
+    });
+    const parsed = RippedScriptSchema.safeParse(raw);
+    if (!parsed.success) {
+      throw new Error(`ad-ripper: respuesta inválida. ${parsed.error.message.slice(0, 300)}`);
+    }
+    adaptedScript = parsed.data.adaptedScript;
+    estimatedDurationSeconds = parsed.data.estimatedDurationSeconds;
+    notes = parsed.data.notes;
   }
-  const { adaptedScript, estimatedDurationSeconds, notes } = parsed.data;
 
   // 2. Insertar nuevo run en DB
   const runId = randomUUID();
@@ -148,9 +174,10 @@ Rewrite the narration in ${targetLang}, replacing the reference product with the
   // (no "neutral"), forzamos ese mismo género en la voz del ripeo para que la
   // sensación auditiva del original se mantenga. Si era neutral o no detectado,
   // dejamos al inferidor del pipeline elegir.
-  const narratorGender = opts.analysis.narratorProfile?.gender ?? null;
+  const inferredGender = opts.analysis.narratorProfile?.gender ?? null;
   const narratorGenderOverride =
-    narratorGender === 'male' || narratorGender === 'female' ? narratorGender : null;
+    opts.narratorGenderOverride ??
+    (inferredGender === 'male' || inferredGender === 'female' ? inferredGender : null);
 
   // 3. Dispara pipeline en background — el endpoint del ripper retorna inmediatamente
   void runPipeline(runId, opts.brand.id, opts.presetId, adaptedScript, {

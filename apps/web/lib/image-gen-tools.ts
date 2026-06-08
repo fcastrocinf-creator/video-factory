@@ -176,15 +176,18 @@ export async function generateImageWithReference(
   prompt: string,
   referenceImage: Buffer,
   fallbackChain?: ProviderStep[],
+  referenceMode: 'style' | 'recreate' = 'style',
 ): Promise<{ buffer: Buffer; providerLabel: string }> {
   const googleApiKey = process.env['GOOGLE_AI_API_KEY'];
+  const refSuffix =
+    referenceMode === 'recreate'
+      ? '\n\nIMPORTANT: RECREATE the COMPOSITION, camera framing and DENSITY of the provided reference image as faithfully as possible — same angle, same layout, the SAME number of visual elements, the same rich environment, background detail and props. Do NOT reduce the scene to a single subject on an empty background; keep it exactly as visually DENSE and detailed as the reference. Keep the recurring main character EXACTLY as described in the prompt above (same design, same gender). Adapt any product/branding to the one described in the prompt. CRITICAL — the reference image may contain BURNED-IN subtitles, captions, on-screen text, signage or package labels: reproduce NONE of that text. Render every sign, screen, label, poster and package as BLANK and completely TEXT-FREE. There must be ZERO letters, numbers, words or captions anywhere in the output — all wording is added later as vector overlays in post-production.'
+      : '\n\nIMPORTANT: use the provided reference image ONLY to match its visual STYLE — color palette, lighting, art medium and overall mood. Generate a NEW representative scene in that exact same style (different content/subject is fine). Do NOT copy any text, captions, social-media UI or logos from the reference image.';
   if (googleApiKey) {
     try {
       const nanoBanana = new GeminiImageProvider({ apiKey: googleApiKey, name: 'gemini-image-ref' });
       const buf = await nanoBanana.generate({
-        prompt:
-          prompt +
-          '\n\nIMPORTANT: use the provided reference image ONLY to match its visual STYLE — color palette, lighting, art medium and overall mood. Generate a NEW representative scene in that exact same style (different content/subject is fine). Do NOT copy any text, captions, social-media UI or logos from the reference image.',
+        prompt: prompt + refSuffix,
         aspectRatio: '9:16',
         referenceImage,
       });

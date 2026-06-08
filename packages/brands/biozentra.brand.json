@@ -1,0 +1,89 @@
+{
+  "id": "biozentra",
+  "displayName": "BioZentra",
+  "products": [
+    {
+      "id": "biozentra_ceylon",
+      "name": "Canela de Ceilán BioZentra",
+      "description": "Canela de Ceilán auténtica, elaborada con aceite MCT orgánico. Libre de OGM, libre de gluten y probada en laboratorio. Presentación en bolsa stand-up resellable con frente blanco, banda superior marrón y el logo BioZentra.",
+      "referenceImagePath": "C:/Users/cmktc/proyectos/video-factory/storage/brands/biozentra/packshot.png",
+      "dimensions": "Bolsa stand-up resellable (doypack). Frente blanco con banda superior marrón; marca BioZentra en negro arriba; abajo, palitos de canela de Ceilán, canela molida y un pequeño bol de aceite MCT dorado."
+    }
+  ],
+  "defaultVoice": {
+    "voiceId": "hpp4J3VqNfWAUOO0d1Us",
+    "modelId": "eleven_multilingual_v2",
+    "stability": 0.5,
+    "similarity": 0.85,
+    "style": 0.45,
+    "speakerBoost": true,
+    "speedMultiplier": 1.0,
+    "gender": "female",
+    "ageRange": "30-45",
+    "label": "BioZentra · Voz femenina neutra (30-45)"
+  },
+  "voiceLibrary": [
+    {
+      "voiceId": "21m00Tcm4TlvDq8ikWAM",
+      "modelId": "eleven_multilingual_v2",
+      "stability": 0.55,
+      "similarity": 0.8,
+      "style": 0.4,
+      "speakerBoost": true,
+      "speedMultiplier": 1.0,
+      "gender": "female",
+      "ageRange": "30-45",
+      "label": "Voz femenina alterna (segundo personaje)"
+    },
+    {
+      "voiceId": "JBFqnCBsd6RMkjVDRZzb",
+      "modelId": "eleven_multilingual_v2",
+      "stability": 0.5,
+      "similarity": 0.8,
+      "style": 0.4,
+      "speakerBoost": true,
+      "speedMultiplier": 1.0,
+      "gender": "male",
+      "ageRange": "45-60",
+      "label": "Voz masculina madura autoritativa (45-60)"
+    },
+    {
+      "voiceId": "onwK4e9ZLuTAKqWW03F9",
+      "modelId": "eleven_multilingual_v2",
+      "stability": 0.45,
+      "similarity": 0.85,
+      "style": 0.5,
+      "speakerBoost": true,
+      "speedMultiplier": 1.0,
+      "gender": "male",
+      "ageRange": "30-45",
+      "label": "Voz masculina cálida adulta (30-45)"
+    }
+  ],
+  "language": "es-419",
+  "brandColors": ["#7A4A2B", "#FFFFFF", "#C8862E"],
+  "toneRules": {
+    "avoid": ["voseo argentino", "modismos regionales", "acá", "tenés", "querés"],
+    "prefer": ["español neutro con tú", "tono dramático y revelador de VSL"]
+  },
+  "ingredients": {
+    "logoDescription": "Logo BioZentra: texto negro con tipografía serif sobre fondo blanco.",
+    "logoPlacement": "never",
+    "mustInclude": [],
+    "mustAvoid": ["voseo argentino"],
+    "colorPalette": [
+      { "name": "marrón canela", "hex": "#7A4A2B", "usage": "bandas y acentos" },
+      { "name": "dorado MCT", "hex": "#C8862E", "usage": "detalles de aceite/cápsula" }
+    ],
+    "assets": [
+      {
+        "id": "packshot-frontal",
+        "path": "C:/Users/cmktc/proyectos/video-factory/storage/brands/biozentra/packshot.png",
+        "kind": "product-shot",
+        "description": "Bolsa frontal de Canela de Ceilán BioZentra, frente blanco con banda marrón y logo negro."
+      }
+    ]
+  },
+  "createdAt": "2026-06-05T00:00:00Z",
+  "updatedAt": "2026-06-05T00:00:00Z"
+}

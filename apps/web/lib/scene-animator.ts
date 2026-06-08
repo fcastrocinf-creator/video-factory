@@ -177,12 +177,15 @@ function buildMotionPrompt(scene: Scene): string {
     // v3.2 #145: SOLO mueve la boca si el personaje realmente dice esta línea.
     // En voice-over/B-roll la boca NO sincroniza (se ve raro un personaje
     // moviendo la boca sin que sea su diálogo) — solo expresión y un parpadeo.
-    layer1 = isSpeaking
-      ? 'subject is speaking this line in first person: lips move naturally and in sync with speech, jaw moves, blinks once, slight 3° head tilt'
-      : 'subject does NOT speak (this is voice-over narration): mouth stays closed/neutral, NO lip movement; only a subtle facial expression shift, a single blink, and a slight 3° head tilt';
+    // LIPSYNC: en un primer plano / talking-head, el personaje en pantalla ES el
+    // narrador que dice esta línea → su boca SIEMPRE se mueve como hablando (mouth
+    // visibly articulating the words), no solo cuando speaking=true. Para animado,
+    // boca en movimiento = "está hablando" (lipsync creíble sin phoneme-perfect).
+    layer1 =
+      'the character on screen is the narrator speaking THIS line: the mouth and jaw clearly OPEN and CLOSE articulating the words throughout the clip (visible talking, not a frozen closed mouth), natural lip movement, a blink, a slight 3° head tilt';
     layer2 = `inner ${moodWord} emotion reads on the face`;
     camera = 'camera slow editorial push-in (2-3% max)';
-    layersTag = isSpeaking ? 'speech + emotion + camera push' : 'expression + emotion + camera push';
+    layersTag = 'speech + emotion + camera push';
   } else if (shotType.includes('anatomy') || shotType.includes('anatomical') || shotType.includes('diagram')) {
     layer1 = 'highlighted region pulses with a soft glow, gentle directional flow along the pathway';
     layer2 = 'warm healing light grows subtly';
@@ -685,12 +688,17 @@ export async function animateScenes(opts: AnimateScenesOptions): Promise<SceneTr
               ownerOverrideApplied = true;
               break;
             }
-            if (intervention.type === 'reject' && intervention.newImagePrompt) {
+            if (intervention.type === 'reject') {
+              // FIX: regenerar aunque el reject venga SOLO con comentario (sin
+              // newImagePrompt). Derivamos el prompt corregido del comentario.
+              const correctedPromptA =
+                intervention.newImagePrompt ||
+                `${animated.imagePrompt}\n\nCORRECCIÓN DEL OWNER (arregla exactamente esto, manteniendo el estilo 3D y el personaje consistente): ${intervention.comment ?? 'la escena no tiene sentido con la narración; rehazla acorde a lo que se dice'}`;
               opts.logger?.info(
                 {
                   sceneIndex: animated.index,
                   interventionId: intervention.id,
-                  newPromptPreview: intervention.newImagePrompt.slice(0, 100),
+                  newPromptPreview: correctedPromptA.slice(0, 100),
                   entity: 'VALIDATOR CHAT IA',
                 },
                 'scene-animator:owner_force_rejected_regenerating',
@@ -699,7 +707,7 @@ export async function animateScenes(opts: AnimateScenesOptions): Promise<SceneTr
                 try {
                   const r = await opts.validator.onRegenerateImage({
                     scene: animated,
-                    correctedImagePrompt: intervention.newImagePrompt,
+                    correctedImagePrompt: correctedPromptA,
                     attempt: 0, // 0 = owner-driven, no cuenta como retry de validator
                   });
                   animated = r.updatedScene;
@@ -955,11 +963,17 @@ export async function animateScenes(opts: AnimateScenesOptions): Promise<SceneTr
             },
             'scene-animator:collaborative_resumed',
           );
-          if (approval.action === 'reject' && approval.newImagePrompt && opts.validator.onRegenerateImage) {
+          if (approval.action === 'reject' && opts.validator.onRegenerateImage) {
+            // FIX: regenerar SIEMPRE en reject, aunque el owner solo dejó un COMENTARIO
+            // (sin newImagePrompt). Derivamos el prompt corregido del comentario + el
+            // prompt original, así "Rechazar y regenerar" SÍ regenera la escena.
+            const correctedPrompt =
+              approval.newImagePrompt ||
+              `${animated.imagePrompt}\n\nCORRECCIÓN DEL OWNER (arregla exactamente esto, manteniendo el estilo 3D y el personaje consistente): ${approval.intervention?.comment ?? 'la escena no tiene sentido con la narración; rehazla acorde a lo que se dice en este momento'}`;
             try {
               const r = await opts.validator.onRegenerateImage({
                 scene: animated,
-                correctedImagePrompt: approval.newImagePrompt,
+                correctedImagePrompt: correctedPrompt,
                 attempt: 0,
               });
               animated = r.updatedScene;

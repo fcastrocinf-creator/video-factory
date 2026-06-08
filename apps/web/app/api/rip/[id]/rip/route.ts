@@ -22,6 +22,10 @@ const BodySchema = z.object({
    * cercanas al estilo del original. 'fast' es el flujo histórico con image-gen-multi.
    */
   fidelityMode: z.enum(['fast', 'high']).optional().default('fast'),
+  // Guion literal del owner: se usa EXACTO sin adaptar con Gemini.
+  literalScript: z.string().optional(),
+  // Fuerza el género de la voz del narrador.
+  narratorGenderOverride: z.enum(['male', 'female']).optional(),
 });
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
@@ -100,6 +104,8 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       productId: parsed.data.productId ?? null,
       targetLanguage: parsed.data.targetLanguage,
       referenceVideoPath,
+      literalScript: parsed.data.literalScript ?? null,
+      narratorGenderOverride: parsed.data.narratorGenderOverride ?? null,
     });
     return NextResponse.json(result);
   } catch (e) {

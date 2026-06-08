@@ -50,3 +50,8 @@ docs/sources/briefs/*.docx
 # Scratch / temporales de prueba (no versionar)
 .tmp*
 *.tmp.json
+apps/web/public/heygen_test.mp4
+scripts/_tmp-*.cjs
+
+# Skills locales de Claude (tooling, no parte del proyecto)
+.claude/skills/
