@@ -87,6 +87,40 @@ test('para por ESTANCAMIENTO si el score no mejora', async () => {
   assert.ok(r.iterations.length < 8); // paró antes de agotar
 });
 
+test('FATAL: un veredicto fatal detiene el bucle y conserva el mejor', async () => {
+  let i = 0;
+  const cb: RefineLoopCallbacks = {
+    generate: genOk,
+    judge: async () => {
+      i++;
+      if (i === 1) return verdict({ score: 55, approved: false });
+      return verdict({ score: 30, approved: false, fatal: true });
+    },
+    refine: refineEcho,
+  };
+  const r = await runVisualRefineLoop(cb, { basePrompt: 'p', maxAttempts: 6, minDelta: 1 });
+  assert.equal(r.approved, false);
+  assert.equal(r.stopReason, 'fatal');
+  assert.equal(r.iterations.length, 2); // paró en el fatal
+  assert.equal(r.bestScore, 55); // conservó el mejor previo
+});
+
+test('stopOnGenerateError: corta al primer fallo de generación', async () => {
+  let i = 0;
+  const cb: RefineLoopCallbacks = {
+    generate: async () => {
+      i++;
+      if (i === 2) throw new Error('quota agotada');
+      return { buffer: Buffer.from('img') };
+    },
+    judge: async () => verdict({ score: 70, approved: false }),
+    refine: refineEcho,
+  };
+  const r = await runVisualRefineLoop(cb, { basePrompt: 'p', maxAttempts: 6, minDelta: 1, stopOnGenerateError: true });
+  assert.equal(r.iterations.length, 2); // intento 1 ok + intento 2 falla → corta
+  assert.equal(r.bestScore, 70);
+});
+
 test('no aborta si un intento lanza: sigue y conserva el mejor', async () => {
   let i = 0;
   const cb: RefineLoopCallbacks = {

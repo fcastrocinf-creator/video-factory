@@ -40,6 +40,8 @@ export interface JudgeVerdict {
   byDimension: Record<string, number>;
   approved: boolean;
   notVerified: boolean; // true si la IA NO pudo evaluar (no se aprueba)
+  /** Defecto IRRECUPERABLE: el bucle se detiene y conserva el mejor (no sigue refinando). */
+  fatal?: boolean;
   hint: string; // instrucción accionable para refinar
   failedCriteria: string[]; // ids/descr de criterios no cumplidos
   evidence: string[];

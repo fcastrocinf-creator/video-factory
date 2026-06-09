@@ -30,6 +30,13 @@ export interface RefineLoopOptions {
   minDelta?: number;
   /** Callback por iteración (para trayectoria en vivo). */
   onIteration?: (it: RefineIteration) => void | Promise<void>;
+  /**
+   * Si true, cuando la GENERACIÓN (o el juez) lanza una excepción, se corta el
+   * bucle conservando el mejor (en vez de seguir reintentando). Lo usa el ripeo:
+   * un fallo de generación suele ser cuota agotada y reintentar sólo quema más.
+   * Default false.
+   */
+  stopOnGenerateError?: boolean;
 }
 
 /** ¿`a` es mejor candidato que `b`? Prioriza VERIFICADOS; entre iguales, mayor score. */
@@ -79,6 +86,12 @@ export async function runVisualRefineLoop(
         break;
       }
 
+      // Defecto irrecuperable reportado por el juez: parar y conservar el mejor.
+      if (verdict.fatal) {
+        stopReason = 'fatal';
+        break;
+      }
+
       // Estancamiento: si el score no sube `minDelta` respecto a la iteración previa.
       const prev = iterations[iterations.length - 2];
       if (prev && it.score - prev.score < minDelta) stagnation++;
@@ -109,6 +122,11 @@ export async function runVisualRefineLoop(
       };
       iterations.push(it);
       await opts.onIteration?.(it);
+      if (opts.stopOnGenerateError) {
+        // El ripeo corta ante un fallo de generación (cuota): conserva el mejor.
+        stopReason = best ? 'exhausto-presupuesto' : 'fatal';
+        break;
+      }
       if (attempt === maxAttempts) {
         stopReason = best ? 'exhausto-presupuesto' : 'fatal';
         break;

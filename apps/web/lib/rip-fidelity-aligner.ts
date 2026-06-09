@@ -34,6 +34,8 @@ import { detectCompositeLayout } from './composite-layout-detector';
 // prompt ganador en la librería (aprende qué recreate-prompt funcionó por estilo).
 // Aditivo y best-effort: NO cambia la generación ni el render.
 import { recordWinningPrompt, normalizeTargetKey } from './promptlab/prompt-library';
+import { runVisualRefineLoop } from './promptlab/refine-loop';
+import type { JudgeVerdict } from './promptlab/types';
 import {
   buildImageProviderChain,
   generateImageWithChain,
@@ -529,6 +531,251 @@ export async function alignScenesToReferenceVideo(
 
 // === Worker: loop por escena ===========================================
 
+// INCREMENT 2 — el MISMO bucle de fidelidad por escena, pero con el control de
+// bucle delegado al motor único del Laboratorio (runVisualRefineLoop). La lógica
+// de IA (compare estilo + review semántico + penalización de texto quemado +
+// prefijos anti-alucinación) entra como callbacks, IDÉNTICA a la inline de abajo.
+// Activado por VF_RIP_USE_PROMPTLAB_MOTOR=1. Default usa la inline (probada).
+const ANTI_COMPOSITE_DIRECTIVE =
+  'IMPORTANT: Generate ONE SINGLE PHOTOGRAPHIC FRAME — NOT a split-screen, NOT a grid, NOT a collage, NOT multiple panels, NOT a before-after layout, NOT picture-in-picture. ONE clean photo of ONE subject in ONE scene.';
+const ANTI_TEXT_DIRECTIVE =
+  'ABSOLUTELY NO text, labels, captions, watermarks, signs, or any written words anywhere in the image. The photograph must be 100% CLEAN of any text or typography — all text will be added as vector overlays in post-production.';
+
+async function refineSceneViaMotor(
+  scene: Scene,
+  keyframe: ExtractedKeyframe,
+  providers: ProviderStep[],
+  workDir: string,
+  threshold: number,
+  maxAttempts: number,
+  logger: Logger | undefined,
+  anatomyValidator: SceneValidatorV3 | null,
+  styleBase: string,
+  targetLanguage: string,
+  productName: string | null,
+  previousSceneImagePath: string | null,
+): Promise<AlignScenesResult['perScene'][number]> {
+  const basePrompt = scene.imagePrompt;
+  let keyframeBuffer: Buffer | null = null;
+  try {
+    keyframeBuffer = await readFile(keyframe.filePath);
+  } catch {
+    keyframeBuffer = null;
+  }
+
+  // Estado capturado por closures (lo que el motor genérico no maneja: el BUFFER
+  // de la mejor imagen, el último review, y el contador de composites alucinados).
+  let bestBuf: Buffer | null = null;
+  let bestEff = -1;
+  let lastReviewResult: ReviewResult | null = null;
+  let compositeRejectionCount = 0;
+  let lastPrompt = basePrompt;
+
+  const loop = await runVisualRefineLoop(
+    {
+      generate: async (prompt) => {
+        lastPrompt = prompt;
+        const result = keyframeBuffer
+          ? await generateImageWithReference(prompt, keyframeBuffer, providers, 'recreate')
+          : await generateImageWithChain(prompt, providers);
+        return { buffer: result.buffer };
+      },
+      judge: async (buffer): Promise<JudgeVerdict> => {
+        // PASO 1: comparar estilo contra keyframe.
+        let score = 0;
+        let styleHint = '';
+        try {
+          const cmp = await compareImagesWithVision(keyframe.filePath, buffer);
+          score = cmp.score;
+          styleHint = cmp.hint;
+        } catch (e) {
+          logger?.warn(
+            { sceneIndex: scene.index, err: (e as Error).message.slice(0, 200) },
+            'rip-aligner:compare_failed',
+          );
+          if (!bestBuf) {
+            bestBuf = buffer;
+            bestEff = MIN_ACCEPTABLE;
+          }
+          // compare caído = irrecuperable para esta escena (igual que el break inline).
+          return { score: bestEff < 0 ? 0 : bestEff, byDimension: {}, approved: false, notVerified: false, fatal: true, hint: '', failedCriteria: [], evidence: [] };
+        }
+
+        // PASO 2: reviewer semántico (idéntico a la inline).
+        let reviewResult: ReviewResult | null = null;
+        try {
+          reviewResult = await reviewScene({
+            imageBuffer: buffer,
+            narrationText: scene.text,
+            targetLanguage,
+            declaredStyle: styleBase,
+            shouldHaveCleanBackground: true,
+            previousSceneImagePath,
+            productName,
+            expectedSingleShot: true,
+          });
+          lastReviewResult = reviewResult;
+          if (reviewResult.verdict !== 'pass' && issuesIndicateComposite(reviewResult.criticalIssues)) {
+            compositeRejectionCount++;
+          }
+          logger?.info(
+            {
+              sceneIndex: scene.index,
+              styleScore: score.toFixed(1),
+              reviewVerdict: reviewResult.verdict,
+              reviewIssues: reviewResult.criticalIssues.slice(0, 3),
+            },
+            'rip-aligner:reviewed',
+          );
+        } catch (e) {
+          logger?.warn(
+            { sceneIndex: scene.index, err: (e as Error).message.slice(0, 200) },
+            'rip-aligner:review_failed',
+          );
+        }
+
+        // Selección del MEJOR buffer penalizando texto quemado (-50), idéntico.
+        const hasBurnedText = !!reviewResult?.burnedInText?.present;
+        const effectiveScore = hasBurnedText ? score - 50 : score;
+        if (effectiveScore > bestEff) {
+          bestEff = effectiveScore;
+          bestBuf = buffer;
+        }
+
+        // Convergencia: estilo OK + review OK.
+        const styleOk = score >= threshold;
+        const reviewOk = !reviewResult || reviewResult.verdict === 'pass';
+        const reviewFatal = reviewResult?.verdict === 'fatal';
+
+        // Hints + flags para el refinador (anti-composite / anti-texto).
+        const reviewHint =
+          reviewResult && reviewResult.verdict !== 'pass' ? reviewResult.refinementHint : '';
+        const combinedHint = [reviewHint, styleHint].filter(Boolean).join(' | ');
+        const issuesStr = (reviewResult?.criticalIssues ?? []).join(' ').toLowerCase();
+        const failed: string[] = [];
+        if (
+          issuesStr.includes('composite') ||
+          issuesStr.includes('grid') ||
+          issuesStr.includes('split-screen') ||
+          issuesStr.includes('split screen') ||
+          issuesStr.includes('multi-panel') ||
+          issuesStr.includes('multiple panels')
+        ) {
+          failed.push('composite');
+        }
+        if (
+          issuesStr.includes('burned-in text') ||
+          issuesStr.includes('gibberish') ||
+          issuesStr.includes('typo')
+        ) {
+          failed.push('text');
+        }
+
+        return {
+          score: effectiveScore,
+          byDimension: {},
+          approved: styleOk && reviewOk,
+          notVerified: false,
+          fatal: reviewFatal,
+          hint: combinedHint,
+          failedCriteria: failed,
+          evidence: styleHint ? [styleHint] : [],
+        };
+      },
+      refine: async (prompt, verdict) => {
+        const prefixDirectives: string[] = [];
+        if (verdict.failedCriteria.includes('composite')) prefixDirectives.push(ANTI_COMPOSITE_DIRECTIVE);
+        if (verdict.failedCriteria.includes('text')) prefixDirectives.push(ANTI_TEXT_DIRECTIVE);
+        if (prefixDirectives.length > 0) {
+          return `${prefixDirectives.join(' ')}\n\n${basePrompt}\n\nCRITICAL ADJUSTMENTS for next attempt: ${verdict.hint}`;
+        }
+        if (verdict.hint) {
+          return `${basePrompt}\n\nCRITICAL ADJUSTMENTS for next attempt: ${verdict.hint}`;
+        }
+        return prompt;
+      },
+    },
+    {
+      basePrompt,
+      maxAttempts,
+      // El ripeo NO para por estancamiento (igual que la inline): desactivado.
+      minDelta: Number.NEGATIVE_INFINITY,
+      // Un fallo de generación corta y conserva el mejor (igual que el break inline).
+      stopOnGenerateError: true,
+    },
+  );
+
+  const converged = loop.stopReason === 'aprobado';
+  const attemptsUsed = loop.iterations.length;
+
+  // Persistir la mejor imagen (o placeholder), idéntico a la inline.
+  const imagePath = join(workDir, `scene_${String(scene.index).padStart(2, '0')}.png`);
+  if (bestBuf) {
+    await writeFile(imagePath, bestBuf);
+  } else {
+    await writeFile(imagePath, TINY_BLACK_PNG);
+  }
+
+  // ANATOMY CHECK best-effort (idéntico).
+  let anatomyVerdict: 'pass' | 'regenerate' | 'fatal' | 'skipped' = 'skipped';
+  if (anatomyValidator && bestBuf) {
+    try {
+      const validation = await anatomyValidator.validate({
+        text: scene.text,
+        imagePrompt: lastPrompt,
+        imageBuffer: bestBuf,
+        styleBase,
+        fastMode: true,
+      });
+      anatomyVerdict = validation.verdict;
+      if (validation.verdict !== 'pass') {
+        logger?.warn(
+          { sceneIndex: scene.index, anatomyVerdict: validation.verdict, issues: validation.issues?.slice(0, 3) },
+          'rip-aligner:anatomy_concern',
+        );
+      }
+    } catch (e) {
+      logger?.warn(
+        { sceneIndex: scene.index, err: (e as Error).message.slice(0, 200) },
+        'rip-aligner:anatomy_validator_failed',
+      );
+    }
+  }
+
+  // APRENDER (PromptLab): registra el prompt ganador al converger (igual que la inline).
+  if (converged) {
+    void recordWinningPrompt({
+      mode: 'ripear',
+      targetKey: normalizeTargetKey(styleBase),
+      prompt: lastPrompt,
+      score: Math.round(bestEff < 0 ? 0 : bestEff),
+      byDimension: {},
+      attempts: attemptsUsed,
+      intention: scene.text.slice(0, 200),
+    });
+  }
+
+  const hallucinatedCompositePersistently =
+    !converged && attemptsUsed >= 2 && compositeRejectionCount >= attemptsUsed;
+
+  return {
+    sceneIndex: scene.index,
+    finalScore: bestEff < 0 ? 0 : bestEff,
+    attempts: attemptsUsed,
+    converged,
+    bestImagePath: imagePath,
+    keyframePath: keyframe.filePath,
+    anatomyVerdict,
+    // cast: TS estrecha a null porque la asignación vive en un closure (el callback
+    // judge). El valor real es ReviewResult | null.
+    reviewVerdict: (lastReviewResult as ReviewResult | null)?.verdict ?? 'skipped',
+    reviewIssues: (lastReviewResult as ReviewResult | null)?.criticalIssues ?? [],
+    compositeLayout: 'single',
+    panelCount: 1,
+    hallucinatedCompositePersistently,
+  };
+}
+
 async function refineSceneUntilConverged(
   scene: Scene,
   keyframe: ExtractedKeyframe,
@@ -543,6 +790,27 @@ async function refineSceneUntilConverged(
   productName: string | null,
   previousSceneImagePath: string | null,
 ): Promise<AlignScenesResult['perScene'][number]> {
+  // INCREMENT 2 (opt-in, default OFF): correr este mismo bucle a través del motor
+  // único del Laboratorio (runVisualRefineLoop). Mismo comportamiento, una sola
+  // implementación del control de bucle. Detrás de flag para promoverlo SOLO tras
+  // verificar con un ripeo real — el bucle probado de abajo sigue siendo el default.
+  if (process.env['VF_RIP_USE_PROMPTLAB_MOTOR'] === '1') {
+    return refineSceneViaMotor(
+      scene,
+      keyframe,
+      providers,
+      workDir,
+      threshold,
+      maxAttempts,
+      logger,
+      anatomyValidator,
+      styleBase,
+      targetLanguage,
+      productName,
+      previousSceneImagePath,
+    );
+  }
+
   const basePrompt = scene.imagePrompt;
   let currentPrompt = basePrompt;
   // Cargamos el keyframe del original como REFERENCIA de generación (image-to-image):
