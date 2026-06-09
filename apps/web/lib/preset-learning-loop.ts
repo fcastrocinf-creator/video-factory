@@ -31,6 +31,9 @@ import {
 } from './image-gen-tools';
 import { autoLearnPresetFromVideo } from './auto-learn-preset';
 import { logSystemEvent } from './system-log';
+// Laboratorio de Prompts: al aprobar un estilo, registramos el promptTemplate
+// ganador en la librería (lado CREAR). Aditivo y best-effort.
+import { recordWinningPrompt, normalizeTargetKey } from './promptlab/prompt-library';
 
 export interface PresetLearningLoopOptions {
   videoPath: string;
@@ -240,6 +243,16 @@ export async function runPresetLearningLoop(
       if (iterResult.score >= targetScore) {
         // APROBADO. Actualizar preset con el promptTemplate que funcionó.
         preset = { ...preset, visualStyle: { ...preset.visualStyle, promptTemplate: currentPromptTemplate } };
+        // APRENDER (PromptLab): registra el style-prompt ganador. Best-effort.
+        void recordWinningPrompt({
+          mode: 'crear',
+          targetKey: normalizeTargetKey(preset.displayName ?? preset.id),
+          prompt: currentPromptTemplate,
+          score: Math.round(iterResult.score),
+          byDimension: {},
+          attempts: iter,
+          intention: preset.displayName ?? preset.id,
+        });
         break;
       }
       if (iter === maxIterations) {

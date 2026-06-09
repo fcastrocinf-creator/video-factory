@@ -41,6 +41,17 @@ export const PREVIEWS_DIR = resolve(STORAGE_DIR, 'previews');
 // Conversaciones del Copilot POR USUARIO (historial propio + base multi-usuario).
 // Estructura: storage/conversations/<userId>/<conversationId>.json
 export const CONVERSATIONS_DIR = resolve(STORAGE_DIR, 'conversations');
+// CTAs reusables (cierres) POR MARCA: imágenes y videos solo-visual que el owner
+// guarda para cargar/editar al armar un video. Estructura:
+// storage/ctas/<brandId>/<file> + storage/ctas/<brandId>/manifest.json
+export const CTAS_DIR = resolve(STORAGE_DIR, 'ctas');
+// Laboratorio de Prompts: bucle generar→juzgar→refinar→aprobar + librería de
+// prompts ganadores. storage/promptlab/winning-prompts.jsonl (memoria) y
+// storage/promptlab/runs/<id>/ (trayectoria + imágenes de cada iteración).
+export const PROMPTLAB_DIR = resolve(STORAGE_DIR, 'promptlab');
+export function promptLabRunDir(runId: string): string {
+  return resolve(PROMPTLAB_DIR, 'runs', runId);
+}
 
 export function workDirFor(runId: string): string {
   return resolve(RUNS_DIR, runId);

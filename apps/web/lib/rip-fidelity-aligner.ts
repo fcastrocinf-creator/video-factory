@@ -30,6 +30,10 @@ import { SceneValidatorV3 } from '@video-factory/block-scene-validator';
 import { extractKeyframes, getVideoDurationSec, type ExtractedKeyframe } from './frame-extractor';
 import { reviewScene, type ReviewResult } from './scene-reviewer';
 import { detectCompositeLayout } from './composite-layout-detector';
+// Laboratorio de Prompts: al converger una escena del ripeo, registramos el
+// prompt ganador en la librería (aprende qué recreate-prompt funcionó por estilo).
+// Aditivo y best-effort: NO cambia la generación ni el render.
+import { recordWinningPrompt, normalizeTargetKey } from './promptlab/prompt-library';
 import {
   buildImageProviderChain,
   generateImageWithChain,
@@ -676,6 +680,18 @@ async function refineSceneUntilConverged(
         { sceneIndex: scene.index, attempt, styleScore: score.toFixed(1) },
         'rip-aligner:converged',
       );
+      // APRENDER (PromptLab): registra el prompt que convergió. Best-effort,
+      // fire-and-forget — nunca bloquea ni rompe el ripeo. Cierra el bucle de
+      // aprendizaje para el pipeline real de ripeo.
+      void recordWinningPrompt({
+        mode: 'ripear',
+        targetKey: normalizeTargetKey(styleBase),
+        prompt: currentPrompt,
+        score: Math.round(score),
+        byDimension: {},
+        attempts: attemptsUsed,
+        intention: scene.text.slice(0, 200),
+      });
       break;
     }
     if (reviewFatal) {

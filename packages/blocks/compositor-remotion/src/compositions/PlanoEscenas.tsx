@@ -257,8 +257,12 @@ const SceneFrame: React.FC<{
   // CSS transforms agresivas sobre un video animado son contraproducentes.
   if (videoSrc) {
     const subtleZoom = 1 + 0.04 * t; // 0% → 4% — muy sutil
-    const FADE_FRAMES = 6;
-    const opacity = Math.min(1, localFrame / FADE_FRAMES);
+    // Corte duro entre escenas (sin fade-in desde negro). <Series> NO solapa
+    // escenas, así que el fade-in (opacity 0→1) se renderizaba sobre el fondo
+    // negro raíz y metía 1-2 frames NEGROS en CADA corte (parpadeo que el owner
+    // marcó como defecto). El movimiento real ya viene del clip; el hard cut
+    // elimina el negro sin tocar timing ni audio. (fix 2026-06-08)
+    const opacity = 1;
     return (
       <AbsoluteFill style={{ opacity }}>
         <OffthreadVideo
@@ -296,10 +300,9 @@ const SceneFrame: React.FC<{
 
   const rotation = motionOn && animatedScenes ? (sceneIndex % 2 === 0 ? 0.6 : -0.6) * t : 0;
 
-  // Fade-in suave de 4 frames al inicio. animatedScenes alarga el fade a 6
-  // para suavizar transiciones entre clips animados.
-  const FADE_FRAMES = animatedScenes ? 6 : 4;
-  const opacity = Math.min(1, localFrame / FADE_FRAMES);
+  // Corte duro (sin fade-in desde negro) — ver nota en la rama de video: el
+  // fade-in sobre el fondo negro raíz causaba parpadeo negro en cada corte.
+  const opacity = 1;
 
   // N1 fix defensivo (25-may-2026): si por algún edge case el imageSrc viene
   // vacío/undefined, renderizamos un placeholder VISIBLE en vez de transparent/negro.

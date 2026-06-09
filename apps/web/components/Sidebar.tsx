@@ -14,12 +14,16 @@ const GROUPS: Array<{
   },
   {
     label: 'Marca',
-    items: [{ href: '/brands', icon: '🏷️', name: 'Marcas', sub: 'productos y estilo' }],
+    items: [
+      { href: '/brands', icon: '🏷️', name: 'Marcas', sub: 'productos y estilo' },
+      { href: '/ctas', icon: '📣', name: 'CTAs', sub: 'cierres por marca' },
+    ],
   },
   {
     label: 'Inteligencia',
     items: [
       { href: '/sugerencias', icon: '🧠', name: 'Asistente IA', sub: 'ideas · estilo · técnico' },
+      { href: '/laboratorio', icon: '🧪', name: 'Laboratorio de Prompts', sub: 'genera · juzga · refina' },
       { href: '/aprendizaje', icon: '🎓', name: 'Aprendizaje', sub: 'enseñar estilos' },
     ],
   },

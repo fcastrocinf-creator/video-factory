@@ -1,0 +1,61 @@
+{
+  "id": "biozentra_pixar_ingredientes",
+  "displayName": "BioZentra · Pixar 3D Animado (ingredientes personificados)",
+  "description": "Explainer Pixar 3D animado (clips Kling desde keyframes) donde los personajes son ingredientes/conceptos personificados (ej. la pastilla villana, la especia heroína). Estilo Pixar genérico SIN doctor: el contenido por escena lo arma el scene-planner desde el guion. Ideal villano→revelación.",
+  "category": {
+    "id": "doctor_autoridad",
+    "displayName": "Doctor / Experto (Autoridad)",
+    "description": "Un especialista habla con autoridad sobre el problema y la solución."
+  },
+  "format": {
+    "id": "b-roll-animated",
+    "displayName": "B-ROLL Animado",
+    "description": "Gráficas con movimiento: clips animados desde keyframes."
+  },
+  "style": {
+    "id": "pixar_3d",
+    "displayName": "Pixar 3D"
+  },
+  "classification": {
+    "formato": "educativo",
+    "hookAngulo": "autoridad",
+    "funnelStage": "tofu",
+    "awareness": "problem_aware"
+  },
+  "estrategia": "multi_escena",
+  "visualEngine": "veo-lite",
+  "visualStyle": {
+    "promptTemplate": "3D Pixar / DreamWorks-style cinematic animation, photorealistic CGI render, soft volumetric studio lighting, warm cinematic color grading, shallow depth of field, glossy tactile materials, highly expressive stylized characters and personified objects, single subject centered, vertical 9:16 composition, gentle camera movement suitable for video animation, clean uncluttered background, no text, no captions, no watermark",
+    "negativePrompt": "2D illustration, flat cartoon, anime, hand-drawn, sketch, photograph, real human photography, harsh lighting, low quality, blurry, deformed, extra limbs, text overlay, watermark, subtitles, collage, split screen, multiple panels, static still image",
+    "aspectRatio": "9:16",
+    "referenceImages": []
+  },
+  "subtitles": {
+    "style": "word_level_kinetic",
+    "font": "Inter",
+    "fontSize": 64,
+    "color": "#FFFFFF",
+    "strokeColor": "#000000",
+    "strokeWidth": 4,
+    "highlightColor": "#FFE600",
+    "position": "bottom",
+    "allCaps": false
+  },
+  "defaultDurationSeconds": 30,
+  "scenesPerMinute": 7.5,
+  "composition": {
+    "kenBurns": {
+      "enabled": false,
+      "zoomStart": 1.0,
+      "zoomEnd": 1.0,
+      "panX": 0,
+      "panY": 0
+    },
+    "backgroundMusic": {
+      "enabled": false,
+      "volumeDb": -20
+    }
+  },
+  "createdAt": "2026-06-08T00:00:00Z",
+  "updatedAt": "2026-06-08T00:00:00Z"
+}
